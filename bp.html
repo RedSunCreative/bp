@@ -2139,7 +2139,8 @@ let rosRunning = false;
 let rosCurrentSegIdx = 0;
 
 // ── INIT ──
-function initApp() {
+async function initApp() {
+  await loadFromSupabase();
   booGreet();
 }
 
@@ -4161,16 +4162,41 @@ function saveSession() {
 }
 
 function autoSave(reason) {
-  // Debounce — wait 1.5s after last trigger before saving
   clearTimeout(autoSaveTimeout);
-  autoSaveTimeout = setTimeout(() => {
+  autoSaveTimeout = setTimeout(async () => {
     const snapshot = buildSessionSnapshot();
-    // Store in sessionStorage as safety net
     try {
       sessionStorage.setItem('boo_autosave', JSON.stringify(snapshot));
     } catch(e) {}
-    showToast('✓ Auto-saved (' + (reason) + ')');
+    try {
+      await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.98`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SB_ANON,
+          'Authorization': `Bearer ${SB_ANON}`,
+          'Prefer': 'return=minimal',
+        },
+        body: JSON.stringify({ data: snapshot }),
+      });
+      showToast('✓ Auto-saved (' + reason + ')');
+    } catch(e) {
+      showToast('✓ Saved locally (' + reason + ')');
+    }
   }, 1500);
+}
+
+async function loadFromSupabase() {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.98&select=data`, {
+      headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` },
+    });
+    const rows = await res.json();
+    if (rows?.[0]?.data && Object.keys(rows[0].data).length > 0) {
+      applySession(rows[0].data);
+      showToast('✓ Session restored');
+    }
+  } catch(e) {}
 }
 
 function showToast(msg) {

@@ -143,6 +143,23 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 7: Supabase persistence wired up
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 7: Supabase persistence ---"
+if grep -q "loadFromSupabase" "$BP" && grep -q "rest/v1/builder_state" "$BP"; then
+  pass "loadFromSupabase and Supabase REST calls present"
+else
+  fail "Supabase persistence missing"
+fi
+
+if grep -q "await loadFromSupabase" "$BP"; then
+  pass "loadFromSupabase called during init"
+else
+  fail "loadFromSupabase not called during init"
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
