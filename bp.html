@@ -1,0 +1,4342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boo Producer</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
+
+  :root {
+    --gold: #F5D03A;
+    --teal: #3BB8C9;
+    --orange: #E8431A;
+    --bg: #0E0F11;
+    --surface: #161719;
+    --surface2: #1E2022;
+    --surface3: #252729;
+    --border: #2A2C2F;
+    --text: #E8E8E6;
+    --text-muted: #7A7C80;
+    --text-dim: #3E4044;
+    --boo-bubble: #1A1F24;
+    --user-bubble: #1C2128;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .boo-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1A2530 0%, #0D1A22 100%);
+    border: 2px solid var(--teal);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+    position: relative;
+    box-shadow: 0 0 16px rgba(59,184,201,0.2);
+  }
+
+  .boo-avatar::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 1px solid rgba(59,184,201,0.15);
+  }
+
+  .header-info h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+  }
+
+  .header-info p {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+
+  .header-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4CAF50;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow-y: auto;
+  }
+
+  .sidebar-section {
+    padding: 16px 14px 8px;
+  }
+
+  .sidebar-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.09em;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    padding-left: 2px;
+  }
+
+  .nav-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 10px 10px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .nav-btn.active { background: var(--surface3); color: var(--gold); }
+
+  .nav-btn .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+
+  .season-chip {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .season-chip:hover { border-color: var(--teal); }
+  .season-chip.active { border-color: var(--gold); background: rgba(245,208,58,0.06); }
+
+  .season-chip-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .season-chip-ep {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .add-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: calc(100% - 28px);
+    margin: 4px 14px 12px;
+    padding: 8px 10px;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+
+  .add-btn:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* ── CHAT AREA ── */
+  .chat-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Context bar */
+  .context-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .ctx-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    background: var(--surface2);
+  }
+
+  .ctx-badge.highlight { border-color: var(--gold); color: var(--gold); background: rgba(245,208,58,0.06); }
+  .ctx-badge.teal { border-color: var(--teal); color: var(--teal); background: rgba(59,184,201,0.06); }
+
+  /* Messages */
+  .messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scroll-behavior: smooth;
+  }
+
+  .messages::-webkit-scrollbar { width: 4px; }
+  .messages::-webkit-scrollbar-track { background: transparent; }
+  .messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg {
+    display: flex;
+    gap: 12px;
+    max-width: 820px;
+    animation: msgIn 0.25s ease-out;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { flex-direction: row-reverse; align-self: flex-end; }
+
+  .msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    margin-top: 2px;
+  }
+
+  .msg.boo .msg-avatar {
+    background: linear-gradient(135deg, #1A2530, #0D1A22);
+    border: 1.5px solid var(--teal);
+    box-shadow: 0 0 8px rgba(59,184,201,0.2);
+  }
+
+  .msg.user .msg-avatar {
+    background: var(--surface3);
+    border: 1.5px solid var(--border);
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  .msg-body { display: flex; flex-direction: column; gap: 4px; max-width: calc(100% - 44px); }
+
+  .msg-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    margin-bottom: 3px;
+  }
+
+  .msg.user .msg-name { text-align: right; }
+
+  .msg-bubble {
+    padding: 14px 18px;
+    border-radius: var(--radius);
+    font-size: 15px;
+    line-height: 1.75;
+    color: var(--text);
+  }
+
+  .msg.boo .msg-bubble {
+    background: var(--boo-bubble);
+    border: 1px solid var(--border);
+    border-top-left-radius: 4px;
+  }
+
+  .msg.user .msg-bubble {
+    background: var(--user-bubble);
+    border: 1px solid #2A3040;
+    border-top-right-radius: 4px;
+  }
+
+  .msg-bubble p { margin-bottom: 8px; }
+  .msg-bubble p:last-child { margin-bottom: 0; }
+  .msg-bubble strong { color: var(--gold); font-weight: 600; }
+  .msg-bubble em { color: var(--teal); font-style: italic; }
+
+  /* Action buttons in messages */
+  .msg-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .action-btn {
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .action-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .action-btn.primary { border-color: var(--gold); color: var(--gold); background: rgba(245,208,58,0.08); }
+  .action-btn.primary:hover { background: rgba(245,208,58,0.14); }
+  .action-btn.orange { border-color: var(--orange); color: var(--orange); background: rgba(232,67,26,0.08); }
+  .action-btn.teal { border-color: var(--teal); color: var(--teal); background: rgba(59,184,201,0.08); }
+
+  /* Cards in messages */
+  .card-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+  }
+
+  .guest-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.15s;
+  }
+
+  .guest-card:hover { border-color: var(--teal); }
+  .guest-card.selected { border-color: var(--gold); background: rgba(245,208,58,0.04); }
+
+  .guest-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .guest-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    color: var(--teal);
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+  }
+
+  .guest-link:hover { border-color: var(--teal); background: rgba(59,184,201,0.08); }
+  .guest-link.unverified { color: var(--text-muted); border-style: dashed; }
+  .guest-link.unverified:hover { border-color: var(--gold); color: var(--gold); }
+
+  .guest-unverified-note {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-dim);
+    margin-top: 4px;
+    letter-spacing: 0.03em;
+  }
+
+  .invite-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--teal);
+    background: rgba(59,184,201,0.08);
+    color: var(--teal);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    margin-top: 10px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .invite-btn:hover { background: rgba(59,184,201,0.18); border-color: var(--teal); }
+
+  .guest-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+
+  .guest-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .guest-title {
+    font-size: 13px;
+    color: var(--teal);
+    margin-bottom: 6px;
+  }
+
+  .guest-why {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .guest-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 8px;
+  }
+
+  .tag {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    background: var(--surface3);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+
+  .select-guest-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--gold);
+    background: transparent;
+    color: var(--gold);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .select-guest-btn:hover { background: rgba(245,208,58,0.12); }
+
+  /* Script view */
+  .script-section {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    overflow: hidden;
+  }
+
+  .script-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: var(--surface3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .script-section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    letter-spacing: 0.08em;
+  }
+
+  .script-section-body {
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.75;
+    color: var(--text);
+  }
+
+  .script-section-body ul { padding-left: 18px; }
+  .script-section-body li { margin-bottom: 5px; color: var(--text-muted); }
+  .script-section-body li strong { color: var(--text); }
+
+  .q-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+
+  .q-main { font-size: 13px; color: var(--text); margin-bottom: 5px; }
+  .q-followup { font-size: 12px; color: var(--text-muted); font-style: italic; padding-left: 12px; border-left: 2px solid var(--border); }
+
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0;
+  }
+
+  .typing-dots {
+    display: flex;
+    gap: 4px;
+    padding: 10px 14px;
+    background: var(--boo-bubble);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    border-top-left-radius: 4px;
+  }
+
+  .typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: dot-bounce 1.2s ease-in-out infinite;
+  }
+
+  .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes dot-bounce {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-6px); opacity: 1; }
+  }
+
+  /* ── INPUT AREA ── */
+  .input-area {
+    padding: 16px 20px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    transition: border-color 0.15s;
+  }
+
+  .input-row:focus-within { border-color: var(--teal); }
+
+  .chat-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.55;
+    resize: none;
+    min-height: 24px;
+    max-height: 120px;
+  }
+
+  .chat-input::placeholder { color: var(--text-dim); }
+
+  .send-btn {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    border: none;
+    background: var(--teal);
+    color: #000;
+    font-size: 15px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .send-btn:hover { background: #50CCD9; }
+  .send-btn:disabled { background: var(--surface3); color: var(--text-dim); cursor: not-allowed; }
+
+  /* API key modal */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(4px);
+  }
+
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 420px;
+    max-width: 90vw;
+  }
+
+  .modal h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 18px;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .modal p {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .modal input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 16px;
+    transition: border-color 0.15s;
+  }
+
+  .modal input:focus { border-color: var(--teal); }
+
+  .modal-btn {
+    width: 100%;
+    padding: 11px;
+    border-radius: 8px;
+    border: none;
+    background: var(--gold);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+
+  .modal-btn:hover { opacity: 0.85; }
+
+  /* Run of Show view */
+  .ros-view {
+    display: none;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .ros-view.active { display: flex; }
+
+  .ros-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .ros-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.3;
+  }
+
+  .ros-timer {
+    font-family: 'DM Mono', monospace;
+    font-size: 22px;
+    color: var(--teal);
+    letter-spacing: 0.1em;
+  }
+
+  .ros-segments {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ros-segment {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+
+  .ros-segment.current {
+    border-color: var(--gold);
+    background: rgba(245,208,58,0.06);
+  }
+
+  .ros-segment.done {
+    opacity: 0.4;
+  }
+
+  .ros-seg-time {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    width: 50px;
+    flex-shrink: 0;
+  }
+
+  .ros-seg-name {
+    font-size: 15px;
+    font-weight: 500;
+    flex: 1;
+  }
+
+  .ros-seg-dur {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .current-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--gold);
+    flex-shrink: 0;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  /* Teleprompter */
+  .teleprompter-view {
+    display: none;
+    flex-direction: column;
+  }
+
+  .teleprompter-view.active { display: flex; }
+
+  .teleprompter-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px 40px;
+    font-size: 20px;
+    line-height: 2.1;
+    color: var(--text);
+  }
+
+  .tp-section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin: 24px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tp-section-label:first-child { margin-top: 0; }
+
+  .tp-text {
+    color: var(--text);
+    margin-bottom: 8px;
+  }
+
+  .tp-cue {
+    color: var(--gold);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    background: rgba(245,208,58,0.08);
+    border: 1px solid rgba(245,208,58,0.2);
+    border-radius: 6px;
+    padding: 6px 12px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+
+  /* Scrollbar */
+  .sidebar::-webkit-scrollbar, .ros-segments::-webkit-scrollbar,
+  .teleprompter-content::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-track, .ros-segments::-webkit-scrollbar-track,
+  .teleprompter-content::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb, .ros-segments::-webkit-scrollbar-thumb,
+  .teleprompter-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* Utility */
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  /* Right panel */
+  .right-panel {
+    width: 320px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+  }
+
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-tab {
+    flex: 1;
+    padding: 11px 6px;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    border-bottom: 2px solid transparent;
+    letter-spacing: 0.03em;
+  }
+
+  .panel-tab.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  .panel-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 14px;
+  }
+
+  .panel-content::-webkit-scrollbar { width: 3px; }
+  .panel-content::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .episode-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .episode-card:hover { border-color: var(--teal); }
+
+  .ep-number {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-bottom: 3px;
+  }
+
+  .ep-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 5px;
+  }
+
+  .ep-status {
+    display: inline-flex;
+    padding: 2px 7px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+  }
+
+  .ep-status.planning { background: rgba(245,208,58,0.1); color: var(--gold); }
+  .ep-status.booked { background: rgba(59,184,201,0.1); color: var(--teal); }
+  .ep-status.ready { background: rgba(76,175,80,0.1); color: #4CAF50; }
+
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+  }
+
+  .info-row:last-child { border-bottom: none; }
+
+  .info-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+    padding-top: 1px;
+  }
+
+  .info-value {
+    font-size: 13px;
+    color: var(--text);
+    text-align: right;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .empty-state .empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
+  .empty-state p { line-height: 1.5; }
+
+  /* ── ACTION ITEMS VIEW ── */
+  .action-items-view {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .action-items-view.active { display: flex; }
+
+  .ai-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .ai-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  .ai-counts {
+    display: flex;
+    gap: 8px;
+  }
+
+  .ai-count-badge {
+    padding: 3px 10px;
+    border-radius: 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+  }
+
+  .ai-count-badge.open { border-color: var(--orange); color: var(--orange); background: rgba(232,67,26,0.06); }
+  .ai-count-badge.done { border-color: #4CAF50; color: #4CAF50; background: rgba(76,175,80,0.06); }
+
+  .ai-filter-bar {
+    display: flex;
+    gap: 6px;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+
+  .ai-filter-btn {
+    padding: 4px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+
+  .ai-filter-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .ai-filter-btn.active { border-color: var(--gold); color: var(--gold); background: rgba(245,208,58,0.08); }
+
+  .ai-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .ai-list::-webkit-scrollbar { width: 3px; }
+  .ai-list::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .ai-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    transition: border-color 0.15s;
+    animation: msgIn 0.2s ease-out;
+  }
+
+  .ai-item:hover { border-color: var(--border); }
+  .ai-item.done { opacity: 0.45; }
+  .ai-item.done .ai-text { text-decoration: line-through; color: var(--text-muted); }
+
+  .ai-checkbox {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1.5px solid var(--border);
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+    transition: all 0.15s;
+    font-size: 11px;
+  }
+
+  .ai-checkbox:hover { border-color: var(--teal); }
+  .ai-checkbox.checked { border-color: #4CAF50; background: rgba(76,175,80,0.15); color: #4CAF50; }
+
+  .ai-body { flex: 1; min-width: 0; }
+
+  .ai-text {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+    margin-bottom: 6px;
+  }
+
+  .ai-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .ai-owner {
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+  }
+
+  .ai-owner.mark { background: rgba(59,184,201,0.12); color: var(--teal); border: 1px solid rgba(59,184,201,0.3); }
+  .ai-owner.matt { background: rgba(245,208,58,0.12); color: var(--gold); border: 1px solid rgba(245,208,58,0.3); }
+  .ai-owner.kartik { background: rgba(232,67,26,0.12); color: var(--orange); border: 1px solid rgba(232,67,26,0.3); }
+
+  .ai-episode-tag {
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text-muted);
+    background: var(--surface3);
+    padding: 2px 7px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .ai-source {
+    font-size: 10px;
+    color: var(--text-dim);
+    font-family: 'DM Mono', monospace;
+  }
+
+  .ai-delete {
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .ai-delete:hover { color: var(--orange); background: rgba(232,67,26,0.08); }
+
+  .ai-add-bar {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  .ai-add-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    transition: border-color 0.15s;
+  }
+
+  .ai-add-row:focus-within { border-color: var(--teal); }
+
+  .ai-add-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    min-height: 22px;
+  }
+
+  .ai-add-input::placeholder { color: var(--text-dim); }
+
+  .ai-owner-select {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    padding: 4px 6px;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .ai-owner-select:focus { border-color: var(--teal); }
+
+  .ai-add-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--gold);
+    background: rgba(245,208,58,0.08);
+    color: var(--gold);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .ai-add-btn:hover { background: rgba(245,208,58,0.16); }
+
+  .ai-boo-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    color: var(--teal);
+    background: rgba(59,184,201,0.06);
+    border: 1px solid rgba(59,184,201,0.2);
+    border-radius: 8px;
+    padding: 2px 7px;
+  }
+
+  .ai-empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .ai-empty .ai-empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.4; }
+
+  /* notification dot on nav button */
+  .nav-btn .action-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--orange);
+    margin-left: auto;
+    flex-shrink: 0;
+    display: none;
+  }
+
+  .nav-btn .action-dot.show { display: block; }
+
+
+  /* ── CONTEXT BRIEF VIEW ── */
+  .brief-view {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--bg);
+  }
+
+  .brief-view.active { display: flex; }
+
+  .brief-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--surface);
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .brief-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--gold);
+    letter-spacing: 0.04em;
+  }
+
+  .brief-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  .brief-header-btns {
+    display: flex;
+    gap: 7px;
+    flex-shrink: 0;
+  }
+
+  .brief-btn {
+    padding: 5px 13px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+
+  .brief-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .brief-btn.gold { border-color: var(--gold); color: var(--gold); background: rgba(245,208,58,0.06); }
+  .brief-btn.gold:hover { background: rgba(245,208,58,0.14); }
+
+  .brief-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .brief-body::-webkit-scrollbar { width: 3px; }
+  .brief-body::-webkit-scrollbar-thumb { background: var(--border); }
+
+  /* The generated prose area */
+  .brief-prose {
+    flex: 1;
+    padding: 32px 40px;
+    font-size: 15px;
+    line-height: 1.9;
+    color: var(--text);
+    overflow-y: auto;
+    max-width: 840px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .brief-prose::-webkit-scrollbar { width: 3px; }
+  .brief-prose::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .brief-prose h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin: 32px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    line-height: 1.5;
+  }
+
+  .brief-prose h2:first-child { margin-top: 0; }
+
+  .brief-prose p {
+    margin-bottom: 14px;
+    color: var(--text);
+  }
+
+  .brief-prose p:last-child { margin-bottom: 0; }
+
+  .brief-prose strong { color: var(--gold); font-weight: 600; }
+  .brief-prose em { color: var(--teal); font-style: italic; }
+
+  .brief-prose ul {
+    padding-left: 20px;
+    margin-bottom: 14px;
+  }
+
+  .brief-prose ul li {
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+
+  .brief-prose ul li strong { color: var(--text); }
+
+  .brief-generating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 60px 20px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .brief-generating-dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .brief-generating-dots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--teal);
+    animation: dot-bounce 1.2s ease-in-out infinite;
+  }
+
+  .brief-generating-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .brief-generating-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  /* Feed Boo panel */
+  .brief-feed-panel {
+    display: none;
+    flex-direction: column;
+    border-top: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .brief-feed-panel.open { display: flex; }
+
+  .brief-feed-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brief-feed-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--teal);
+    letter-spacing: 0.06em;
+  }
+
+  .brief-feed-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 4px;
+    transition: color 0.15s;
+  }
+
+  .brief-feed-close:hover { color: var(--text); }
+
+  .brief-feed-body {
+    padding: 14px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .brief-feed-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .brief-feed-textarea {
+    width: 100%;
+    min-height: 100px;
+    max-height: 200px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .brief-feed-textarea:focus { border-color: var(--teal); }
+  .brief-feed-textarea::placeholder { color: var(--text-dim); }
+
+  .brief-feed-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+  }
+
+  /* Flagged items panel */
+  .brief-flags {
+    border-top: 1px solid var(--border);
+    background: rgba(245,208,58,0.03);
+    flex-shrink: 0;
+    display: none;
+  }
+
+  .brief-flags.show { display: block; }
+
+  .brief-flags-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brief-flags-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.06em;
+  }
+
+  .brief-flags-body {
+    padding: 12px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .brief-flag-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 8px 12px;
+    background: var(--surface2);
+    border: 1px solid rgba(245,208,58,0.2);
+    border-radius: 8px;
+    font-size: 12px;
+  }
+
+  .brief-flag-text { flex: 1; color: var(--text); line-height: 1.5; }
+  .brief-flag-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--gold); flex-shrink: 0; margin-top: 2px; }
+
+  .brief-flag-bake-btn {
+    padding: 3px 10px;
+    border-radius: 5px;
+    border: 1px solid var(--gold);
+    background: rgba(245,208,58,0.08);
+    color: var(--gold);
+    font-size: 10px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .brief-flag-bake-btn:hover { background: rgba(245,208,58,0.18); }
+
+  .brief-timestamp {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    padding: 8px 20px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* ── SESSION CONTROLS ── */
+  .header-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
+    margin-right: 12px;
+  }
+
+  .hdr-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    cursor: pointer;
+    letter-spacing: 0.04em;
+    transition: all 0.15s;
+  }
+
+  .hdr-btn:hover { border-color: var(--teal); color: var(--teal); }
+  .hdr-btn.save { border-color: var(--gold); color: var(--gold); }
+  .hdr-btn.save:hover { background: rgba(245,208,58,0.1); }
+
+  .save-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface3);
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 200;
+  }
+
+  .save-toast.show { opacity: 1; }
+
+  /* Load session modal */
+  .load-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 150;
+    backdrop-filter: blur(4px);
+  }
+
+  .load-modal-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    width: 460px;
+    max-width: 90vw;
+  }
+
+  .load-modal-box h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .load-modal-box p {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+
+  .load-drop-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 14px;
+  }
+
+  .load-drop-zone:hover, .load-drop-zone.dragover {
+    border-color: var(--teal);
+    color: var(--teal);
+    background: rgba(59,184,201,0.04);
+  }
+
+  .load-drop-zone .drop-icon { font-size: 28px; margin-bottom: 8px; }
+
+  .load-paste-area {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    height: 80px;
+    resize: none;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.15s;
+  }
+
+  .load-paste-area:focus { border-color: var(--teal); }
+  .load-paste-area::placeholder { color: var(--text-dim); }
+
+  .load-modal-btns { display: flex; gap: 8px; }
+
+  .load-modal-btn {
+    flex: 1;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .load-modal-btn.primary {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #000;
+    font-weight: 600;
+  }
+
+  .load-modal-btn:hover:not(.primary) { border-color: var(--teal); color: var(--teal); }
+  .load-modal-btn.primary:hover { opacity: 0.85; }
+
+  .session-summary {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  .session-summary.show { display: block; }
+  .session-summary-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; }
+  .session-summary-label { font-family: 'DM Mono', monospace; color: var(--text-muted); font-size: 10px; }
+  .session-summary-value { color: var(--text); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<!-- API Key Modal -->
+
+<!-- Header -->
+<header>
+  <div class="boo-avatar">🎬</div>
+  <div class="header-info">
+    <h1>BOO PRODUCER</h1>
+    <p>ANNO CODING PODCAST · RED SUN CREATIVE</p>
+  </div>
+  <div class="header-actions">
+    <button class="hdr-btn" onclick="triggerLoadSession()" title="Load a saved session">⬆ Load</button>
+    <button class="hdr-btn save" onclick="saveSession()" id="saveBtn" title="Save session to file">⬇ Save</button>
+    <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadSessionFromFile(event)">
+  </div>
+  <div class="header-status">
+    <div class="status-dot"></div>
+    <span id="statusLabel">READY</span>
+  </div>
+  <div class="save-toast" id="saveToast">✓ Session saved</div>
+</header>
+
+<!-- Main -->
+<div class="main">
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">Workspace</div>
+      <button class="nav-btn active" onclick="setView('chat')" id="navChat">
+        <span class="nav-icon">💬</span> Boo Chat
+      </button>
+      <button class="nav-btn" onclick="setView('ros')" id="navRos">
+        <span class="nav-icon">📋</span> Run of Show
+      </button>
+      <button class="nav-btn" onclick="setView('teleprompter')" id="navTp">
+        <span class="nav-icon">🎯</span> Teleprompter
+      </button>
+      <button class="nav-btn" onclick="setView('actions')" id="navActions">
+        <span class="nav-icon">✅</span> Action Items
+        <span class="action-dot" id="actionDot"></span>
+      </button>
+      <button class="nav-btn" onclick="setView('brief')" id="navBrief">
+        <span class="nav-icon">📋</span> Context Brief
+      </button>
+    </div>
+    <div class="divider"></div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">Seasons</div>
+      <div id="seasonsList"></div>
+      <button class="add-btn" onclick="startNewSeason()">＋ New Season</button>
+    </div>
+  </div>
+
+  <!-- Chat Area -->
+  <div class="chat-area" id="chatView">
+    <!-- Context bar -->
+    <div class="context-bar" id="contextBar">
+      <span class="ctx-badge" id="ctxShow">📻 Anno Coding</span>
+      <span class="ctx-badge" id="ctxSeason">Season —</span>
+      <span class="ctx-badge" id="ctxEpisode">Episode —</span>
+      <span class="ctx-badge" id="ctxGuest">Guest —</span>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages" id="messages"></div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="input-row">
+        <textarea class="chat-input" id="chatInput" rows="1"
+          placeholder="Type a message to Boo..."
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"></textarea>
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run of Show View -->
+  <div class="chat-area" id="rosView" style="display:none; flex-direction:column;">
+    <div class="ros-header">
+      <div>
+        <div class="ros-title" id="rosEpTitle">Episode Title</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-top:2px;" id="rosGuestName">Guest</div>
+      </div>
+      <div class="ros-timer" id="rosTimer">00:00</div>
+    </div>
+    <div class="ros-segments" id="rosSegments">
+      <div class="empty-state">
+        <div class="empty-icon">📋</div>
+        <p>No run of show yet.<br>Build one in Boo Chat first.</p>
+      </div>
+    </div>
+    <div style="padding: 12px 20px; border-top: 1px solid var(--border); display:flex; gap:8px;">
+      <button class="action-btn teal" onclick="rosStart()" id="rosStartBtn">▶ Start Timer</button>
+      <button class="action-btn" onclick="rosNext()" id="rosNextBtn">Next Segment →</button>
+      <button class="action-btn" onclick="rosReset()">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- Teleprompter View -->
+  <div class="chat-area" id="tpView" style="display:none; flex-direction:column;">
+    <div class="ros-header">
+      <div class="ros-title">Teleprompter</div>
+      <div style="display:flex; gap:8px;">
+        <button class="action-btn" onclick="changeFontSize(-2)">A−</button>
+        <button class="action-btn" onclick="changeFontSize(2)">A+</button>
+      </div>
+    </div>
+    <div class="teleprompter-content" id="tpContent">
+      <div class="empty-state" id="tpEmptyState">
+        <div class="empty-icon">🎯</div>
+        <p>No script loaded yet.</p>
+        <div style="margin-top:14px;display:flex;flex-direction:column;gap:8px;align-items:center;">
+          <button class="action-btn primary" onclick="loadLastScript()" style="font-size:13px;">
+            ↑ Load Last Script from Chat
+          </button>
+          <button class="action-btn" onclick="setView('chat')" style="font-size:13px;">
+            ← Go to Boo Chat
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Context Brief View -->
+  <div class="chat-area brief-view" id="briefView" style="display:none; flex-direction:column;">
+    <div class="brief-header">
+      <div>
+        <div class="brief-title">📋 Anno Coding Context Brief</div>
+        <div class="brief-subtitle">LIVING DOCUMENT · BOO-GENERATED · FOR MATT, KARTIK &amp; MARK</div>
+      </div>
+      <div class="brief-header-btns">
+        <button class="brief-btn" onclick="toggleFeedPanel()">+ Add to Brief</button>
+        <button class="brief-btn" onclick="generateBrief()">↺ Regenerate</button>
+        <button class="brief-btn gold" onclick="exportBrief()">⬇ Export</button>
+      </div>
+    </div>
+
+    <!-- Prose output -->
+    <div class="brief-body">
+      <div id="briefProse" class="brief-prose">
+        <div class="brief-generating" id="briefPlaceholder">
+          <div class="brief-generating-dots"><span></span><span></span><span></span></div>
+          <div>Boo is writing the brief...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flagged items panel -->
+    <div class="brief-flags" id="briefFlags">
+      <div class="brief-flags-header">
+        <div class="brief-flags-title">🎬 BOO FLAGGED — Bake into permanent context?</div>
+        <button class="brief-feed-close" onclick="clearFlags()">Dismiss all</button>
+      </div>
+      <div class="brief-flags-body" id="briefFlagsBody"></div>
+    </div>
+
+    <!-- Feed Boo panel -->
+    <div class="brief-feed-panel" id="briefFeedPanel">
+      <div class="brief-feed-header">
+        <div class="brief-feed-title">+ ADD TO BRIEF</div>
+        <button class="brief-feed-close" onclick="toggleFeedPanel()">✕</button>
+      </div>
+      <div class="brief-feed-body">
+        <div class="brief-feed-hint">Paste anything — a proposal, a conversation, a new tension, a decision. Boo will read it, extract what's new, fold it into the brief, and flag what should be permanently baked in.</div>
+        <textarea class="brief-feed-textarea" id="briefFeedInput"
+          placeholder="Paste your material here..."></textarea>
+        <div class="brief-feed-actions">
+          <button class="brief-btn" onclick="toggleFeedPanel()">Cancel</button>
+          <button class="brief-btn gold" onclick="feedBoo()">Feed Boo →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="brief-timestamp" id="briefTimestamp"></div>
+  </div>
+
+
+  <!-- Action Items View -->
+  <div class="chat-area action-items-view" id="actionsView" style="display:none; flex-direction:column;">
+    <div class="ai-header">
+      <div class="ai-title">✅ Action Items</div>
+      <div class="ai-counts">
+        <span class="ai-count-badge open" id="aiOpenCount">0 open</span>
+        <span class="ai-count-badge done" id="aiDoneCount">0 done</span>
+      </div>
+    </div>
+    <div class="ai-filter-bar">
+      <button class="ai-filter-btn active" onclick="setAiFilter('all', this)">All</button>
+      <button class="ai-filter-btn" onclick="setAiFilter('open', this)">Open</button>
+      <button class="ai-filter-btn" onclick="setAiFilter('done', this)">Done</button>
+      <button class="ai-filter-btn" onclick="setAiFilter('Mark', this)">Mark</button>
+      <button class="ai-filter-btn" onclick="setAiFilter('Matt', this)">Matt</button>
+      <button class="ai-filter-btn" onclick="setAiFilter('Kartik', this)">Kartik</button>
+      <button class="ai-filter-btn" onclick="setAiFilter('boo', this)">Boo-detected</button>
+    </div>
+    <div class="ai-list" id="aiList">
+      <div class="ai-empty">
+        <div class="ai-empty-icon">✅</div>
+        <p>No action items yet.<br>Boo will add them as decisions are made,<br>or you can add them below.</p>
+      </div>
+    </div>
+    <div class="ai-add-bar">
+      <div class="ai-add-row">
+        <input class="ai-add-input" id="aiAddInput" placeholder="Add an action item..."
+          onkeydown="if(event.key==='Enter') addActionItemManual()">
+        <select class="ai-owner-select" id="aiOwnerSelect">
+          <option value="Mark">Mark</option>
+          <option value="Matt">Matt</option>
+          <option value="Kartik">Kartik</option>
+        </select>
+        <button class="ai-add-btn" onclick="addActionItemManual()">+ Add</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="setPanelTab('episodes', this)">EPISODES</button>
+      <button class="panel-tab" onclick="setPanelTab('guest', this)">GUEST</button>
+      <button class="panel-tab" onclick="setPanelTab('dates', this)">DATES</button>
+      <button class="panel-tab" onclick="setPanelTab('info', this)">SHOW</button>
+    </div>
+    <div class="panel-content" id="panelContent">
+      <div class="empty-state">
+        <div class="empty-icon">🎙️</div>
+        <p>Start a season in Boo Chat to see episodes here.</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Date Picker Modal -->
+<div class="modal-overlay" id="datepickerModal" style="display:none;">
+  <div class="modal" style="width:480px;max-width:95vw;">
+    <h2 style="margin-bottom:6px;">📅 Select Recording Dates</h2>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px;line-height:1.5;">
+      Choose 2–3 available slots to offer <strong id="dpGuestName">your guest</strong>. All times are <strong>Central Time (CT)</strong>.
+    </p>
+
+    <!-- Available season dates -->
+    <div style="margin-bottom:14px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">Season Recording Slots</div>
+      <div id="dpDateList" style="display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;"></div>
+      <div id="dpNoDates" style="display:none;font-size:13px;color:var(--text-muted);font-style:italic;padding:10px 0;">
+        No recording dates set for this season yet. Add them in the Dates panel, or add a custom slot below.
+      </div>
+    </div>
+
+    <!-- Add custom date -->
+    <div style="border-top:1px solid var(--border);padding-top:12px;margin-bottom:16px;">
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;margin-bottom:8px;text-transform:uppercase;">Add a Custom Slot</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="date" id="dpCustomDate" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;color-scheme:dark;">
+        <input type="time" id="dpCustomTime" value="10:00" style="width:90px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;outline:none;color-scheme:dark;">
+        <button onclick="dpAddCustom()" style="padding:7px 12px;border-radius:6px;border:1px solid var(--teal);background:rgba(59,184,201,0.08);color:var(--teal);font-size:12px;font-family:'DM Mono',monospace;cursor:pointer;white-space:nowrap;">+ Add</button>
+      </div>
+    </div>
+
+    <!-- Selected summary -->
+    <div id="dpSelected" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:16px;min-height:44px;font-size:13px;color:var(--text-muted);font-style:italic;">
+      No slots selected yet.
+    </div>
+
+    <div style="display:flex;gap:8px;">
+      <button class="load-modal-btn" onclick="closeDatepicker()">Cancel</button>
+      <button class="load-modal-btn primary" onclick="confirmDatepickerAndOpenGmail()" id="dpConfirmBtn" disabled>
+        Open Gmail with These Dates →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Load Session Modal -->
+<div class="load-modal" id="loadModal" style="display:none;">
+  <div class="load-modal-box">
+    <h2>📂 Load Session</h2>
+    <p>Drop a saved Boo Producer session file, or paste the JSON directly.</p>
+    <div class="load-drop-zone" id="dropZone" onclick="document.getElementById('loadFileInput').click()">
+      <div class="drop-icon">📁</div>
+      Click to choose a file, or drag one here
+    </div>
+    <div class="session-summary" id="sessionSummary">
+      <div class="session-summary-row">
+        <span class="session-summary-label">SAVED</span>
+        <span class="session-summary-value" id="sumDate">—</span>
+      </div>
+      <div class="session-summary-row">
+        <span class="session-summary-label">SEASON</span>
+        <span class="session-summary-value" id="sumSeason">—</span>
+      </div>
+      <div class="session-summary-row">
+        <span class="session-summary-label">EPISODE</span>
+        <span class="session-summary-value" id="sumEpisode">—</span>
+      </div>
+      <div class="session-summary-row">
+        <span class="session-summary-label">GUEST</span>
+        <span class="session-summary-value" id="sumGuest">—</span>
+      </div>
+      <div class="session-summary-row">
+        <span class="session-summary-label">MESSAGES</span>
+        <span class="session-summary-value" id="sumMessages">—</span>
+      </div>
+    </div>
+    <textarea class="load-paste-area" id="loadPasteArea"
+      placeholder="...or paste session JSON here"></textarea>
+    <div class="load-modal-btns">
+      <button class="load-modal-btn" onclick="closeLoadModal()">Cancel</button>
+      <button class="load-modal-btn primary" onclick="confirmLoad()" id="confirmLoadBtn">Load Session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+const SB_URL   = 'https://gogudwpuhmidngsbqfjg.supabase.co';
+const SB_ANON  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvZ3Vkd3B1aG1pZG5nc2JxZmpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTQ2NTMsImV4cCI6MjA5NDI5MDY1M30.O6n_tRQsMU29wFV_RArcN9n6gP8KSDWJQqM4P6cTq3s';
+const PROXY    = `${SB_URL}/functions/v1/claude-proxy`;
+const MODEL    = 'claude-sonnet-4-6';
+
+// ── SHOW CONFIG — change these when the show name or contact changes ──
+const SHOW_CONFIG = {
+  showName: 'Anno Coding',                          // update if name changes
+  showTagline: 'K-12 CS Education in a Post-Coding Era',
+  producerName: 'Mark Caddell',
+  producerEmail: 'mark@redsuncreative.com',         // swap to show email later
+  producerCompany: 'Red Sun Creative Studio',
+  host1: 'Karttikeya Mangalam',
+  host2: 'Matthew Callison',
+  recordingPlatform: 'Riverside.fm',
+  showWebsite: '',                                  // add when live
+  slackCommunity: '',                               // add when live
+};
+
+// Update any UI elements that display the show name
+function applyShowConfig() {
+  const el = document.getElementById('headerSubtitle');
+  if (el) el.textContent = SHOW_CONFIG.showName.toUpperCase() + ' PODCAST' +
+    (SHOW_CONFIG.producerCompany ? ' · ' + SHOW_CONFIG.producerCompany.toUpperCase() : '');
+  document.title = 'Boo Producer — ' + SHOW_CONFIG.showName;
+}
+
+const state = {
+  seasons: [{
+    number: 1,
+    theme: 'What Do We Teach Now?',
+    episodeCount: 8,
+    launchTarget: 'Mid-August',
+    episodes: [{
+      number: 1,
+      title: 'TBD — pending emotional landing decision',
+      status: 'planning',
+      arcRole: 'Exposition — open the crisis, establish the tension',
+      centralTension: 'Matt holds the educational ideal; Kartik holds the economic reality. Neither is wrong.',
+      audience: 'K-12 CS teachers AND tech managers/leaders who hire these students',
+      thinkAfter: 'Thank god — there is a conversation like this. A resource to listen, influence, and play in the sandbox.',
+      feelAfter: 'TBD — pending answer from hosts',
+      rememberDo: 'Join the community (Slack, Patreon, subscribe). This is not just talk — it is action.',
+      ecosystem: 'Podcast + Slack community + weekly experiments + community work featured on show + Patreon',
+      cta: 'Join Slack community and/or Patreon — both being built, must be live before launch',
+      productionDeps: ['Slack community live', 'Patreon set up'],
+      guest: null,
+      script: null,
+      ros: null,
+      momentOfHope: { status: 'TBD', story: null },
+    }],
+  }],
+  currentSeason: {
+    number: 1,
+    theme: 'What Do We Teach Now?',
+    episodeCount: 8,
+    launchTarget: 'Mid-August',
+  },
+  currentEpisode: {
+    number: 1,
+    title: 'TBD',
+    status: 'planning',
+  },
+  currentGuest: null,
+  script: null,
+  runOfShow: null,
+  activePanel: 'episodes',
+  recordingDates: [],
+};
+
+const SHOW_CONTEXT = {
+  name: 'Anno Coding',
+  tagline: 'K–12 Computer Science Education in a Post-Coding Era',
+  hosts: ['Karttikeya Mangalam (AI researcher, former Google/Facebook, PhD UC Berkeley)', 'Matthew Callison PhD (Director of Innovation, South Fayette Township School District)'],
+  audience: 'K-12 CS teachers, district leaders, curriculum directors, school administrators',
+  mission: 'Asking the question: If AI can write the code, what are we teaching students?',
+  format: 'Audio-first, video recorded for shorts. Records on Riverside (remote) and sometimes in-person.',
+  segments: ['Interview', 'Question of the Week', 'A Moment of Hope', 'AI News Minute', 'Am I Human?', 'Does It Matter?'],
+  season1: {
+    number: 1,
+    theme: 'What Do We Teach Now?',
+    episodeCount: 8,
+    launchTarget: 'Mid-August',
+    arc: 'Plot Mountain — both at the season level AND within each individual episode',
+    seasonArc: {
+      exposition: 'Episodes 1-2: Set the stage — what is the crisis in CS education?',
+      conflict: 'Episodes 3-4: Tension deepens — competing philosophies, real classroom stakes',
+      risingAction: 'Episodes 5-6: People trying things, experiments, hard questions',
+      climax: 'Episode 7: The sharpest, most urgent moment of the season',
+      resolution: 'Episode 8: Where do we land? What do we do now?',
+    },
+    episodeArc: 'Every episode has its own mini Plot Mountain: opens into tension listeners already feel, digs into conflict through the interview, lands with A Moment of Hope',
+    audienceEmotionalState: 'Listeners arrive anxious — that is why they are listening. Each episode honors that anxiety then gives them something to hold onto.',
+    momentOfHope: {
+      format: '2-minute documentary micro-feature. Shot separately, narrated, edited independently from the main interview.',
+      style: 'Documentary — may have Matt or Kartik narrating but centers on the subject: a program in action, a recent graduate, a current college student, or a grade-school student starting their journey.',
+      purpose: 'The denouement of every episode. Human, specific, shareable. The thing that makes someone cry on their commute.',
+      productionNote: 'Flag in every run of show as a separate production element — not captured during the main Riverside recording.',
+      storiesStatus: 'TBD — to be sourced from South Fayette programs, Kartik company interns, students, recent graduates.',
+    },
+  },
+};
+
+// ROS timer state
+let rosTimerInterval = null;
+let rosSeconds = 0;
+let rosRunning = false;
+let rosCurrentSegIdx = 0;
+
+// ── INIT ──
+function initApp() {
+  booGreet();
+}
+
+function booGreet() {
+  addMsg('boo', `Hey — welcome back to <strong>Anno Coding</strong> pre-production.
+
+<strong>Season 1: "What Do We Teach Now?"</strong> — 8 episodes, launching mid-August.
+
+<strong>Episode 1 is in progress.</strong> We have the tension, the dual audience, and the ecosystem nailed. One thing still open: <em>what should a listener feel at the end of Episode 1?</em> Once we land that, we can name the episode and find the guest.
+
+What do you want to work on?`, [
+    { label: '🎤 Finish Episode 1 intent', action: () => finishEp1() },
+    { label: '🔍 Find a guest', action: () => findGuest() },
+    { label: '🌅 Work on A Moment of Hope', action: () => workOnHope() },
+    { label: '📋 Open Context Brief', action: () => setView('brief') },
+  ]);
+}
+
+// ── SEASONS ──
+function startNewSeason() {
+  addMsg('user', 'I want to set up a new season.');
+  addMsg('boo', `Great — let's build out your season structure. I need a few things from you:
+
+<strong>1. Season number</strong> — is this Season 1?
+<strong>2. Theme or focus</strong> — what's the big question or thread running through this season? (e.g., "AI Tools in the Classroom" or "What Gets Lost When Coding Becomes Automated")
+<strong>3. Episode count</strong> — how many episodes are you planning? (Typical first season is 8–12.)
+<strong>4. Launch target</strong> — any target month for the first episode to drop?
+
+You can answer all of these in one message — just talk to me naturally.`);
+}
+
+function jumpToEpisode() {
+  if (state.seasons.length === 0) {
+    addMsg('user', 'Jump to episode planning.');
+    addMsg('boo', `Before we plan a specific episode, we should have at least a skeleton season to hang it on. It'll take two minutes — what's the season theme or focus? Even a rough direction works.`);
+  } else {
+    addMsg('user', 'Jump to episode planning.');
+    promptEpisodePlanning();
+  }
+}
+
+function promptEpisodePlanning() {
+  addMsg('boo', `Which episode do you want to work on? Give me a number or a topic and I'll pull it up. Or we can create a new episode slot right now.`, [
+    { label: '+ New episode', action: () => createNewEpisode() },
+  ]);
+}
+
+function createNewEpisode() {
+  addMsg('user', 'Create a new episode.');
+  addMsg('boo', `Let's build this episode from the inside out — starting with what it's really <em>for</em>.
+
+<strong>What's the central question or tension?</strong> What's the thing Kartik and Matt are genuinely curious or conflicted about?
+
+Once I understand what you want listeners to think, feel, and walk away with, we'll figure out the guest and segments together.`);
+}
+
+// ── GUEST FINDING ──
+function finishEp1() {
+  addMsg('user', 'Finish Episode 1 intent.');
+  addMsg('boo', `Perfect — we left off on one question. We have the tension, the dual audience, the ecosystem, the CTA plan, and the think/remember/do all locked.
+
+The one thing still open: <strong>What should a listener feel at the end of Episode 1?</strong>
+
+You gave me options last time — pick one or mix them:
+<strong>Relief</strong> — someone finally gets it
+<strong>Urgency</strong> — I need to act now
+<strong>Curiosity</strong> — I can't wait for Episode 2
+<strong>Belonging</strong> — I found my people
+<strong>Courage</strong> — I can try something different next week
+
+What's the emotional landing?`, [
+    { label: '😮‍💨 Relief', action: () => setEp1Feel('Relief — someone finally gets it') },
+    { label: '⚡ Urgency', action: () => setEp1Feel('Urgency — I need to act now') },
+    { label: '🤝 Belonging', action: () => setEp1Feel('Belonging — I found my people') },
+    { label: '💪 Courage', action: () => setEp1Feel('Courage — I can try something different') },
+    { label: '🎯 Mix of these', action: () => setEp1Feel('Mix: Relief + Belonging + Curiosity') },
+  ]);
+}
+
+function setEp1Feel(feel) {
+  state.seasons[0].episodes[0].feelAfter = feel;
+  state.currentEpisode = state.seasons[0].episodes[0];
+  addMsg('user', feel);
+  addMsg('boo', `<strong>${feel}</strong> — that's the landing. Locked.
+
+Here's what we now have for Episode 1:
+
+<strong>Tension:</strong> Matt's educational ideal vs. Kartik's economic reality
+<strong>Audience:</strong> CS teachers AND tech managers
+<strong>Think:</strong> Thank god — there's a conversation like this
+<strong>Feel:</strong> ${feel}
+<strong>Do:</strong> Join the Slack community and/or Patreon
+<strong>CTA deps:</strong> Slack + Patreon live before launch
+
+Episode 1 intent is complete. Ready to find a guest?`, [
+    { label: '🔍 Find a guest for Episode 1', action: () => findGuest() },
+    { label: '📋 Open Context Brief', action: () => setView('brief') },
+  ]);
+  autoSave('Episode 1 intent complete');
+}
+
+function workOnHope() {
+  addMsg('user', 'Work on A Moment of Hope.');
+  addMsg('boo', `Good — let's source a <em>Moment of Hope</em>. These are 2-minute documentary micro-features shot separately from the interview.
+
+The best ones center on a <strong>specific person or program</strong>: a student starting their journey, a recent graduate, a current college student, a teacher running something remarkable, or an intern at Kartik's company.
+
+Do you have anyone or any program in mind? Even a rough lead — a name, a school, a story you heard — is enough to start. Or tell me which episode number this is for and I'll suggest what kind of story would fit that moment in the season arc.`);
+}
+
+function reviewSeasonArc() {
+  addMsg('user', 'Review the Season 1 arc.');
+  addMsg('boo', `Here's Season 1: <strong>"What Do We Teach Now?"</strong> mapped across 8 episodes:
+
+<strong>Exposition — Episodes 1–2</strong>
+Set the stage. What is the crisis in CS education? Listeners already feel the anxiety — validate it. Establish the central question.
+
+<strong>Conflict — Episodes 3–4</strong>
+Tension deepens. Competing philosophies. Real classroom stakes. Guests who disagree with each other (even if not in the same room).
+
+<strong>Rising Action — Episodes 5–6</strong>
+People trying things. Experiments in the field. Hard questions without clean answers. The messy middle.
+
+<strong>Climax — Episode 7</strong>
+The sharpest, most urgent moment of the season. The guest or conversation that names the thing everyone has been circling.
+
+<strong>Resolution — Episode 8</strong>
+Where do we land? Not a tidy answer — but a direction. This episode's Moment of Hope carries the full weight of the journey.
+
+Every episode has its own mini version of this arc, closing with a Moment of Hope.
+
+Which episode slot do you want to fill first?`);
+}
+
+function findGuest(context) {
+  addMsg('user', 'Find a guest.');
+  addMsg('boo', `On it. To find the best guests, tell me:
+
+<strong>What's the episode angle?</strong> For example: "A classroom teacher who's actually using AI tools with students" or "A researcher questioning whether coding should still be taught at all."
+
+The more specific you are, the better my suggestions.`);
+}
+
+// ── API CALL ──
+async function callBoo(userMsg) {
+  const systemPrompt = `You are Boo, a podcast producer for the Anno Coding Podcast. You work one task at a time and never skip ahead.
+
+SHOW CONTEXT:
+- Show: Anno Coding — K-12 Computer Science Education in a Post-Coding Era
+- Hosts: Karttikeya Mangalam (AI researcher, former Google/Facebook, PhD UC Berkeley) and Matthew Callison PhD (Director of Innovation, South Fayette Township School District)
+- Audience: K-12 CS teachers, district leaders, curriculum directors, school administrators
+- Mission: Asking the question — if AI can write the code, what are we teaching students?
+- Format: Audio-first, video recorded for shorts. Records on Riverside (remote) and sometimes in-person.
+- Available segments: Interview, Question of the Week, A Moment of Hope, AI News Minute, Am I Human?, Does It Matter?
+
+SEASON 1 — ALREADY DECIDED (do not re-ask these):
+- Theme: "What Do We Teach Now?"
+- Episodes: 8, launching mid-August
+- Season arc: Plot Mountain — Exposition (eps 1-2), Conflict (3-4), Rising Action (5-6), Climax (ep 7), Resolution (ep 8)
+- Every episode ALSO has its own mini Plot Mountain: opens in tension → interview digs into conflict → lands with A Moment of Hope
+- Audience arrives anxious. Honor that. End every episode with hope.
+- A Moment of Hope: 2-minute documentary micro-feature, shot separately from the interview, narrated (sometimes by Matt or Kartik), centers on a real person or program — student, graduate, teacher, intern. It is a separate production element. Flag it in every run of show. Stories are TBD and will be sourced as we go.
+- When building episode arcs, sequence them intentionally so tension builds across the season and Episode 8's Moment of Hope lands with full weight.
+
+EPISODE 1 — IN PROGRESS (do not re-ask what is already known):
+- Arc role: Exposition — open the crisis, establish the tension, invite both audiences in
+- Core tension: Matt holds the educational ideal (what students should become); Kartik holds the economic reality (what the market rewards, what AI replaces). Neither is wrong. That tension IS the show.
+- Dual audience: K-12 CS teachers/administrators AND tech managers who hire these students and could influence curriculum
+- Think after: "Thank god — there is a conversation like this. A resource to listen, influence, and play in the sandbox."
+- Remember/Do: Join the Slack community, Patreon, or subscribe. This is not just talk — it is action. Weekly experiments listeners can try. Community work gets featured on the podcast.
+- Feel after: TBD — still need answer from Matt/Kartik. Options discussed: relief, urgency, curiosity, belonging, courage.
+- Ecosystem: Podcast + Slack community (hosted by Matt and Kartik, workshops and projects) + weekly experiments + community work featured on show + Patreon subscription layer
+- CTA dependency: Slack community AND Patreon must both be built and live before Episode 1 launches. Flag in every production checklist.
+- Episode 1 title: TBD — waiting on emotional landing decision before naming
+- Next step for Episode 1: Get the emotional landing answer, then move to guest selection
+
+THE BROADER ECOSYSTEM (always keep in mind):
+- This podcast is part of a larger movement — not just content
+- The audience can become the content (community projects featured on show)
+- The feedback loop: podcast → community → experiments → featured back on podcast
+- This creates ongoing relevance and audience investment beyond passive listening
+
+CURRENT STATE:
+- Season: ${state.currentSeason ? JSON.stringify(state.currentSeason) : 'None set yet'}
+- Episode: ${state.currentEpisode ? JSON.stringify(state.currentEpisode) : 'None selected'}
+- Guest: ${state.currentGuest ? JSON.stringify(state.currentGuest) : 'None booked'}
+
+===== MANDATORY PRE-PRODUCTION WORKFLOW =====
+Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
+
+STEP 1 — EPISODE INTENT (always first)
+Before planning anything else, gather all of these — but ask them conversationally, one or two at a time, not as a list dump:
+- What is the central question or tension this episode explores?
+- What should listeners THINK differently about after this episode?
+- What should they FEEL?
+- What should they REMEMBER or DO?
+- Which segments will this episode include? (Interview is default. Options to add: Question of the Week, A Moment of Hope, AI News Minute, Am I Human?, Does It Matter?)
+- For any non-interview segment mentioned (e.g. Does It Matter?): What is the specific prompt or topic for that segment? Who leads it — Kartik, Matt, or both? Scripted talking points or free conversation?
+
+- Ask about recording dates: "Do you have recording dates locked in for Season 1? I can store them so they show up automatically when you invite guests." If they provide dates, confirm them back formatted as Day, Month Date at Time CT.
+
+STEP 2 — GUEST (only after intent is clear)
+- Ask: Do you have a guest in mind, or should I research and bring you a few options?
+- If researching: return 3-5 profiles, one per line, formatted EXACTLY as:
+  FULL NAME | Title or Role | Why they fit the show | Topic 1, Topic 2, Topic 3 | LinkedIn: linkedin.com/in/their-handle, Podcast: podcast name and link or N/A, On Camera: YouTube or other video link or N/A
+- For links: provide your best known URL. Label clearly as LinkedIn, Podcast, or On Camera. If unsure of exact URL, provide the most likely format. The UI will flag all links as unverified for the hosts to confirm before sending.
+- After guest is confirmed: offer outreach email and/or guest research brief
+
+STEP 3 — SCRIPT (only after guest is confirmed)
+Build with these exact sections in order: OPENING / GUEST INTRO / QUESTIONS / GUEST PROMO / OUTRO
+Questions must be specific to this guest and episode intent. Each question gets 1-2 follow-up prompts.
+
+STEP 4 — RUN OF SHOW (only after script exists)
+Build with ALL selected segments. Format EVERY segment line EXACTLY as pipe-separated:
+Segment Name | Start Time | Duration
+Do NOT use bullets, numbers, or dashes for segment lines. Pipes only. Example:
+Cold Open | 0:00 | 2 min
+Question of the Week | 2:00 | 5 min
+Guest Interview | 7:00 | 25 min
+Does It Matter? | 32:00 | 8 min
+Outro | 40:00 | 3 min
+
+===== ACTION ITEMS =====
+You automatically flag action items as you work. When you assign a task to someone, use this exact format at the END of your response (never mid-response):
+ACTION: [owner] — [task description]
+Examples:
+ACTION: Mark — Follow up with guest to confirm Riverside setup
+ACTION: Matt — Review episode 3 questions before next session
+ACTION: Kartik — Send bio and headshot to Mark by end of week
+Only flag genuine tasks with a clear owner. Do not over-flag. One to three per response maximum.
+
+===== YOUR BUILT-IN TOOLS =====
+You are a fully-featured producer app. You have these views built right in -- never tell the user to use an outside app:
+- Boo Chat: where you are now, for all pre-production conversation
+- Teleprompter: a full-screen script reader the hosts use during recording. When a user asks to send, push, add, or load anything into the teleprompter, tell them to click the Teleprompter nav button in the left sidebar, then use the "Load Last Script" button. Or they can click "Push to Teleprompter" on any script you generate in chat.
+- Run of Show: a live timer and segment tracker for recording day
+- Action Items: task list with owners (Mark, Matt, Kartik)
+- Context Brief: a Boo-generated living document that orients new collaborators
+
+When someone says "add that to the teleprompter", "send to teleprompter", "load that script", "can you add that" -- direct them to the Teleprompter view in the left nav and the Push or Load buttons. Never suggest a third-party teleprompter app.
+
+===== PERSONALITY =====
+Warm, organized, a little playful. One task at a time. Use first names (Matt, Kartik, Mark). Always end with a clear next question or prompt. If you need information to move forward, ask — do not assume or skip steps.`;
+
+  const conversationHistory = getConversationHistory();
+  conversationHistory.push({ role: 'user', content: userMsg });
+
+  const res = await fetch(PROXY, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${SB_ANON}`,
+      'apikey': SB_ANON,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 1500,
+      system: systemPrompt,
+      messages: conversationHistory,
+    }),
+  });
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  return data.content[0].text;
+}
+
+// ── CONVERSATION HISTORY ──
+const conversationLog = [];
+
+function getConversationHistory() {
+  return conversationLog.slice(-20).map(m => ({
+    role: m.role === 'boo' ? 'assistant' : 'user',
+    content: m.text,
+  }));
+}
+
+// ── MESSAGING ──
+function addMsg(role, html, actions) {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg ' + (role);
+
+  const avatarText = role === 'boo' ? '🎬' : (role === 'user' ? 'U' : '');
+  const name = role === 'boo' ? 'Boo' : 'You';
+
+  div.innerHTML = `
+    <div class="msg-avatar">${avatarText}</div>
+    <div class="msg-body">
+      <div class="msg-name">${name}</div>
+      <div class="msg-bubble">${formatBubble(html)}${actions ? buildActions(actions) : ''}</div>
+    </div>
+  `;
+
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Log for API history
+  const plainText = html.replace(/<[^>]+>/g, '');
+  conversationLog.push({ role, text: plainText });
+
+  // Parse response for state updates
+  if (role === 'boo') parseForStateUpdates(html);
+}
+
+function formatBubble(html) {
+  return html
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+function buildActions(actions) {
+  if (!actions || actions.length === 0) return '';
+  const btns = actions.map(a =>
+    '<button class="action-btn primary" onclick="(' + (a.action.toString()) + ')()">' + (a.label) + '</button>'
+  ).join('');
+  return '<div class="msg-actions">' + (btns) + '</div>';
+}
+
+function showTyping() {
+  const msgs = document.getElementById('messages');
+  const div = document.createElement('div');
+  div.className = 'msg boo';
+  div.id = 'typingIndicator';
+  div.innerHTML = `
+    <div class="msg-avatar">🎬</div>
+    <div class="msg-body">
+      <div class="msg-name">Boo</div>
+      <div class="typing-dots">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  `;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+function hideTyping() {
+  const el = document.getElementById('typingIndicator');
+  if (el) el.remove();
+}
+
+// ── SEND MESSAGE ──
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  autoResize(input);
+  document.getElementById('sendBtn').disabled = true;
+  setBooStatus('thinking');
+
+  addMsg('user', text);
+  showTyping();
+
+  try {
+    const reply = await callBoo(text);
+    hideTyping();
+    // Parse reply for special content types
+    const parsed = parseReply(reply);
+    addMsg('boo', parsed);
+  } catch (err) {
+    hideTyping();
+    addMsg('boo', 'Hmm, I hit a snag: <em>' + (err.message) + '</em>. Try again?');
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+  setBooStatus('ready');
+}
+
+function parseReply(text) {
+  // Extract and remove ACTION: lines before rendering
+  const actionLines = [];
+  const cleanedLines = text.split('\n').filter(line => {
+    const trimmed = line.trim();
+    // Match: ACTION: Owner — task  (supports em dash, en dash, or hyphen)
+    if (trimmed.startsWith('ACTION:')) {
+      const withoutPrefix = trimmed.slice(7).trim(); // remove "ACTION:"
+      const sepIdx = withoutPrefix.search(/[—–-]/);
+      if (sepIdx > 0) {
+        const rawOwner = withoutPrefix.slice(0, sepIdx).trim();
+        const taskText = withoutPrefix.slice(sepIdx + 1).trim();
+        const owner = ['Mark','Matt','Kartik'].find(o =>
+          rawOwner.toLowerCase().includes(o.toLowerCase())
+        ) || 'Mark';
+        if (taskText.length > 5) {
+          actionLines.push({ owner, text: taskText });
+          return false; // strip from visible chat
+        }
+      }
+    }
+    return true;
+  });
+  const cleanedText = cleanedLines.join('\n');
+
+  // Add detected ACTION items
+  actionLines.forEach(function(item) {
+    addActionItem({
+      text: item.text,
+      owner: item.owner,
+      source: 'boo',
+      episodeRef: state.currentEpisode
+        ? 'EP' + (state.currentEpisode.number || '?')
+        : (state.currentSeason ? 'S1' : null),
+    });
+  });
+
+  // Count pipe-separated lines with time patterns — strong ROS signal
+  const rosLines = cleanedText.split('\n').filter(l => {
+    const parts = l.split('|');
+    return parts.length === 3 && /\d+:\d+/.test(parts[1]) && /\d+\s*min/i.test(parts[2]);
+  });
+  if (rosLines.length >= 3) {
+    return formatRunOfShow(cleanedText);
+  }
+  // Detect script content — must have both OPENING and OUTRO
+  if (cleanedText.toUpperCase().includes('OPENING') && cleanedText.toUpperCase().includes('OUTRO')) {
+    return formatScript(cleanedText);
+  }
+  // Detect guest suggestions — pipe lines without time patterns
+  const guestLines = cleanedText.split('\n').filter(l => l.includes('|') && l.split('|').length >= 3 && !/\d+:\d+/.test(l));
+  if (guestLines.length >= 2) {
+    return formatGuestSuggestions(cleanedText);
+  }
+  return cleanedText;
+}
+
+function formatRunOfShow(text) {
+  var segments = [];
+  var lines = text.split('\n');
+
+  lines.forEach(function(line) {
+    var trimmed = line.trim();
+    var parts = trimmed.split('|').map(function(p){ return p.trim(); });
+    if (parts.length === 3) {
+      var hasTime = /\d+:\d+/.test(parts[1]);
+      var hasDuration = /\d+\s*min/i.test(parts[2]);
+      var nameOk = parts[0].length >= 1 && parts[0].length < 60;
+      if ((hasTime || hasDuration) && nameOk) {
+        segments.push({
+          name: parts[0].replace(/^[\d\.\-\*]+\s*/, ''),
+          start: parts[1],
+          duration: parts[2],
+        });
+      }
+    }
+  });
+
+  if (segments.length > 0) {
+    state.runOfShow = segments;
+    if (state.currentEpisode) {
+      var epEl = document.getElementById('rosEpTitle');
+      if (epEl) epEl.textContent = state.currentEpisode.title || 'Episode';
+    }
+    if (state.currentGuest) {
+      var gEl = document.getElementById('rosGuestName');
+      if (gEl) gEl.textContent = state.currentGuest.name || '';
+    }
+    updateRosView(segments);
+  }
+
+  var html = segments.length > 0
+    ? '<p><strong>Run of Show ready!</strong> I have loaded ' + segments.length + ' segments into the Run of Show view.</p>'
+    : '<p>I built the run of show but something went wrong parsing the segments. Try asking me to rebuild it with pipe-separated format.</p>';
+
+  html += '<div class="msg-actions">'
+    + '<button class="action-btn primary" onclick="setView(&apos;ros&apos;)">&#128203; Open Run of Show</button>'
+    + '<button class="action-btn" onclick="setView(&apos;teleprompter&apos;)">&#127919; Open Teleprompter</button>'
+    + '</div>';
+
+  return html;
+}
+
+
+function parseGuestLinks(text) {
+  // Extract LinkedIn, podcast, YouTube/video links from free text
+  const links = [];
+  const patterns = [
+    { re: /linkedin\.com\/in\/([a-zA-Z0-9\-]+)/i, label: 'LinkedIn', icon: 'in' },
+    { re: /linkedin\.com\/pub\/([a-zA-Z0-9\-\/]+)/i, label: 'LinkedIn', icon: 'in' },
+    { re: /(youtube\.com\/(watch|channel|@[a-zA-Z0-9_]+)|youtu\.be\/[a-zA-Z0-9_\-]+)/i, label: 'YouTube', icon: '▶' },
+    { re: /(podcasts\.apple\.com|open\.spotify\.com\/show|podcasts\.google\.com)[^\s,]*/i, label: 'Podcast', icon: '🎙' },
+    { re: /https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(\/[^\s,]*)?/i, label: 'Website', icon: '🔗' },
+  ];
+
+  let remaining = text;
+  patterns.forEach(({ re, label, icon }) => {
+    const m = remaining.match(re);
+    if (m) {
+      let url = m[0];
+      if (!url.startsWith('http')) url = 'https://' + url;
+      links.push({ url, label, icon });
+      remaining = remaining.replace(m[0], '');
+    }
+  });
+
+  return links;
+}
+
+function buildGuestCard(name, title, why, topics, links, idx) {
+  const safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const safeTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const cardId = 'gc-' + name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+
+  const tagHtml = topics
+    ? topics.split(',').map(t => '<span class="tag">' + (t.trim()) + '</span>').join('')
+    : '';
+
+  // Build link pills
+  let linkHtml = '';
+  if (links && links.length > 0) {
+    linkHtml = '<div class="guest-links">';
+    links.forEach(({ url, label, icon }) => {
+      const isReal = url.startsWith('http') && !url.includes('example.com');
+      const cls = isReal ? 'guest-link' : 'guest-link unverified';
+      const title_attr = isReal ? 'Open link (verify before sending)' : 'Suggested link — verify before use';
+      linkHtml += '<a class="' + (cls) + '" href="' + (url) + '" target="_blank" title="' + (title_attr) + '">' + (icon) + ' ' + (label) + '</a>';
+    });
+    linkHtml += '</div>';
+    linkHtml += '<div class="guest-unverified-note">⚠ Verify links before sending invite</div>';
+  } else {
+    linkHtml = '<div class="guest-unverified-note">⚠ Links unverified — search LinkedIn and confirm before inviting</div>';
+  }
+
+  return `
+    <div class="guest-card" id="${cardId}" data-name="${safeName}" data-title="${safeTitle}">
+      <div class="guest-card-header">
+        <div style="flex:1;min-width:0;">
+          <div class="guest-name">${name}</div>
+          <div class="guest-title">${title}</div>
+        </div>
+        <button class="select-guest-btn" onclick="selectGuest('${safeName}', '${safeTitle}')">Select →</button>
+      </div>
+      <div class="guest-why">${why}</div>
+      ${tagHtml ? '<div class="guest-tags">' + (tagHtml) + '</div>' : ''}
+      ${linkHtml}
+      <button class="invite-btn" onclick="openGmailInvite('${safeName}', '${safeTitle}')">
+        ✉ Invite Guest
+      </button>
+    </div>`;
+}
+
+function formatGuestSuggestions(text) {
+  const lines = text.split('\n');
+  let guestCards = '';
+  let preamble = '';
+  let inGuests = false;
+  let cardIdx = 0;
+
+  // Collect non-pipe lines that follow a guest card as "extra info"
+  let pendingExtras = [];
+
+  lines.forEach((line, i) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    if (trimmed.includes('|') && trimmed.split('|').length >= 3) {
+      // Flush any pending extras into previous card (future enhancement)
+      pendingExtras = [];
+      inGuests = true;
+      const parts = trimmed.split('|').map(p => p.trim());
+      const name = parts[0].replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').trim();
+      const title = parts[1] || '';
+      const why = parts[2] || '';
+      // Join all remaining fields — Boo may return 4 or 5+ pipe-separated parts
+      const topicsAndLinks = parts.slice(3).join(', ');
+
+      // Separate links from topics
+      const allItems = topicsAndLinks.split(',').map(s => s.trim());
+      const linkItems = allItems.filter(s => s.includes('.') && (s.includes('linkedin') || s.includes('http') || s.includes('youtube') || s.includes('spotify') || s.includes('podcast') || s.includes('apple')));
+      const topics = allItems.filter(s => !linkItems.includes(s)).join(', ');
+
+      // Parse links from the link items and from why text
+      const rawLinkText = linkItems.join(' ') + ' ' + why;
+      const links = parseGuestLinks(rawLinkText);
+
+      guestCards += buildGuestCard(name, title, why, topics, links, cardIdx++);
+    } else if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
+      // Bullet points after a card — could be additional guest info
+      pendingExtras.push(trimmed);
+    } else {
+      if (!inGuests) preamble += line + '\n';
+    }
+  });
+
+  if (!guestCards) return text;
+
+  let html = preamble.trim() ? '<p>' + (preamble.trim()) + '</p>' : '';
+  html += '<div class="card-grid">' + (guestCards) + '</div>';
+  html += '<div class="msg-actions">'
+    + '<button class="action-btn orange" onclick="findGuest()">&#128269; Find More Guests</button>'
+    + '<button class="action-btn" onclick="refineGuestSearch()">Refine Search</button>'
+    + '</div>';
+  return html;
+}
+
+function refineGuestSearch() {
+  addMsg('user', 'None of these — let me describe what I need.');
+  addMsg('boo', 'No problem. Tell me more about the angle you are looking for.');
+}
+
+function openGmailInvite(name, title, slots) {
+  // If no slots passed, open date picker first
+  if (!slots) {
+    openDatepicker(name, title);
+    return;
+  }
+
+  const show = SHOW_CONFIG.showName;
+  const producer = SHOW_CONFIG.producerName;
+  const producerEmail = SHOW_CONFIG.producerEmail;
+  const host1 = SHOW_CONFIG.host1;
+  const host2 = SHOW_CONFIG.host2;
+
+  // Build date availability block
+  let dateBlock = '';
+  if (slots && slots.length > 0) {
+    dateBlock = `\n\nWe have the following recording slots available (all Central Time):\n` +
+      slots.map(s => '  • ' + (s.display)).join('\n') +
+      `\n\nJust reply with your preference and we will send a calendar invite right away.`;
+  }
+
+  const subject = encodeURIComponent(
+    'Invitation to be a guest on ' + (show)
+  );
+
+  const firstName = name.split(' ')[0];
+  const bodyText = `Hi ${firstName},
+
+My name is ${producer}, producer of ${show} — a podcast exploring K-12 computer science education in the age of AI. Our hosts are ${host1} and ${host2}, and together they hold a fascinating tension: Matt brings the educator's perspective on what students should become, and Kartik brings the technologist's view of what the world actually needs.
+
+We think you would be a remarkable guest. Your work as ${title} speaks directly to the questions our audience — CS teachers, district leaders, and tech managers — are wrestling with right now.
+
+The show records on Riverside.fm (remote video, audio-first distribution), usually runs about 45 minutes, and we handle all the technical setup.${dateBlock}
+
+Best,
+${producer}
+${SHOW_CONFIG.producerCompany}
+${producerEmail}
+
+---
+${show}: ${SHOW_CONFIG.showTagline}`;
+
+  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=&su=' + (encodeURIComponent(subject.includes('%') ? decodeURIComponent(subject) : subject)) + '&body=' + (encodeURIComponent(bodyText));
+  window.open(gmailUrl, '_blank');
+
+  // Log as action item
+  addActionItem({
+    text: 'Sent invite to ' + (name) + ' — follow up if no reply in 5 days',
+    owner: 'Mark',
+    source: 'boo',
+    episodeRef: state.currentEpisode ? 'EP' + (state.currentEpisode.number || '?') : 'S1',
+  });
+
+  showToast('Gmail invite opened for ' + (firstName));
+}
+
+
+function formatScript(text) {
+  state.script = text;
+  updateTeleprompter(text);
+
+  var sections = [];
+  var sectionNames = ['OPENING', 'INTRO', 'QUESTIONS', 'GUEST PROMO', 'OUTRO', 'INTRODUCTION'];
+  var html = '<p><strong>Script ready!</strong> Loaded into the Teleprompter view.</p>';
+  html += '<div class="card-grid">';
+
+  var scriptLines = text.split('\n');
+  var currentSection = '';
+  var currentContent = [];
+
+  scriptLines.forEach(function(line) {
+    var upper = line.toUpperCase();
+    var matchedSection = sectionNames.find(function(s){ return upper.includes(s); });
+    if (matchedSection) {
+      if (currentSection && currentContent.length > 0) {
+        sections.push({ name: currentSection, content: currentContent.join('\n') });
+        currentContent = [];
+      }
+      currentSection = matchedSection;
+    } else if (line.trim()) {
+      currentContent.push(line);
+    }
+  });
+  if (currentSection) sections.push({ name: currentSection, content: currentContent.join('\n') });
+
+  sections.slice(0, 4).forEach(function(s) {
+    var preview = s.content.substring(0, 200) + (s.content.length > 200 ? '...' : '');
+    html += '<div class="script-section">'
+      + '<div class="script-section-header">'
+      + '<div class="script-section-label">' + s.name + '</div>'
+      + '</div>'
+      + '<div class="script-section-body">' + preview + '</div>'
+      + '</div>';
+  });
+
+  html += '</div>';
+  html += '<div class="msg-actions">'
+    + '<button class="action-btn primary" onclick="setView(\'teleprompter\')">&#127919; Open Teleprompter</button>'
+    + '<button class="action-btn teal" onclick="pushToTeleprompter(this)">&#8593; Push to Teleprompter</button>'
+    + '<button class="action-btn" onclick="reviseQuestions()">&#9999; Revise Questions</button>'
+    + '</div>';
+
+  return html;
+}
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    // Must have exactly 2 pipes and contain time-like content
+    const parts = trimmed.split('|').map(p => p.trim());
+    if (parts.length === 3) {
+      const hasTime = /\d+:\d+/.test(parts[1]);
+      const hasDuration = /\d+\s*min/i.test(parts[2]);
+      const nameOk = parts[0].length >= 1 && parts[0].length < 60;
+      if ((hasTime || hasDuration) && nameOk) {
+        segments.push({
+          name: parts[0].replace(/^[\d\.\-\*]+\s*/, ''),
+          start: parts[1],
+          duration: parts[2],
+        });
+      }
+    }
+  });
+
+  if (segments.length > 0) {
+    state.runOfShow = segments;
+    // Update ROS title/guest if available
+    if (state.currentEpisode) document.getElementById('rosEpTitle').textContent = state.currentEpisode.title || 'Episode';
+    if (state.currentGuest) document.getElementById('rosGuestName').textContent = state.currentGuest.name || '';
+    updateRosView(segments);
+  }
+
+
+function parseForStateUpdates(html) {
+  // Try to detect season/episode info being confirmed
+  const lower = html.toLowerCase();
+  if (lower.includes('season') && lower.includes('episode')) {
+    updateContextBar();
+  }
+}
+function selectGuest(name, title) {
+  state.currentGuest = { name, title };
+  document.querySelectorAll('.guest-card').forEach(c => c.classList.remove('selected'));
+  const card = document.getElementById('gc-' + name.replace(/\s/g, '_'));
+  if (card) card.classList.add('selected');
+
+  updateContextBar();
+  updateRightPanel();
+
+  addMsg('boo', '<strong>' + (name) + '</strong> selected. Here\'s what I can do next:', [
+    { label: '📧 Draft outreach email', action: () => draftEmail(name, title) },
+    { label: '🔍 Research this guest', action: () => researchGuest(name) },
+    { label: '📝 Build script with this guest', action: () => buildScript(name) },
+  ]);
+}
+
+function draftEmailCurrentGuest() {
+  if (state.currentGuest) draftEmail(state.currentGuest.name, state.currentGuest.title || '');
+}
+
+function researchCurrentGuest() {
+  if (state.currentGuest) researchGuest(state.currentGuest.name);
+}
+
+function draftEmail(name, title) {
+  addMsg('user', 'Draft an outreach email to ' + (name) + '.');
+  // This triggers the API
+  document.getElementById('chatInput').value = 'Draft a warm, professional outreach email to ' + (name) + ' (' + (title) + ') inviting them to be a guest on the ' + (SHOW_CONFIG.showName) + ' podcast. The email is from ' + (SHOW_CONFIG.producerName) + ' at ' + (SHOW_CONFIG.producerCompany) + ' (' + (SHOW_CONFIG.producerEmail) + '). Hosts are ' + (SHOW_CONFIG.host1) + ' and ' + (SHOW_CONFIG.host2) + '. Explain the show briefly, why they are a great fit, and ask for a 15-minute call to discuss.';
+  sendMessage();
+}
+
+function researchGuest(name) {
+  addMsg('user', 'Research ' + (name) + ' in detail.');
+  document.getElementById('chatInput').value = 'Research ' + (name) + ' in detail for the ' + (SHOW_CONFIG.showName) + ' podcast. Include: their background and current role, notable books, podcasts, talks or trainings they have done, their LinkedIn profile URL, any YouTube or on-camera appearances, social media presence, recent work or publications, and what topics they would most likely want to promote. Also note if they have a podcast of their own. Format it as a guest brief.';
+  sendMessage();
+}
+
+function buildScript(name) {
+  addMsg('user', 'Build a full script for an episode with ' + (name) + '.');
+  document.getElementById('chatInput').value = 'Build a complete episode script for a ' + (SHOW_CONFIG.showName) + ' interview with ' + (name) + '. Include: OPENING (30-second show open with bullets for the hosts), INTRODUCTION (guest intro paragraph to be read on air), QUESTIONS (5-7 main questions with 1-2 follow-ups each, specific to their expertise and the show mission), GUEST PROMO (segment to highlight their book/work/channels), and OUTRO (standard ' + (SHOW_CONFIG.showName) + ' sign-off). Make the questions sharp and specific to the show mission.';
+  sendMessage();
+}
+
+// ── VIEWS ──
+function setView(view) {
+  document.getElementById('chatView').style.display = view === 'chat' ? 'flex' : 'none';
+  document.getElementById('rosView').style.display = view === 'ros' ? 'flex' : 'none';
+  document.getElementById('tpView').style.display = view === 'teleprompter' ? 'flex' : 'none';
+  document.getElementById('actionsView').style.display = view === 'actions' ? 'flex' : 'none';
+  document.getElementById('briefView').style.display = view === 'brief' ? 'flex' : 'none';
+
+  document.getElementById('navChat').classList.toggle('active', view === 'chat');
+  document.getElementById('navRos').classList.toggle('active', view === 'ros');
+  document.getElementById('navTp').classList.toggle('active', view === 'teleprompter');
+  document.getElementById('navActions').classList.toggle('active', view === 'actions');
+  document.getElementById('navBrief').classList.toggle('active', view === 'brief');
+
+  // Clear notification dot when opening actions
+  if (view === 'actions') {
+    document.getElementById('actionDot').classList.remove('show');
+    renderActionItems();
+  }
+  // Generate brief when opening
+  if (view === 'brief') {
+    generateBrief();
+  }
+}
+
+// ── CONTEXT BAR ──
+function updateContextBar() {
+  if (state.currentSeason) {
+    document.getElementById('ctxSeason').textContent = 'S' + (state.currentSeason.number || '1');
+    document.getElementById('ctxSeason').classList.add('teal');
+  }
+  if (state.currentEpisode) {
+    document.getElementById('ctxEpisode').textContent = 'EP' + (state.currentEpisode.number || '?');
+  }
+  if (state.currentGuest) {
+    document.getElementById('ctxGuest').textContent = '👤 ' + state.currentGuest.name;
+    document.getElementById('ctxGuest').classList.add('highlight');
+  }
+}
+
+// ── RIGHT PANEL ──
+function setPanelTab(tab, el) {
+  state.activePanel = tab;
+  document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  updateRightPanel();
+}
+
+function updateRightPanel() {
+  var content = document.getElementById('panelContent');
+  if (!content) return;
+
+  if (state.activePanel === 'episodes') {
+    if (state.seasons.length === 0) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">&#127897;</div><p>Start a season in Boo Chat to see episodes here.</p></div>';
+      return;
+    }
+    var html = '';
+    state.seasons.forEach(function(s) {
+      html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.08em;">SEASON ' + s.number + ' — ' + s.theme + '</div>';
+      (s.episodes || []).forEach(function(ep, i) {
+        html += '<div class="episode-card">'
+          + '<div class="ep-number">EP. ' + (i + 1) + '</div>'
+          + '<div class="ep-title">' + (ep.title || 'Untitled') + '</div>'
+          + '<span class="ep-status planning">' + (ep.status || 'PLANNING') + '</span>'
+          + '</div>';
+      });
+    });
+    content.innerHTML = html;
+
+  } else if (state.activePanel === 'guest') {
+    if (!state.currentGuest) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128100;</div><p>No guest selected yet.<br>Ask Boo to find one.</p></div>';
+      return;
+    }
+    var g = state.currentGuest;
+    content.innerHTML = '<div style="margin-bottom:12px;">'
+      + '<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">' + g.name + '</div>'
+      + '<div style="font-size:12px;color:var(--teal);">' + (g.title || '') + '</div>'
+      + '</div>'
+      + '<div class="info-row"><div class="info-label">STATUS</div><div class="info-value"><span class="ep-status planning">PROSPECTING</span></div></div>'
+      + '<div class="info-row"><div class="info-label">OUTREACH</div><div class="info-value">Not sent</div></div>'
+      + '<div class="info-row"><div class="info-label">FORMAT</div><div class="info-value">Riverside (remote)</div></div>'
+      + '<div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">'
+      + '<button class="action-btn primary" style="width:100%;text-align:center;" onclick="draftEmailCurrentGuest()">&#128231; Draft Email</button>'
+      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="researchCurrentGuest()">&#128269; Research Guest</button>'
+      + '</div>';
+
+  } else if (state.activePanel === 'dates') {
+    content.innerHTML = renderDatesPanel();
+
+  } else if (state.activePanel === 'info') {
+    content.innerHTML = '<div class="info-row"><div class="info-label">SHOW</div><div class="info-value">' + SHOW_CONFIG.showName + '</div></div>'
+      + '<div class="info-row"><div class="info-label">HOST 1</div><div class="info-value">' + SHOW_CONFIG.host1 + '</div></div>'
+      + '<div class="info-row"><div class="info-label">HOST 2</div><div class="info-value">' + SHOW_CONFIG.host2 + '</div></div>'
+      + '<div class="info-row"><div class="info-label">FORMAT</div><div class="info-value">Audio-first, video for shorts</div></div>'
+      + '<div class="info-row"><div class="info-label">RECORDING</div><div class="info-value">Riverside / In-Person</div></div>'
+      + '<div class="info-row"><div class="info-label">AUDIENCE</div><div class="info-value">K-12 CS Educators</div></div>'
+      + '<div class="info-row"><div class="info-label">PRODUCER</div><div class="info-value">' + SHOW_CONFIG.producerName + ' · ' + SHOW_CONFIG.producerCompany + '</div></div>';
+  }
+}
+
+// ── TELEPROMPTER ──
+function loadLastScript() {
+  // 1. Best case: state.script was set by formatScript auto-detection
+  if (state.script && state.script.length > 100) {
+    updateTeleprompter(state.script);
+    const empty = document.getElementById('tpEmptyState');
+    if (empty) empty.style.display = 'none';
+    showToast('Script loaded into Teleprompter');
+    return;
+  }
+
+  // 2. Scan chat bubbles — any long Boo message likely contains the script
+  // Use loose matching: script keywords OR just length > 400 chars
+  const bubbles = document.querySelectorAll('.msg.boo .msg-bubble');
+  let found = null;
+  const scriptKeywords = ['OPENING', 'INTRO', 'OUTRO', 'QUESTION', 'GUEST', 'WELCOME', 'HOST'];
+
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    const text = bubbles[i].innerText || bubbles[i].textContent || '';
+    const upper = text.toUpperCase();
+    const hasKeyword = scriptKeywords.some(kw => upper.includes(kw));
+    // Accept if it has a script keyword and is substantial, OR just very long
+    if ((hasKeyword && text.length > 150) || text.length > 600) {
+      found = text.trim();
+      break;
+    }
+  }
+
+  if (found) {
+    state.script = found;
+    updateTeleprompter(found);
+    const empty = document.getElementById('tpEmptyState');
+    if (empty) empty.style.display = 'none';
+    showToast('Script loaded into Teleprompter');
+  } else {
+    // 3. Nothing found — give clear instruction
+    showToast('Generate a script in Boo Chat first, then use Push to Teleprompter');
+    // Switch back to chat so they can do that
+    setTimeout(() => setView('chat'), 1800);
+  }
+}
+
+function pushToTeleprompter(btn) {
+  // Walk up the DOM from the button to find the message bubble
+  let el = btn;
+  let bubble = null;
+  while (el && el !== document.body) {
+    if (el.classList && el.classList.contains('msg-bubble')) { bubble = el; break; }
+    if (el.classList && el.classList.contains('msg')) {
+      bubble = el.querySelector('.msg-bubble');
+      break;
+    }
+    el = el.parentElement;
+  }
+
+  let scriptText = '';
+  if (bubble) {
+    scriptText = (bubble.innerText || bubble.textContent || '').trim();
+  }
+  // Fall back to state.script
+  if ((!scriptText || scriptText.length < 50) && state.script) {
+    scriptText = state.script;
+  }
+
+  if (scriptText && scriptText.length > 50) {
+    state.script = scriptText;
+    updateTeleprompter(scriptText);
+    const empty = document.getElementById('tpEmptyState');
+    if (empty) empty.style.display = 'none';
+    showToast('Pushed to Teleprompter');
+    // Flash nav button gold
+    const navTp = document.getElementById('navTp');
+    if (navTp) {
+      navTp.style.color = 'var(--gold)';
+      setTimeout(() => { navTp.style.color = ''; }, 1400);
+    }
+    // Auto-switch to teleprompter view
+    setTimeout(() => setView('teleprompter'), 400);
+  } else {
+    showToast('Generate a script in Boo Chat first');
+  }
+}
+
+function updateTeleprompter(scriptText) {
+  const tp = document.getElementById('tpContent');
+  const lines = scriptText.split('\n');
+  let html = '';
+  const sectionKeys = ['OPENING', 'INTRO', 'QUESTION', 'GUEST PROMO', 'OUTRO'];
+
+  lines.forEach(function(line) {
+    var upper = line.toUpperCase();
+    var trimmed = line.trim();
+    if (!trimmed) return;
+    if (sectionKeys.some(function(k){ return upper.includes(k); }) && trimmed.length < 60) {
+      html += '<div class="tp-section-label">' + trimmed + '</div>';
+    } else if (trimmed.startsWith('Q') && line.includes(':')) {
+      html += '<div class="tp-cue">' + trimmed + '</div>';
+    } else {
+      html += '<div class="tp-text">' + trimmed + '</div>';
+    }
+  });
+
+  tp.innerHTML = html || '<div class="empty-state"><div class="empty-icon">🎯</div><p>No script yet.</p></div>';
+}
+
+let tpFontSize = 18;
+function changeFontSize(delta) {
+  tpFontSize = Math.max(14, Math.min(32, tpFontSize + delta));
+  document.getElementById('tpContent').style.fontSize = tpFontSize + 'px';
+}
+
+// ── RUN OF SHOW ──
+function updateRosView(segments) {
+  const container = document.getElementById('rosSegments');
+  if (!segments || segments.length === 0) return;
+
+  container.innerHTML = segments.map(function(seg, i) {
+    var cls = 'ros-segment' + (i === 0 ? ' current' : '');
+    var indicator = i === 0 ? '<div class="current-indicator"></div>' : '<div style="width:8px"></div>';
+    return '<div class="' + cls + '" id="ros-seg-' + i + '">'
+      + indicator
+      + '<div class="ros-seg-time">' + (seg.start || '0:00') + '</div>'
+      + '<div class="ros-seg-name">' + seg.name + '</div>'
+      + '<div class="ros-seg-dur">' + (seg.duration || '') + '</div>'
+      + '</div>';
+  }).join('');
+
+  rosCurrentSegIdx = 0;
+}
+
+function rosStart() {
+  if (rosRunning) {
+    clearInterval(rosTimerInterval);
+    rosRunning = false;
+    document.getElementById('rosStartBtn').textContent = '▶ Resume Timer';
+  } else {
+    rosRunning = true;
+    document.getElementById('rosStartBtn').textContent = '⏸ Pause Timer';
+    rosTimerInterval = setInterval(() => {
+      rosSeconds++;
+      const m = String(Math.floor(rosSeconds / 60)).padStart(2, '0');
+      const s = String(rosSeconds % 60).padStart(2, '0');
+      document.getElementById('rosTimer').textContent = '' + (m) + ':' + (s) + '';
+    }, 1000);
+  }
+}
+
+function rosNext() {
+  if (!state.runOfShow) return;
+  const prev = document.getElementById('ros-seg-' + (rosCurrentSegIdx));
+  if (prev) {
+    prev.classList.remove('current');
+    prev.classList.add('done');
+    prev.querySelector('.current-indicator')?.remove();
+    const spacer = document.createElement('div');
+    spacer.style.width = '8px';
+    prev.insertBefore(spacer, prev.firstChild);
+  }
+  rosCurrentSegIdx++;
+  const next = document.getElementById('ros-seg-' + (rosCurrentSegIdx));
+  if (next) {
+    next.classList.add('current');
+    const dot = document.createElement('div');
+    dot.className = 'current-indicator';
+    next.replaceChild(dot, next.firstChild);
+    next.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+}
+
+function rosReset() {
+  clearInterval(rosTimerInterval);
+  rosRunning = false;
+  rosSeconds = 0;
+  rosCurrentSegIdx = 0;
+  document.getElementById('rosTimer').textContent = '00:00';
+  document.getElementById('rosStartBtn').textContent = '▶ Start Timer';
+  if (state.runOfShow) updateRosView(state.runOfShow);
+}
+
+// ── HELPERS ──
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ── BOO STATUS ROTATION ──
+
+const BOO_THINKING = [
+  'On it.',
+  'Let me think...',
+  'Working on it.',
+  'Give me a sec.',
+  'Producing...',
+  'In the edit bay...',
+  'Rolling tape...',
+  'Reading the room...',
+  'Mining the context...',
+  'Cross-referencing...',
+  'Pulling focus...',
+  'In the weeds. Good weeds.',
+  'Cue the music...',
+  'Consulting the arc...',
+  'Checking the run of show...',
+  'Building something here...',
+  'Thinking like a producer...',
+  'Lights. Camera. Thinking.',
+  'On the floor...',
+  'Back in a beat.',
+];
+
+const BOO_READY = [
+  'Ready when you are.',
+  "Let's make something.",
+  'What are we building today?',
+  "I'm in. What's first?",
+  'Lights on. What do we got?',
+  "Coffee's hot. Let's go.",
+  'On your mark.',
+  "Show's not gonna produce itself.",
+  "Let's get after it.",
+  "In the booth.",
+  "What's next?",
+  'Standing by.',
+  "Mic's hot.",
+  'Ready to roll.',
+  'Your move.',
+];
+
+// Context-aware ready phrases — shown ~25% of the time when there's something specific open
+function getContextPhrase() {
+  const ep1 = state.seasons[0] && state.seasons[0].episodes[0];
+  const openActions = (typeof actionItems !== 'undefined' ? actionItems : []).filter(a => !a.done);
+  const phrases = [];
+
+  if (ep1 && (!ep1.feelAfter || ep1.feelAfter === 'TBD — pending answer from hosts')) {
+    phrases.push('Still need that emotional landing for Episode 1...');
+    phrases.push('Episode 1 is waiting on one answer.');
+  }
+  if (!ep1 || !ep1.guest) {
+    phrases.push('Episode 1 guest is still open — want to find one?');
+  }
+  if (openActions.length > 0) {
+    phrases.push((openActions.length) + ' action item' + (openActions.length > 1 ? 's' : '') + ' still open.');
+  }
+  if (state.seasons[0] && state.seasons[0].episodes.length < 3) {
+    phrases.push('Three episode slots still need filling.');
+    phrases.push('Season arc is mapped — episodes are waiting.');
+  }
+
+  return phrases.length > 0 && Math.random() < 0.25
+    ? phrases[Math.floor(Math.random() * phrases.length)]
+    : null;
+}
+
+let thinkingInterval = null;
+
+function setBooStatus(mode) {
+  const label = document.getElementById('statusLabel');
+  if (!label) return;
+  const dot = document.querySelector('.status-dot');
+
+  if (mode === 'thinking') {
+    // Start rotating through thinking phrases
+    let pool = [...BOO_THINKING];
+    let idx = 0;
+
+    const rotate = () => {
+      // Shuffle when pool exhausted
+      if (idx >= pool.length) {
+        pool = pool.sort(() => Math.random() - 0.5);
+        idx = 0;
+      }
+      label.style.opacity = '0';
+      setTimeout(() => {
+        label.textContent = pool[idx++];
+        label.style.opacity = '1';
+      }, 180);
+    };
+
+    rotate();
+    thinkingInterval = setInterval(rotate, 1800);
+
+    if (dot) { dot.style.background = 'var(--gold)'; dot.style.animationDuration = '0.6s'; }
+    label.style.transition = 'opacity 0.18s';
+
+  } else {
+    // Stop rotation
+    clearInterval(thinkingInterval);
+    thinkingInterval = null;
+
+    // Pick ready phrase — context-aware 25% of the time
+    const contextPhrase = getContextPhrase();
+    const readyPool = BOO_READY;
+    const phrase = contextPhrase || readyPool[Math.floor(Math.random() * readyPool.length)];
+
+    label.style.opacity = '0';
+    setTimeout(() => {
+      label.textContent = phrase;
+      label.style.opacity = '1';
+    }, 180);
+
+    if (dot) { dot.style.background = '#4CAF50'; dot.style.animationDuration = '2s'; }
+  }
+}
+
+// Set initial ready phrase on load
+setTimeout(() => setBooStatus('ready'), 400);
+
+
+
+
+
+// ── RECORDING DATES ──
+
+let dpSelectedSlots = [];
+let dpPendingGuest = null;
+let dpCustomSlots = [];
+
+function addRecordingDate(dateStr, timeStr, label) {
+  const id = 'rd-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+  const slot = { id, date: dateStr, time: timeStr, label: label || '', assignedGuest: null };
+  state.recordingDates.push(slot);
+  state.recordingDates.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
+  updateRightPanel();
+  autoSave('recording date added');
+  return slot;
+}
+
+function removeRecordingDate(id) {
+  const idx = state.recordingDates.findIndex(function(d){ return d.id===id; });
+  if (idx !== -1) state.recordingDates.splice(idx, 1);
+  updateRightPanel();
+  autoSave('recording date removed');
+}
+
+function formatDateDisplay(dateStr, timeStr) {
+  const parts = dateStr.split('-').map(Number);
+  const timeParts = timeStr.split(':').map(Number);
+  const d = new Date(parts[0], parts[1]-1, parts[2], timeParts[0], timeParts[1]);
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const h = timeParts[0] % 12 || 12;
+  const ampm = timeParts[0] < 12 ? 'AM' : 'PM';
+  const mins = timeParts[1] === 0 ? '' : ':' + String(timeParts[1]).padStart(2,'0');
+  return days[d.getDay()] + ', ' + months[parts[1]-1] + ' ' + parts[2] + ' at ' + h + mins + ' ' + ampm + ' CT';
+}
+
+function isSlotPassed(dateStr, timeStr) {
+  const p = dateStr.split('-').map(Number);
+  const t = timeStr.split(':').map(Number);
+  return new Date(p[0], p[1]-1, p[2], t[0], t[1]) < new Date();
+}
+
+function getAvailableSlots() {
+  return state.recordingDates.filter(function(d){ return !isSlotPassed(d.date, d.time); });
+}
+
+// ── DATE PICKER MODAL ──
+
+function openDatepicker(guestName, guestTitle) {
+  dpPendingGuest = { name: guestName, title: guestTitle };
+  dpSelectedSlots = [];
+  dpCustomSlots = [];
+  document.getElementById('dpGuestName').textContent = guestName;
+  document.getElementById('datepickerModal').style.display = 'flex';
+  renderDatepickerList();
+  updateDpSelected();
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  document.getElementById('dpCustomDate').value = tomorrow.toISOString().slice(0,10);
+}
+
+function closeDatepicker() {
+  document.getElementById('datepickerModal').style.display = 'none';
+  dpPendingGuest = null;
+  dpSelectedSlots = [];
+  dpCustomSlots = [];
+}
+
+function makeDatepickerRow(slot, display, isSelected) {
+  var borderColor = isSelected ? 'var(--gold)' : 'var(--border)';
+  var boxBg = isSelected ? 'rgba(245,208,58,0.15)' : 'transparent';
+  var boxBorder = isSelected ? 'var(--gold)' : 'var(--border)';
+  var check = isSelected ? 'check-icon' : '';
+  var assignedHtml = slot.assignedGuest
+    ? '<div style="font-size:10px;font-family:DM Mono,monospace;color:var(--teal);margin-left:auto;">' + slot.assignedGuest + '</div>'
+    : '';
+  var safeDisplay = display.split(String.fromCharCode(96)).join("'");
+  var safeId = slot.id.replace(/'/g, "\\'");
+  return '<div onclick="dpToggleSlot(\'' + safeId + '\',\'' + slot.date + '\',\'' + slot.time + '\',\'' + safeDisplay + '\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid ' + borderColor + ';cursor:pointer;margin-bottom:6px;">'
+    + '<div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ' + boxBorder + ';background:' + boxBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);flex-shrink:0;">' + (isSelected ? '&#10003;' : '') + '</div>'
+    + '<div style="font-size:13px;color:var(--text);flex:1;">' + display + '</div>'
+    + assignedHtml
+    + '</div>';
+}
+
+function renderDatepickerList() {
+  var list = document.getElementById('dpDateList');
+  var noDates = document.getElementById('dpNoDates');
+  var available = getAvailableSlots();
+  var html = '';
+
+  if (available.length === 0 && dpCustomSlots.length === 0) {
+    list.innerHTML = '';
+    noDates.style.display = 'block';
+  } else {
+    noDates.style.display = 'none';
+    available.forEach(function(slot) {
+      var display = formatDateDisplay(slot.date, slot.time);
+      var isSelected = dpSelectedSlots.some(function(s){ return s.id === slot.id; });
+      html += makeDatepickerRow(slot, display, isSelected);
+    });
+
+    if (dpCustomSlots.length > 0) {
+      html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.06em;margin:10px 0 6px;text-transform:uppercase;">Custom Slots</div>';
+      dpCustomSlots.forEach(function(slot, i) {
+        var isSelected = dpSelectedSlots.some(function(s){ return s.id === slot.id; });
+        var borderColor = isSelected ? 'var(--gold)' : 'var(--border)';
+        var boxBg = isSelected ? 'rgba(245,208,58,0.15)' : 'transparent';
+        var safeId = slot.id.replace(/'/g, "\\'");
+        var safeDisplay = slot.display.replace(/'/g, "\\'");
+        html += '<div onclick="dpToggleSlot(\'' + safeId + '\',\'' + slot.date + '\',\'' + slot.time + '\',\'' + safeDisplay + '\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid ' + borderColor + ';cursor:pointer;margin-bottom:6px;">'
+          + '<div style="width:18px;height:18px;border-radius:4px;border:1.5px solid ' + (isSelected?'var(--gold)':'var(--border)') + ';background:' + boxBg + ';display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--gold);flex-shrink:0;">' + (isSelected?'&#10003;':'') + '</div>'
+          + '<div style="font-size:13px;color:var(--text);flex:1;">' + slot.display + '</div>'
+          + '<button onclick="event.stopPropagation();dpRemoveCustom(' + i + ')" style="margin-left:auto;background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:0 4px;">&#10005;</button>'
+          + '</div>';
+      });
+    }
+    list.innerHTML = html;
+  }
+}
+
+function dpToggleSlot(id, date, time, display) {
+  var idx = dpSelectedSlots.findIndex(function(s){ return s.id===id; });
+  if (idx > -1) {
+    dpSelectedSlots.splice(idx, 1);
+  } else {
+    if (dpSelectedSlots.length >= 3) { showToast('Select up to 3 slots'); return; }
+    dpSelectedSlots.push({ id: id, date: date, time: time, display: display });
+  }
+  renderDatepickerList();
+  updateDpSelected();
+}
+
+function dpAddCustom() {
+  var dateVal = document.getElementById('dpCustomDate').value;
+  var timeVal = document.getElementById('dpCustomTime').value;
+  if (!dateVal || !timeVal) { showToast('Enter a date and time'); return; }
+  var display = formatDateDisplay(dateVal, timeVal);
+  var id = 'custom-' + Date.now();
+  dpCustomSlots.push({ id: id, date: dateVal, time: timeVal, display: display });
+  renderDatepickerList();
+}
+
+function dpRemoveCustom(idx) {
+  var slot = dpCustomSlots[idx];
+  if (slot) {
+    dpSelectedSlots = dpSelectedSlots.filter(function(s){ return s.id !== slot.id; });
+    dpCustomSlots.splice(idx, 1);
+  }
+  renderDatepickerList();
+  updateDpSelected();
+}
+
+function updateDpSelected() {
+  var el = document.getElementById('dpSelected');
+  var btn = document.getElementById('dpConfirmBtn');
+  if (!el) return;
+  if (dpSelectedSlots.length === 0) {
+    el.textContent = 'No slots selected yet.';
+    el.style.fontStyle = 'italic';
+    el.style.color = 'var(--text-muted)';
+    if (btn) btn.disabled = true;
+  } else {
+    el.style.fontStyle = 'normal';
+    el.style.color = 'var(--text)';
+    el.innerHTML = dpSelectedSlots.map(function(s){
+      return '<div style="padding:3px 0;">&#8226; ' + s.display + '</div>';
+    }).join('');
+    if (btn) btn.disabled = false;
+  }
+}
+
+function confirmDatepickerAndOpenGmail() {
+  if (!dpPendingGuest || dpSelectedSlots.length === 0) return;
+  var name = dpPendingGuest.name;
+  var title = dpPendingGuest.title;
+  var slots = dpSelectedSlots.slice();
+  closeDatepicker();
+  openGmailInvite(name, title, slots);
+}
+
+// ── DATES PANEL ──
+
+function renderDatesPanel() {
+  var all = state.recordingDates;
+  var html = '<div style="margin-bottom:12px;">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Season 1 Recording Slots</div>';
+
+  if (all.length === 0) {
+    html += '<div style="font-size:13px;color:var(--text-muted);font-style:italic;padding:8px 0;">No dates added yet.</div>';
+  } else {
+    all.forEach(function(slot) {
+      var display = formatDateDisplay(slot.date, slot.time);
+      var passed = isSlotPassed(slot.date, slot.time);
+      var opacity = passed ? '0.45' : '1';
+      var textColor = passed ? 'var(--text-muted)' : 'var(--text)';
+      var assignedHtml = slot.assignedGuest
+        ? '<div style="font-size:10px;font-family:DM Mono,monospace;color:var(--teal);margin-top:2px;">' + slot.assignedGuest + '</div>'
+        : '';
+      var passedHtml = passed
+        ? '<div style="font-size:10px;font-family:DM Mono,monospace;color:var(--text-dim);margin-top:2px;">PASSED</div>'
+        : '';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);margin-bottom:6px;opacity:' + opacity + ';">'
+        + '<div style="flex:1;">'
+        + '<div style="font-size:12px;color:' + textColor + ';">' + display + '</div>'
+        + assignedHtml + passedHtml
+        + '</div>'
+        + '<button onclick="removeRecordingDate(\'' + slot.id + '\')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:0 3px;" title="Remove">&#10005;</button>'
+        + '</div>';
+    });
+  }
+
+  html += '</div>'
+    + '<div style="border-top:1px solid var(--border);padding-top:12px;">'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Add Recording Slot</div>'
+    + '<div style="display:flex;flex-direction:column;gap:6px;">'
+    + '<input type="date" id="newDateInput" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;color-scheme:dark;">'
+    + '<div style="display:flex;gap:6px;">'
+    + '<input type="time" id="newTimeInput" value="10:00" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;color-scheme:dark;">'
+    + '<button onclick="addDateFromPanel()" style="padding:7px 12px;border-radius:6px;border:1px solid var(--gold);background:rgba(245,208,58,0.08);color:var(--gold);font-size:11px;font-family:DM Mono,monospace;cursor:pointer;white-space:nowrap;">+ Add CT</button>'
+    + '</div></div></div>';
+
+  return html;
+}
+
+function addDateFromPanel() {
+  var dateInput = document.getElementById('newDateInput');
+  var timeInput = document.getElementById('newTimeInput');
+  var dateVal = dateInput ? dateInput.value : '';
+  var timeVal = timeInput ? timeInput.value : '';
+  if (!dateVal || !timeVal) { showToast('Enter both a date and time'); return; }
+  addRecordingDate(dateVal, timeVal);
+  showToast('Recording slot added');
+  if (dateInput) dateInput.value = '';
+}
+
+
+// Initialize panel
+updateRightPanel();
+applyShowConfig();
+
+// ── CONTEXT BRIEF ──
+
+let briefContent = '';
+let briefFlags = [];
+let briefFeedOpen = false;
+
+// System prompt for brief generation
+function buildBriefPrompt() {
+  var ep1 = state.seasons[0] && state.seasons[0].episodes[0];
+  var openActions = actionItems.filter(function(a){ return !a.done; });
+  var feelAfter = (ep1 && ep1.feelAfter && ep1.feelAfter !== 'TBD -- pending answer from hosts')
+    ? ep1.feelAfter : 'TBD -- still needs to be decided by Matt and Kartik';
+  var bakedCtx = (state.bakedContext && state.bakedContext.length > 0)
+    ? state.bakedContext.map(function(c){ return '- ' + c; }).join('\n')
+    : 'None yet';
+
+  return 'You are Boo, producer for the ' + SHOW_CONFIG.showName + ' Podcast. Write a Context Brief -- a clean, readable, producer document -- based on the following decisions made so far. Write in confident prose, not bullet points or database fields. This should read like something a smart collaborator would want to read before joining the project. Use section headers, but write the content as real paragraphs.\n\n'
+    + 'WHAT YOU KNOW:\n\n'
+    + 'SHOW:\n'
+    + '- ' + SHOW_CONFIG.showName + ' -- ' + SHOW_CONFIG.showTagline + '\n'
+    + '- Mission: If AI can write the code, what are we teaching students?\n'
+    + '- Core tension: Matt holds the educational ideal. Kartik holds the economic reality. Neither is wrong. That tension is the show.\n'
+    + '- Hosts: ' + SHOW_CONFIG.host1 + ' (AI researcher, former Google/Facebook, PhD UC Berkeley) and ' + SHOW_CONFIG.host2 + ' (Director of Innovation, South Fayette Township School District)\n'
+    + '- Dual audience: K-12 CS teachers and administrators AND tech managers who hire these students and can influence curriculum\n'
+    + '- Format: Audio-first. Video recorded for shorts. Riverside (remote) and in-person.\n'
+    + '- Producer: ' + SHOW_CONFIG.producerName + ', ' + SHOW_CONFIG.producerCompany + ', Austin TX\n\n'
+    + 'THE ECOSYSTEM:\n'
+    + '- This is not just a podcast -- it is a movement with a feedback loop\n'
+    + '- Podcast is the public-facing signal fire\n'
+    + '- Slack community where Matt and Kartik host workshops, projects, ideas -- listeners become contributors\n'
+    + '- Weekly experiments listeners can try; their work gets featured on the show\n'
+    + '- Patreon/subscription layer for deeper engagement\n'
+    + '- Feedback loop: Podcast to Community to Experiments to Featured back on podcast to Repeat\n'
+    + '- Slack and Patreon both need to be built before launch\n\n'
+    + 'SEASON 1:\n'
+    + '- Theme: "What Do We Teach Now?"\n'
+    + '- 8 episodes, launching mid-August\n'
+    + '- Structure: Plot Mountain at season level AND inside every episode\n'
+    + '- Season arc: Exposition (eps 1-2) to Conflict (3-4) to Rising Action (5-6) to Climax (7) to Resolution (8)\n'
+    + '- Every episode: opens in tension, interview digs into conflict, closes with A Moment of Hope\n'
+    + '- Audience arrives anxious. Honor that. End every episode with hope.\n\n'
+    + 'A MOMENT OF HOPE:\n'
+    + '- 2-minute documentary micro-feature, shot separately, edited independently\n'
+    + '- Centers on a real person or program: student, graduate, teacher, intern, program in action\n'
+    + '- May have Matt or Kartik narrating but the subject is the story\n'
+    + '- The denouement of every episode. Human, specific, shareable.\n'
+    + '- Stories TBD -- sourcing from South Fayette, Kartik company, students, graduates\n\n'
+    + 'EPISODE 1 -- IN PROGRESS:\n'
+    + '- Arc role: Exposition -- open the crisis, establish the tension, invite both audiences in\n'
+    + '- Central tension: Matt ideal vs Kartik reality\n'
+    + '- What listeners should THINK: Thank god -- there is a conversation like this\n'
+    + '- What listeners should FEEL: ' + feelAfter + '\n'
+    + '- What listeners should DO: Join the Slack community and/or Patreon. Try the weekly experiment.\n'
+    + '- CTA dependency: Slack and Patreon must be live before Episode 1 drops\n'
+    + '- Episode title: TBD -- waiting on emotional landing decision\n'
+    + '- Guest: Not yet selected\n'
+    + '- Next step: Lock emotional landing, name episode, find guest\n\n'
+    + 'PRODUCTION DEPENDENCIES (must be ready before launch):\n'
+    + '- Slack community built and live\n'
+    + '- Patreon set up and live\n'
+    + '- Episode 1 CTA points to working URLs\n'
+    + '- A Moment of Hope for Episode 1 sourced and produced\n'
+    + '- Episode 1 guest confirmed and prepped\n\n'
+    + 'ADDITIONAL CONTEXT (baked in from prior sessions):\n'
+    + bakedCtx + '\n\n'
+    + '---\n\n'
+    + 'Write the Context Brief now. Four sections:\n'
+    + '1. What This Show Is and Why It Matters\n'
+    + '2. The Season We Are Building\n'
+    + '3. Where We Are Right Now\n'
+    + '4. What Needs to Happen Before Launch\n\n'
+    + 'Write in present tense. Be specific. Be honest about what is decided and what is still open. Use **bold** for names and key terms. This document will be shared with Matt and Kartik to orient them.';
+}
+
+
+async function generateBrief() {
+  const prose = document.getElementById('briefProse');
+  prose.innerHTML = '<div class="brief-generating">'
+    + '<div class="brief-generating-dots"><span></span><span></span><span></span></div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.06em;">Boo is writing the brief...</div>'
+    + '</div>';
+
+  document.getElementById('briefTimestamp').textContent = '';
+
+  try {
+    const res = await fetch(PROXY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SB_ANON}`,
+        'apikey': SB_ANON,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1200,
+        messages: [{ role: 'user', content: buildBriefPrompt() }],
+      }),
+    });
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    briefContent = data.content[0].text;
+    renderBriefProse(briefContent);
+
+    const now = new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    document.getElementById('briefTimestamp').textContent = 'Generated by Boo · ' + now;
+
+  } catch (err) {
+    prose.innerHTML = '<div class="brief-generating" style="color:var(--orange);">Could not generate brief: ' + err.message + '</div>';
+  }
+}
+
+function renderBriefProse(text) {
+  const prose = document.getElementById('briefProse');
+  // Convert markdown-style to HTML
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>');
+
+  // Split into sections on ## or numbered headers
+  const lines = html.split('\n');
+  let output = '';
+  let inList = false;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (inList) { output += '</ul>'; inList = false; }
+      return;
+    }
+    // Section headers: ## or bold-only lines or numbered
+    if (trimmed.startsWith('##') || trimmed.startsWith('**') && trimmed.endsWith('**') && trimmed.length < 60) {
+      if (inList) { output += '</ul>'; inList = false; }
+      const headerText = trimmed.replace(/^#+\s*/, '').replace(/\*\*/g, '');
+      output += '<h2>' + (headerText) + '</h2>';
+    } else if (trimmed.startsWith('- ') || trimmed.startsWith('* ')) {
+      if (!inList) { output += '<ul>'; inList = true; }
+      output += '<li>' + (trimmed.slice(2)) + '</li>';
+    } else {
+      if (inList) { output += '</ul>'; inList = false; }
+      output += '<p>' + (trimmed) + '</p>';
+    }
+  });
+
+  if (inList) output += '</ul>';
+  prose.innerHTML = output;
+}
+
+// ── FEED BOO ──
+
+function toggleFeedPanel() {
+  briefFeedOpen = !briefFeedOpen;
+  const panel = document.getElementById('briefFeedPanel');
+  if (briefFeedOpen) {
+    panel.classList.add('open');
+    document.getElementById('briefFeedInput').focus();
+  } else {
+    panel.classList.remove('open');
+  }
+}
+
+async function feedBoo() {
+  var input = document.getElementById('briefFeedInput');
+  var material = input ? input.value.trim() : '';
+  if (!material) return;
+
+  toggleFeedPanel();
+  if (input) input.value = '';
+
+  var prose = document.getElementById('briefProse');
+  prose.innerHTML = '<div class="brief-generating">'
+    + '<div class="brief-generating-dots"><span></span><span></span><span></span></div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.06em;">Boo is reading and folding in your material...</div>'
+    + '</div>';
+
+  var feedPrompt = buildBriefPrompt()
+    + '\n\n---\nNEW MATERIAL TO FOLD IN:\n'
+    + material
+    + '\n\n---\nDo two things:\n'
+    + '1. Write the updated Context Brief, incorporating any new or deepening context from the material above. If it confirms or enriches something already known, weave it in. If it introduces something genuinely new, add it to the right section.\n\n'
+    + '2. After the brief, add a section called FLAGGED FOR PERMANENT CONTEXT that lists 1-5 specific things from the new material that should be permanently baked into knowledge. Format each flag exactly as:\nFLAG: [the specific insight or decision in one clear sentence]\n\n'
+    + 'Keep flags concise and specific. Only flag genuinely new or deepening context, not things already known.';
+
+  try {
+    var res = await fetch(PROXY, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${SB_ANON}`,
+        'apikey': SB_ANON,
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1400,
+        messages: [{ role: 'user', content: feedPrompt }],
+      }),
+    });
+
+    var data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+
+    var fullText = data.content[0].text;
+
+    var flagMarker = 'FLAGGED FOR PERMANENT CONTEXT';
+    var flagIdx = fullText.indexOf(flagMarker);
+    var briefText = fullText;
+    var newFlags = [];
+
+    if (flagIdx > -1) {
+      briefText = fullText.slice(0, flagIdx).trim();
+      var flagBlock = fullText.slice(flagIdx);
+      flagBlock.split('\n').forEach(function(line) {
+        var m = line.match(/^FLAG:\s*(.+)$/i);
+        if (m) newFlags.push({ text: m[1].trim(), baked: false });
+      });
+    }
+
+    briefContent = briefText;
+    renderBriefProse(briefText);
+
+    if (newFlags.length > 0) {
+      briefFlags = briefFlags.concat(newFlags);
+      renderFlagsPanel();
+    }
+
+    var now = new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    });
+    document.getElementById('briefTimestamp').textContent = 'Updated by Boo -- ' + now;
+    showToast('Brief updated with new material');
+    autoSave('brief updated');
+
+  } catch(err) {
+    prose.innerHTML = '<div class="brief-generating" style="color:var(--orange);">Error: ' + err.message + '</div>';
+  }
+}
+
+function renderFlagsPanel() {
+  const panel = document.getElementById('briefFlags');
+  const body = document.getElementById('briefFlagsBody');
+  const unbaked = briefFlags.filter(f => !f.baked);
+
+  if (unbaked.length === 0) {
+    panel.classList.remove('show');
+    return;
+  }
+
+  panel.classList.add('show');
+  body.innerHTML = unbaked.map(function(f, i) {
+    var globalIdx = briefFlags.indexOf(f);
+    return '<div class="brief-flag-item" id="flag-' + i + '">'
+      + '<div class="brief-flag-label">NEW</div>'
+      + '<div class="brief-flag-text">' + f.text + '</div>'
+      + '<button class="brief-flag-bake-btn" onclick="bakeFlag(' + globalIdx + ')">Bake In ✓</button>'
+      + '</div>';
+  }).join('');
+}
+
+function bakeFlag(idx) {
+  const flag = briefFlags[idx];
+  if (!flag) return;
+  flag.baked = true;
+
+  // Add to a running baked context store
+  if (!state.bakedContext) state.bakedContext = [];
+  state.bakedContext.push(flag.text);
+
+  renderFlagsPanel();
+  showToast('✓ Baked into Boo\'s permanent context');
+  autoSave('context baked');
+}
+
+function clearFlags() {
+  briefFlags = briefFlags.map(f => ({ ...f, baked: true }));
+  renderFlagsPanel();
+}
+
+function exportBrief() {
+  if (!briefContent) {
+    showToast('Generate the brief first.');
+    return;
+  }
+  const plain = briefContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+  const header = [
+    'ANNO CODING PODCAST',
+    'Context Brief',
+    'Prepared by Boo Producer · Red Sun Creative · ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
+    '='.repeat(60),
+    '',
+  ].join('\n');
+
+  const blob = new Blob([header + plain], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'anno-coding-context-brief-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Context Brief exported');
+}
+
+
+
+
+
+// ── ACTION ITEMS ──
+const actionItems = [];
+let aiFilter = 'all';
+let aiIdCounter = 1;
+
+const OWNERS = ['Mark', 'Matt', 'Kartik'];
+
+function addActionItem({ text, owner = 'Mark', source = 'manual', episodeRef = null }) {
+  const item = {
+    id: aiIdCounter++,
+    text,
+    owner,
+    source,       // 'manual' | 'boo'
+    episodeRef,   // optional episode title/number string
+    done: false,
+    createdAt: new Date().toISOString(),
+  };
+  actionItems.unshift(item);
+  updateAiCounts();
+  renderActionItems();
+  autoSave('action item added');
+
+  // Show notification dot if not on actions view
+  const actionsVisible = document.getElementById('actionsView').style.display === 'flex';
+  if (!actionsVisible) {
+    document.getElementById('actionDot').classList.add('show');
+  }
+
+  return item;
+}
+
+function addActionItemManual() {
+  const input = document.getElementById('aiAddInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const owner = document.getElementById('aiOwnerSelect').value;
+  addActionItem({ text, owner, source: 'manual' });
+  input.value = '';
+  input.focus();
+}
+
+function toggleActionItem(id) {
+  const item = actionItems.find(a => a.id === id);
+  if (!item) return;
+  item.done = !item.done;
+  updateAiCounts();
+  renderActionItems();
+  autoSave('action item updated');
+}
+
+function deleteActionItem(id) {
+  const idx = actionItems.findIndex(a => a.id === id);
+  if (idx !== -1) actionItems.splice(idx, 1);
+  updateAiCounts();
+  renderActionItems();
+  autoSave('action item deleted');
+}
+
+function setAiFilter(filter, el) {
+  aiFilter = filter;
+  document.querySelectorAll('.ai-filter-btn').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderActionItems();
+}
+
+function updateAiCounts() {
+  const open = actionItems.filter(a => !a.done).length;
+  const done = actionItems.filter(a => a.done).length;
+  document.getElementById('aiOpenCount').textContent = (open) + ' open';
+  document.getElementById('aiDoneCount').textContent = (done) + ' done';
+}
+
+function renderActionItems() {
+  var list = document.getElementById('aiList');
+  if (!list) return;
+  var filtered = actionItems.slice();
+
+  if (aiFilter === 'open') filtered = filtered.filter(function(a){ return !a.done; });
+  else if (aiFilter === 'done') filtered = filtered.filter(function(a){ return a.done; });
+  else if (aiFilter === 'boo') filtered = filtered.filter(function(a){ return a.source === 'boo'; });
+  else if (OWNERS.includes(aiFilter)) filtered = filtered.filter(function(a){ return a.owner === aiFilter; });
+
+  if (filtered.length === 0) {
+    var emptyMsg = aiFilter === 'all'
+      ? 'No action items yet.<br>Boo will add them as decisions are made,<br>or add one below.'
+      : 'No ' + aiFilter + ' items.';
+    list.innerHTML = '<div class="ai-empty">'
+      + '<div class="ai-empty-icon">&#10003;</div>'
+      + '<p>' + emptyMsg + '</p>'
+      + '</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(function(item) {
+    var ownerClass = item.owner.toLowerCase();
+    var sourceBadge = item.source === 'boo'
+      ? '<span class="ai-boo-badge">&#127916; Boo</span>'
+      : '';
+    var epBadge = item.episodeRef
+      ? '<span class="ai-episode-tag">' + item.episodeRef + '</span>'
+      : '';
+    var doneClass = item.done ? ' done' : '';
+    return '<div class="ai-item' + doneClass + '" id="ai-item-' + item.id + '">'
+      + '<div class="ai-checkbox' + (item.done ? ' checked' : '') + '"'
+      + ' onclick="toggleActionItem(' + item.id + ')">'
+      + (item.done ? '&#10003;' : '')
+      + '</div>'
+      + '<div class="ai-body">'
+      + '<div class="ai-text">' + item.text + '</div>'
+      + '<div class="ai-meta">'
+      + '<span class="ai-owner ' + ownerClass + '">' + item.owner + '</span>'
+      + sourceBadge + epBadge
+      + '</div>'
+      + '</div>'
+      + '<button class="ai-delete" onclick="deleteActionItem(' + item.id + ')" title="Remove">&#10005;</button>'
+      + '</div>';
+  }).join('');
+}
+
+// ── BOO AUTO-DETECTION ──
+// Scans Boo responses for natural task language
+function detectActionItems(booText) {
+  const plain = booText.replace(/<[^>]+>/g, '');
+  const sentences = plain.split(/[.\n!?]+/).map(s => s.trim()).filter(s => s.length > 12);
+
+  const taskWords = ['needs to', 'need to', 'should', 'will need to', 'can you', 'please'];
+  const ownerWords = { mark: 'Mark', matt: 'Matt', kartik: 'Kartik', you: 'Mark' };
+  const detected = [];
+
+  sentences.forEach(sentence => {
+    const lower = sentence.toLowerCase();
+    // Must contain a task word
+    const hasTask = taskWords.some(w => lower.includes(w));
+    if (!hasTask) return;
+    // Must contain an owner name
+    let owner = null;
+    Object.entries(ownerWords).forEach(([key, val]) => {
+      if (lower.includes(key)) owner = val;
+    });
+    if (!owner) return;
+    // Skip if too long or already exists
+    const text = sentence.replace(/^[-*•\d.]+\s*/, '').trim();
+    if (text.length < 10 || text.length > 120) return;
+    const alreadyExists = actionItems.some(a =>
+      a.text.toLowerCase().slice(0, 25) === text.toLowerCase().slice(0, 25)
+    );
+    if (!alreadyExists) detected.push({ text, owner });
+  });
+
+  detected.slice(0, 3).forEach(({ text, owner }) => {
+    addActionItem({
+      text,
+      owner,
+      source: 'boo',
+      episodeRef: state.currentEpisode
+        ? 'EP' + (state.currentEpisode.number || '?')
+        : (state.currentSeason ? 'S1' : null),
+    });
+  });
+
+  if (detected.length > 0) {
+    const names = [...new Set(detected.map(d => d.owner))].join(', ');
+    showToast('Action item detected for ' + names);
+  }
+}
+
+// ── PATCH addMsg TO AUTO-DETECT ON BOO MESSAGES ──
+const _origAddMsg = addMsg;
+addMsg = function(role, html, actions) {
+  _origAddMsg(role, html, actions);
+  if (role === 'boo') {
+    // Small delay so the message renders first
+    setTimeout(() => detectActionItems(html), 300);
+  }
+};
+
+// ── PATCH buildSessionSnapshot TO INCLUDE ACTION ITEMS ──
+const _origBuildSnapshot = buildSessionSnapshot;
+buildSessionSnapshot = function() {
+  const snap = _origBuildSnapshot();
+  snap.actionItems = actionItems.slice();
+  snap.recordingDates = state.recordingDates ? state.recordingDates.slice() : [];
+  snap.briefFlags = briefFlags.slice();
+  snap.bakedContext = state.bakedContext ? state.bakedContext.slice() : [];
+  snap.aiIdCounter = aiIdCounter;
+  return snap;
+};
+
+// ── PATCH applySession TO RESTORE ACTION ITEMS ──
+const _origApplySession = applySession;
+applySession = function(data) {
+  _origApplySession(data);
+  if (data.recordingDates && Array.isArray(data.recordingDates)) {
+    state.recordingDates = data.recordingDates;
+  }
+  if (data.briefFlags && Array.isArray(data.briefFlags)) {
+    briefFlags = data.briefFlags;
+  }
+  if (data.bakedContext && Array.isArray(data.bakedContext)) {
+    state.bakedContext = data.bakedContext;
+  }
+  if (data.actionItems && Array.isArray(data.actionItems)) {
+    actionItems.length = 0;
+    data.actionItems.forEach(a => actionItems.push(a));
+    aiIdCounter = data.aiIdCounter || (actionItems.length + 1);
+    updateAiCounts();
+    renderActionItems();
+  }
+};
+
+// ── UPDATE SYSTEM PROMPT AWARENESS ──
+// Boo knows about action items via the system prompt injection in callBoo
+
+// ── SESSION SAVE / LOAD ──
+
+let pendingSessionData = null;
+let autoSaveTimeout = null;
+
+function buildSessionSnapshot() {
+  return {
+    version: '1.0',
+    savedAt: new Date().toISOString(),
+    savedAtDisplay: new Date().toLocaleString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true
+    }),
+    show: 'Anno Coding',
+    state: {
+      seasons: state.seasons,
+      currentSeason: state.currentSeason,
+      currentEpisode: state.currentEpisode,
+      currentGuest: state.currentGuest,
+      script: state.script,
+      runOfShow: state.runOfShow,
+    },
+    conversationLog: conversationLog.slice(-60), // last 60 messages
+    meta: {
+      episodeCount: state.seasons.reduce((n, s) => n + (s.episodes || []).length, 0),
+      hasScript: !!state.script,
+      hasRunOfShow: !!state.runOfShow,
+    }
+  };
+}
+
+function saveSession() {
+  const snapshot = buildSessionSnapshot();
+  const json = JSON.stringify(snapshot, null, 2);
+  const date = new Date().toISOString().slice(0,10);
+  const epLabel = state.currentEpisode
+    ? '-ep' + (state.currentEpisode.number || 'x')
+    : '';
+  const filename = 'boo-anno-coding' + (epLabel) + '-' + (date) + '.json';
+
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showToast('✓ Saved: ' + (filename));
+}
+
+function autoSave(reason) {
+  // Debounce — wait 1.5s after last trigger before saving
+  clearTimeout(autoSaveTimeout);
+  autoSaveTimeout = setTimeout(() => {
+    const snapshot = buildSessionSnapshot();
+    // Store in sessionStorage as safety net
+    try {
+      sessionStorage.setItem('boo_autosave', JSON.stringify(snapshot));
+    } catch(e) {}
+    showToast('✓ Auto-saved (' + (reason) + ')');
+  }, 1500);
+}
+
+function showToast(msg) {
+  const toast = document.getElementById('saveToast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+// ── LOAD SESSION ──
+
+function triggerLoadSession() {
+  // Check sessionStorage for autosave first
+  const autosaved = sessionStorage.getItem('boo_autosave');
+  document.getElementById('loadModal').style.display = 'flex';
+  document.getElementById('confirmLoadBtn').disabled = true;
+  pendingSessionData = null;
+
+  // Wire up drag and drop
+  const zone = document.getElementById('dropZone');
+  zone.ondragover = (e) => { e.preventDefault(); zone.classList.add('dragover'); };
+  zone.ondragleave = () => zone.classList.remove('dragover');
+  zone.ondrop = (e) => {
+    e.preventDefault();
+    zone.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) readSessionFile(file);
+  };
+
+  // Wire paste area
+  const paste = document.getElementById('loadPasteArea');
+  paste.value = '';
+  paste.oninput = () => {
+    const val = paste.value.trim();
+    if (val.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(val);
+        previewSession(parsed);
+      } catch(e) {
+        document.getElementById('sessionSummary').classList.remove('show');
+        pendingSessionData = null;
+        document.getElementById('confirmLoadBtn').disabled = true;
+      }
+    }
+  };
+}
+
+function closeLoadModal() {
+  document.getElementById('loadModal').style.display = 'none';
+  pendingSessionData = null;
+}
+
+function loadSessionFromFile(event) {
+  const file = event.target.files[0];
+  if (file) readSessionFile(file);
+  event.target.value = '';
+}
+
+function readSessionFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      previewSession(parsed);
+    } catch(err) {
+      alert('Could not read that file — make sure it is a Boo Producer session JSON.');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function previewSession(data) {
+  if (!data.version || !data.state) {
+    alert('This does not look like a valid Boo Producer session file.');
+    return;
+  }
+  pendingSessionData = data;
+
+  // Show summary
+  document.getElementById('sumDate').textContent = data.savedAtDisplay || data.savedAt || '—';
+  document.getElementById('sumSeason').textContent = data.state.currentSeason
+    ? 'Season ' + (data.state.currentSeason.number) + ': ' + (data.state.currentSeason.theme || '')
+    : 'None';
+  document.getElementById('sumEpisode').textContent = data.state.currentEpisode
+    ? data.state.currentEpisode.title || 'Episode ' + (data.state.currentEpisode.number)
+    : 'None';
+  document.getElementById('sumGuest').textContent = data.state.currentGuest
+    ? data.state.currentGuest.name
+    : 'None selected';
+  document.getElementById('sumMessages').textContent =
+    ((data.conversationLog || []).length) + ' messages';
+
+  document.getElementById('sessionSummary').classList.add('show');
+  document.getElementById('confirmLoadBtn').disabled = false;
+  document.getElementById('dropZone').innerHTML =
+    '<div class="drop-icon">✅</div>' + (data.savedAtDisplay || 'Session ready to load');
+}
+
+function confirmLoad() {
+  if (!pendingSessionData) return;
+  applySession(pendingSessionData);
+  closeLoadModal();
+}
+
+function applySession(data) {
+  // Restore state
+  const s = data.state;
+  state.seasons = s.seasons || [];
+  state.currentSeason = s.currentSeason || null;
+  state.currentEpisode = s.currentEpisode || null;
+  state.currentGuest = s.currentGuest || null;
+  state.script = s.script || null;
+  state.runOfShow = s.runOfShow || null;
+
+  // Restore conversation
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  conversationLog.length = 0;
+
+  (data.conversationLog || []).forEach(entry => {
+    conversationLog.push(entry);
+    const div = document.createElement('div');
+    div.className = 'msg ' + (entry.role);
+    const avatarText = entry.role === 'boo' ? '🎬' : 'U';
+    const name = entry.role === 'boo' ? 'Boo' : 'You';
+    div.innerHTML = '<div class="msg-avatar">' + avatarText + '</div>'
+      + '<div class="msg-body">'
+      + '<div class="msg-name">' + name + '</div>'
+      + '<div class="msg-bubble">' + formatBubble(entry.text) + '</div>'
+      + '</div>';
+    msgs.appendChild(div);
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Restore views
+  if (state.runOfShow) updateRosView(state.runOfShow);
+  if (state.script) updateTeleprompter(state.script);
+  updateContextBar();
+  updateRightPanel();
+
+  // Inject resume message from Boo
+  const guestLine = state.currentGuest ? ' We were working on booking <strong>' + (state.currentGuest.name) + '</strong>.' : '';
+  const epLine = state.currentEpisode ? ' Episode: <em>' + (state.currentEpisode.title || 'untitled') + '</em>.' : '';
+  addMsg('boo', 'Welcome back. I\'ve reloaded your session from <strong>' + (data.savedAtDisplay || 'your last save') + '</strong>.' + (epLine) + (guestLine) + ' Pick up wherever you left off — what do you want to work on?');
+
+  showToast('✓ Session loaded');
+}
+
+// Hook auto-save into key milestones
+const _origSelectGuest = selectGuest;
+selectGuest = function(name, title) {
+  _origSelectGuest(name, title);
+  autoSave('guest selected');
+};
+
+// Patch sendMessage to auto-save after script or ROS is built
+const _origSendMessage = sendMessage;
+sendMessage = async function() {
+  await _origSendMessage();
+  // Check if script or ROS was just built
+  if (state.script || state.runOfShow) {
+    autoSave('script/ROS updated');
+  }
+};
+
+document.addEventListener('DOMContentLoaded', initApp);
+</script>
+</body>
+</html>
