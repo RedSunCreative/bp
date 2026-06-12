@@ -90,22 +90,14 @@
     margin-top: 2px;
   }
 
-  .header-status {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--text-muted);
-    font-family: 'DM Mono', monospace;
-  }
-
-  .status-dot {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #4CAF50;
-    animation: pulse 2s ease-in-out infinite;
+  .boo-status-inline {
+    font-family: 'Syne', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    font-style: italic;
+    color: #4CAF50;
+    letter-spacing: 0.05em;
+    transition: opacity 0.18s, color 0.3s;
   }
 
   @keyframes pulse {
@@ -1729,7 +1721,10 @@
 <header>
   <div class="boo-avatar">🎬</div>
   <div class="header-info">
-    <h1>BOO PRODUCER</h1>
+    <div style="display:flex;align-items:baseline;gap:14px;">
+      <h1>BOO PRODUCER</h1>
+      <span id="statusLabel" class="boo-status-inline">READY</span>
+    </div>
     <p>ANNO CODING PODCAST · RED SUN CREATIVE</p>
   </div>
   <div class="header-actions">
@@ -1737,10 +1732,6 @@
     <button class="hdr-btn" onclick="triggerLoadSession()" title="Load a saved session">⬆ Load</button>
     <button class="hdr-btn save" onclick="saveSession()" id="saveBtn" title="Save session to file">⬇ Save</button>
     <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadSessionFromFile(event)">
-  </div>
-  <div class="header-status">
-    <div class="status-dot"></div>
-    <span id="statusLabel">READY</span>
   </div>
   <div class="save-toast" id="saveToast">✓ Session saved</div>
 </header>
@@ -3281,49 +3272,29 @@ let thinkingInterval = null;
 function setBooStatus(mode) {
   const label = document.getElementById('statusLabel');
   if (!label) return;
-  const dot = document.querySelector('.status-dot');
 
   if (mode === 'thinking') {
-    // Start rotating through thinking phrases
     let pool = [...BOO_THINKING];
     let idx = 0;
 
     const rotate = () => {
-      // Shuffle when pool exhausted
-      if (idx >= pool.length) {
-        pool = pool.sort(() => Math.random() - 0.5);
-        idx = 0;
-      }
+      if (idx >= pool.length) { pool = pool.sort(() => Math.random() - 0.5); idx = 0; }
       label.style.opacity = '0';
-      setTimeout(() => {
-        label.textContent = pool[idx++];
-        label.style.opacity = '1';
-      }, 180);
+      setTimeout(() => { label.textContent = pool[idx++]; label.style.opacity = '1'; }, 180);
     };
 
     rotate();
     thinkingInterval = setInterval(rotate, 1800);
-
-    if (dot) { dot.style.background = 'var(--gold)'; dot.style.animationDuration = '0.6s'; }
-    label.style.transition = 'opacity 0.18s';
+    label.style.color = 'var(--gold)';
 
   } else {
-    // Stop rotation
     clearInterval(thinkingInterval);
     thinkingInterval = null;
 
-    // Pick ready phrase — context-aware 25% of the time
-    const contextPhrase = getContextPhrase();
-    const readyPool = BOO_READY;
-    const phrase = contextPhrase || readyPool[Math.floor(Math.random() * readyPool.length)];
-
+    const phrase = getContextPhrase() || BOO_READY[Math.floor(Math.random() * BOO_READY.length)];
     label.style.opacity = '0';
-    setTimeout(() => {
-      label.textContent = phrase;
-      label.style.opacity = '1';
-    }, 180);
-
-    if (dot) { dot.style.background = '#4CAF50'; dot.style.animationDuration = '2s'; }
+    setTimeout(() => { label.textContent = phrase; label.style.opacity = '1'; }, 180);
+    label.style.color = '#4CAF50';
   }
 }
 
