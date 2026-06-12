@@ -886,6 +886,180 @@
   .panel-content::-webkit-scrollbar { width: 3px; }
   .panel-content::-webkit-scrollbar-thumb { background: var(--border); }
 
+  /* ── RIGHT PANEL — LIVE PRODUCTION CONTEXT ── */
+  .rp-ep-card {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .rp-ep-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 7px;
+  }
+  .rp-ep-ref {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+  .rp-status-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .rp-status-badge.planning { color: #F5A623; background: rgba(245,166,35,0.12); border: 1px solid rgba(245,166,35,0.3); }
+  .rp-status-badge.locked   { color: var(--teal); background: rgba(59,184,201,0.12); border: 1px solid rgba(59,184,201,0.3); }
+  .rp-status-badge.recorded { color: #4CAF50; background: rgba(76,175,80,0.12); border: 1px solid rgba(76,175,80,0.3); }
+  .rp-ep-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+  .rp-vital {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+  }
+  .rp-vital .teal { color: var(--teal); }
+
+  /* Section cards */
+  .rp-section {
+    background: var(--surface2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .rp-section-hdr {
+    font-family: 'Syne', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #F5A623;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 9px 14px;
+    background: var(--surface3);
+    border-bottom: 1px solid var(--border);
+  }
+  .rp-section-body { padding: 12px 14px; }
+
+  /* Guest cards */
+  .guest-card {
+    background: var(--surface3);
+    border-radius: 8px;
+    border-left: 3px solid var(--border);
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .guest-card:last-of-type { margin-bottom: 0; }
+  .guest-card.confirmed { border-left-color: var(--teal); }
+  .guest-card.invited   { border-left-color: var(--gold); }
+  .guest-card.prospecting { border-left-color: #F5A623; }
+  .guest-card-name {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+  .guest-role-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .guest-card-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .guest-status-chip {
+    display: inline-block;
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 8px;
+  }
+  .guest-status-chip.confirmed  { background: rgba(59,184,201,0.15); color: var(--teal); }
+  .guest-status-chip.invited    { background: rgba(245,208,58,0.12); color: var(--gold); }
+  .guest-status-chip.prospecting { background: rgba(245,166,35,0.12); color: #F5A623; }
+
+  /* Timeline rows (DATES panel) */
+  .tl-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .tl-row:last-child { border-bottom: none; }
+  .tl-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+  .tl-dot.filled { background: var(--teal); }
+  .tl-dot.empty  { border: 2px solid var(--text-dim); background: transparent; }
+  .tl-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+  .tl-date     { font-size: 12px; color: var(--text); }
+  .tl-countdown { font-size: 11px; color: var(--teal); font-family: 'DM Mono', monospace; }
+  .tl-unset    { font-size: 12px; color: var(--text-dim); font-style: italic; }
+
+  /* Show tab */
+  .show-progress-track {
+    display: flex;
+    gap: 3px;
+    margin: 6px 0 4px;
+  }
+  .show-progress-seg {
+    height: 6px;
+    border-radius: 2px;
+    flex: 1;
+  }
+  .show-progress-seg.recorded { background: var(--teal); }
+  .show-progress-seg.planned  { background: var(--surface3); border: 1px solid var(--border); }
+  .show-host-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .show-host-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+
   .episode-card {
     background: var(--surface2);
     border: 1px solid var(--border);
@@ -1924,17 +2098,13 @@
 
   <!-- Right Panel -->
   <div class="right-panel">
+    <div id="epStatusCard" class="rp-ep-card"><!-- filled by updateEpisodeStatusCard() --></div>
     <div class="panel-tabs">
-      <button class="panel-tab active" onclick="setPanelTab('episodes', this)">EPISODES</button>
-      <button class="panel-tab" onclick="setPanelTab('guest', this)">GUEST</button>
+      <button class="panel-tab active" onclick="setPanelTab('guest', this)">GUEST</button>
       <button class="panel-tab" onclick="setPanelTab('dates', this)">DATES</button>
+      <button class="panel-tab" onclick="setPanelTab('show', this)">SHOW</button>
     </div>
-    <div class="panel-content" id="panelContent">
-      <div class="empty-state">
-        <div class="empty-icon">🎙️</div>
-        <p>Start a season in Boo Chat to see episodes here.</p>
-      </div>
-    </div>
+    <div class="panel-content" id="panelContent"></div>
   </div>
 
 </div>
@@ -2085,7 +2255,7 @@ const state = {
     title: 'TBD',
     status: 'planning',
   },
-  activePanel: 'episodes',
+  activePanel: 'guest',
 };
 
 const actionItems = [];
@@ -2947,50 +3117,150 @@ function setPanelTab(tab, el) {
 }
 
 function updateRightPanel() {
+  updateEpisodeStatusCard();
   var content = document.getElementById('panelContent');
   if (!content) return;
 
-  if (state.activePanel === 'episodes') {
-    var episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
-    var currentNum = state.currentEpisode ? state.currentEpisode.number : 1;
-    if (episodes.length === 0) {
-      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🎙️</div><p>Start a season in Boo Chat to see episodes here.</p></div>';
-      return;
-    }
-    var html = '';
-    episodes.forEach(function(ep) {
-      var isCurrent = ep.number === currentNum;
-      html += '<div class="episode-card' + (isCurrent ? ' current' : '') + '" onclick="switchEpisode(' + ep.number + ')" style="cursor:pointer;">'
-        + '<div class="ep-number">S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + ep.number + '</div>'
-        + '<div class="ep-title">' + (ep.title && ep.title !== 'TBD' && ep.title !== 'TBD — pending emotional landing decision' ? ep.title : 'Episode ' + ep.number) + '</div>'
-        + '<span class="ep-status planning">' + (ep.status || 'PLANNING') + '</span>'
-        + '</div>';
-    });
-    html += '<div style="padding:10px 0 4px;"><button class="action-btn teal" style="width:100%;text-align:center;" onclick="addNewEpisode()">+ New Episode</button></div>';
-    content.innerHTML = html;
-
-  } else if (state.activePanel === 'guest') {
-    if (!activeEp().guest) {
-      content.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128100;</div><p>No guest selected yet.<br>Ask Boo to find one.</p></div>';
-      return;
-    }
-    var g = activeEp().guest;
-    content.innerHTML = '<div style="margin-bottom:12px;">'
-      + '<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">' + g.name + '</div>'
-      + '<div style="font-size:12px;color:var(--teal);">' + (g.title || '') + '</div>'
-      + '</div>'
-      + '<div class="info-row"><div class="info-label">STATUS</div><div class="info-value"><span class="ep-status planning">PROSPECTING</span></div></div>'
-      + '<div class="info-row"><div class="info-label">OUTREACH</div><div class="info-value">Not sent</div></div>'
-      + '<div class="info-row"><div class="info-label">FORMAT</div><div class="info-value">Riverside (remote)</div></div>'
-      + '<div style="margin-top:14px;display:flex;flex-direction:column;gap:6px;">'
-      + '<button class="action-btn primary" style="width:100%;text-align:center;" onclick="draftEmailCurrentGuest()">&#128231; Draft Email</button>'
-      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="researchCurrentGuest()">&#128269; Research Guest</button>'
-      + '</div>';
-
+  if (state.activePanel === 'guest') {
+    renderGuestPanel(content);
   } else if (state.activePanel === 'dates') {
     content.innerHTML = renderDatesPanel();
-
+  } else if (state.activePanel === 'show') {
+    renderShowPanel(content);
   }
+}
+
+function updateEpisodeStatusCard() {
+  var card = document.getElementById('epStatusCard');
+  if (!card) return;
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var ep = state.currentEpisode;
+  var epNum = ep ? ep.number : 1;
+  var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e) { return e.number === epNum; });
+  var status = (epData && epData.status) || (ep && ep.status) || 'planning';
+  var title = (epData && epData.title && epData.title !== 'TBD' && epData.title.indexOf('TBD') !== 0)
+    ? epData.title : 'Episode ' + epNum;
+
+  // Nearest future recording slot
+  var dates = activeEp().recordingDates || [];
+  var now = Date.now();
+  var future = dates.filter(function(s) { return !isSlotPassed(s.date, s.time); });
+  var countdownHtml = '<span style="color:var(--text-dim);">📅 No recording date set</span>';
+  if (future.length > 0) {
+    var slot = future[0];
+    var tp = (slot.time || '10:00').split(':').map(Number);
+    var dp = slot.date.split('-').map(Number);
+    var target = new Date(dp[0], dp[1]-1, dp[2], tp[0], tp[1]).getTime();
+    var diff = target - now;
+    var days = Math.floor(diff / 86400000);
+    var hrs  = Math.floor((diff % 86400000) / 3600000);
+    countdownHtml = '<span class="teal">📅 ' + days + 'd ' + hrs + 'h until recording</span>';
+  }
+
+  // Decision lock count
+  var decisionFields = ['feelAfter','thinkAfter','rememberDo','centralTension','audience','arcRole','cta','ecosystem'];
+  var locked = 0;
+  if (epData) {
+    decisionFields.forEach(function(f) {
+      var v = epData[f]; if (v && v.indexOf('TBD') !== 0) locked++;
+    });
+  }
+
+  var badgeClass = (status === 'locked' || status === 'recorded') ? status : 'planning';
+  card.innerHTML =
+    '<div class="rp-ep-header">'
+      + '<span class="rp-ep-ref">S' + seasonNum + '-E' + epNum + '</span>'
+      + '<span class="rp-status-badge ' + badgeClass + '">' + status.toUpperCase() + '</span>'
+    + '</div>'
+    + '<div class="rp-ep-title">' + title + '</div>'
+    + '<div class="rp-vital">' + countdownHtml + '</div>'
+    + '<div class="rp-vital">🎯 60 min target</div>'
+    + '<div class="rp-vital">✅ ' + locked + ' of ' + decisionFields.length + ' decisions locked</div>';
+}
+
+function renderGuestPanel(content) {
+  var g = activeEp().guest;
+  var html = '<div class="rp-section">'
+    + '<div class="rp-section-hdr">HOSTS</div>'
+    + '<div class="rp-section-body">'
+    + renderPersonCard(SHOW_CONFIG.host1, 'Co-Host', 'HOST', 'confirmed')
+    + renderPersonCard(SHOW_CONFIG.host2, 'Co-Host', 'HOST', 'confirmed')
+    + '</div></div>';
+
+  html += '<div class="rp-section">'
+    + '<div class="rp-section-hdr">EPISODE GUEST</div>'
+    + '<div class="rp-section-body">';
+  if (g) {
+    var gStatus = (g.status || 'prospecting').toLowerCase();
+    html += renderPersonCard(g.name, g.title || '', 'GUEST', gStatus);
+    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">'
+      + '<button class="action-btn primary" style="width:100%;text-align:center;" onclick="draftEmailCurrentGuest()">✉ Draft Outreach Email</button>'
+      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="researchCurrentGuest()">🔍 Research Guest</button>'
+      + '</div>';
+  } else {
+    html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0 10px;">No guest selected yet.</div>'
+      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="findGuestChat()">+ Find a Guest</button>';
+  }
+  html += '</div></div>';
+  content.innerHTML = html;
+}
+
+function renderPersonCard(name, subtitle, role, status) {
+  var chipMap = {
+    confirmed:   '<span class="guest-status-chip confirmed">✓ Confirmed</span>',
+    invited:     '<span class="guest-status-chip invited">⏳ Invited</span>',
+    prospecting: '<span class="guest-status-chip prospecting">◌ Prospecting</span>',
+  };
+  var chip = chipMap[status] || chipMap.prospecting;
+  return '<div class="guest-card ' + status + '">'
+    + '<div class="guest-card-name"><span>' + name + '</span><span class="guest-role-badge">' + role + '</span></div>'
+    + (subtitle ? '<div class="guest-card-sub">' + subtitle + '</div>' : '')
+    + chip
+    + '</div>';
+}
+
+function findGuestChat() {
+  var epRef = 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode ? state.currentEpisode.number : 1);
+  var arcRole = state.seasons[0] && state.seasons[0].episodes[0] && state.seasons[0].episodes[0].arcRole || '';
+  var input = document.getElementById('chatInput');
+  if (input) {
+    input.value = 'Help me find a great guest for ' + epRef + ' of ' + SHOW_CONFIG.showName + (arcRole ? '. Episode arc: ' + arcRole : '') + '. What kind of guest fits, and who specifically would you suggest?';
+    input.focus();
+    setView('chat');
+  }
+}
+
+function renderShowPanel(content) {
+  var season = state.seasons[0] || {};
+  var epCount = (state.currentSeason && state.currentSeason.episodeCount) || season.episodeCount || 8;
+  var episodes = season.episodes || [];
+  var recordedCount = episodes.filter(function(e) { return e.status === 'recorded'; }).length;
+
+  var segments = '';
+  for (var i = 0; i < epCount; i++) {
+    segments += '<div class="show-progress-seg ' + (i < recordedCount ? 'recorded' : 'planned') + '"></div>';
+  }
+
+  var html = '<div class="rp-section">'
+    + '<div class="rp-section-hdr">SHOW</div>'
+    + '<div class="rp-section-body">'
+    + '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">' + SHOW_CONFIG.showName.toUpperCase() + '</div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text-muted);margin-bottom:2px;letter-spacing:0.03em;">Season ' + (season.number || 1) + ' · ' + ((state.currentSeason && state.currentSeason.theme) || season.theme || '') + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">' + epCount + ' episodes · Plot Mountain arc</div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">EP PROGRESS</div>'
+    + '<div class="show-progress-track">' + segments + '</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Ep ' + recordedCount + ' of ' + epCount + ' recorded</div>'
+    + '</div></div>';
+
+  html += '<div class="rp-section">'
+    + '<div class="rp-section-hdr">TEAM</div>'
+    + '<div class="rp-section-body">'
+    + (SHOW_CONFIG.host1 ? '<div class="show-host-row"><div class="show-host-dot"></div><span>' + SHOW_CONFIG.host1 + '</span><span style="font-size:10px;color:var(--text-muted);font-family:DM Mono,monospace;margin-left:auto;">HOST</span></div>' : '')
+    + (SHOW_CONFIG.host2 ? '<div class="show-host-row"><div class="show-host-dot"></div><span>' + SHOW_CONFIG.host2 + '</span><span style="font-size:10px;color:var(--text-muted);font-family:DM Mono,monospace;margin-left:auto;">HOST</span></div>' : '')
+    + (SHOW_CONFIG.producerName ? '<div class="show-host-row"><div class="show-host-dot" style="background:var(--gold);"></div><span>' + SHOW_CONFIG.producerName + ' · ' + (SHOW_CONFIG.producerCompany || '') + '</span><span style="font-size:10px;color:var(--text-muted);font-family:DM Mono,monospace;margin-left:auto;">PRODUCER</span></div>' : '')
+    + '</div></div>';
+
+  content.innerHTML = html;
 }
 
 // ── TELEPROMPTER ──
@@ -3370,42 +3640,83 @@ function confirmDatepickerAndOpenGmail() {
 // ── DATES PANEL ──
 
 function renderDatesPanel() {
-  var all = activeEp().recordingDates;
-  var html = '<div style="margin-bottom:12px;">'
-    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Season 1 Recording Slots</div>';
+  var all = activeEp().recordingDates || [];
+  var now = Date.now();
+  var future = all.filter(function(s) { return !isSlotPassed(s.date, s.time); });
+  var recSlot = future.length > 0 ? future[0] : null;
 
-  if (all.length === 0) {
-    html += '<div style="font-size:13px;color:var(--text-muted);font-style:italic;padding:8px 0;">No dates added yet.</div>';
-  } else {
-    all.forEach(function(slot) {
-      var display = formatDateDisplay(slot.date, slot.time);
-      var passed = isSlotPassed(slot.date, slot.time);
-      var opacity = passed ? '0.45' : '1';
-      var textColor = passed ? 'var(--text-muted)' : 'var(--text)';
-      var assignedHtml = slot.assignedGuest
-        ? '<div style="font-size:10px;font-family:DM Mono,monospace;color:var(--teal);margin-top:2px;">' + slot.assignedGuest + '</div>'
-        : '';
-      var passedHtml = passed
-        ? '<div style="font-size:10px;font-family:DM Mono,monospace;color:var(--text-dim);margin-top:2px;">PASSED</div>'
-        : '';
-      html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:var(--surface2);border:1px solid var(--border);margin-bottom:6px;opacity:' + opacity + ';">'
-        + '<div style="flex:1;">'
-        + '<div style="font-size:12px;color:' + textColor + ';">' + display + '</div>'
-        + assignedHtml + passedHtml
-        + '</div>'
-        + '<button onclick="removeRecordingDate(\'' + slot.id + '\')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:0 3px;" title="Remove">&#10005;</button>'
-        + '</div>';
-    });
+  function slotToMs(slot) {
+    var dp = slot.date.split('-').map(Number);
+    var tp = (slot.time || '10:00').split(':').map(Number);
+    return new Date(dp[0], dp[1]-1, dp[2], tp[0], tp[1]).getTime();
+  }
+  function shortDate(ms) {
+    var d = new Date(ms);
+    var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[d.getMonth()] + ' ' + d.getDate();
+  }
+  function countdown(ms) {
+    var diff = ms - now;
+    if (diff <= 0) return '';
+    var days = Math.floor(diff / 86400000);
+    var hrs  = Math.floor((diff % 86400000) / 3600000);
+    return days + 'd ' + hrs + 'h';
   }
 
-  html += '</div>'
-    + '<div style="border-top:1px solid var(--border);padding-top:12px;">'
-    + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Add Recording Slot</div>'
-    + '<div style="display:flex;flex-direction:column;gap:6px;">'
-    + '<input type="date" id="newDateInput" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;color-scheme:dark;">'
+  var recMs  = recSlot ? slotToMs(recSlot) : null;
+  var editMs = recMs ? recMs + 7 * 86400000 : null;
+  var pubMs  = recMs ? recMs + 14 * 86400000 : null;
+
+  function tlRow(label, ms, slotObj) {
+    var hasDot = ms ? 'filled' : 'empty';
+    var arrow  = ms ? '▶' : '○';
+    var dateHtml = ms
+      ? '<div class="tl-date">' + arrow + ' ' + shortDate(ms) + (slotObj && slotObj.time ? ' · ' + slotObj.time + ' CT' : '') + '</div>'
+        + '<div class="tl-countdown">[' + countdown(ms) + ']</div>'
+      : '<div class="tl-unset">' + arrow + ' Not set</div>';
+    return '<div class="tl-row">'
+      + '<div class="tl-dot ' + hasDot + '"></div>'
+      + '<div><div class="tl-label">' + label + '</div>' + dateHtml + '</div>'
+      + (slotObj ? '<button onclick="removeRecordingDate(\'' + slotObj.id + '\')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;padding:0;margin-left:auto;align-self:flex-start;" title="Remove">✕</button>' : '')
+      + '</div>';
+  }
+
+  var html = '<div class="rp-section">'
+    + '<div class="rp-section-hdr">PRODUCTION TIMELINE</div>'
+    + '<div class="rp-section-body">'
+    + tlRow('RECORDING', recMs, recSlot)
+    + tlRow('EDIT DUE',  editMs, null)
+    + tlRow('PUBLISH',   pubMs,  null)
+    + '</div></div>';
+
+  // Additional future slots
+  if (future.length > 1) {
+    html += '<div class="rp-section">'
+      + '<div class="rp-section-hdr">OTHER SLOTS</div>'
+      + '<div class="rp-section-body">';
+    future.slice(1).forEach(function(slot) {
+      html += '<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">'
+        + '<div style="font-size:12px;color:var(--text-muted);">' + shortDate(slotToMs(slot)) + (slot.time ? ' · ' + slot.time + ' CT' : '') + '</div>'
+        + '<button onclick="removeRecordingDate(\'' + slot.id + '\')" style="background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px;" title="Remove">✕</button>'
+        + '</div>';
+    });
+    html += '</div></div>';
+  }
+
+  // Passed slots (collapsed count only)
+  var passed = all.filter(function(s) { return isSlotPassed(s.date, s.time); });
+  if (passed.length > 0) {
+    html += '<div style="font-size:11px;color:var(--text-dim);font-family:DM Mono,monospace;letter-spacing:0.05em;margin-bottom:12px;">' + passed.length + ' PASSED SLOT' + (passed.length > 1 ? 'S' : '') + '</div>';
+  }
+
+  // Add slot form
+  html += '<div class="rp-section">'
+    + '<div class="rp-section-hdr">ADD RECORDING SLOT</div>'
+    + '<div class="rp-section-body" style="display:flex;flex-direction:column;gap:8px;">'
+    + '<input type="date" id="newDateInput" style="width:100%;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;color-scheme:dark;">'
     + '<div style="display:flex;gap:6px;">'
-    + '<input type="time" id="newTimeInput" value="10:00" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;color-scheme:dark;">'
-    + '<button onclick="addDateFromPanel()" style="padding:7px 12px;border-radius:6px;border:1px solid var(--gold);background:rgba(245,208,58,0.08);color:var(--gold);font-size:11px;font-family:DM Mono,monospace;cursor:pointer;white-space:nowrap;">+ Add CT</button>'
+    + '<input type="time" id="newTimeInput" value="10:00" style="flex:1;background:var(--surface3);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px;font-family:DM Sans,sans-serif;outline:none;color-scheme:dark;">'
+    + '<button onclick="addDateFromPanel()" style="padding:7px 12px;border-radius:6px;border:1px solid var(--teal);background:rgba(59,184,201,0.08);color:var(--teal);font-size:11px;font-family:DM Mono,monospace;cursor:pointer;white-space:nowrap;">+ Add CT</button>'
     + '</div></div></div>';
 
   return html;
@@ -3428,6 +3739,7 @@ let briefFeedOpen = false;
 // Initialize panel
 updateRightPanel();
 applyShowConfig();
+setInterval(updateEpisodeStatusCard, 60000); // Live countdown tick
 
 // ── CONTEXT BRIEF ──
 
