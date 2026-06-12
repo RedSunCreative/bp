@@ -3581,6 +3581,12 @@ function buildBriefPrompt() {
     ? state.bakedContext.map(function(c){ return '- ' + c; }).join('\n')
     : 'None yet';
 
+  // Pull recent chat — last 40 turns, capped at 4000 chars
+  var recentChat = conversationLog.slice(-40).map(function(m) {
+    return (m.role === 'boo' ? 'BOO' : 'MARK') + ': ' + m.text;
+  }).join('\n');
+  if (recentChat.length > 4000) recentChat = recentChat.slice(-4000);
+
   return 'You are Boo, producer for the ' + SHOW_CONFIG.showName + ' Podcast. Write a Context Brief -- a clean, readable, producer document -- based on the following decisions made so far. Write in confident prose, not bullet points or database fields. This should read like something a smart collaborator would want to read before joining the project. Use section headers, but write the content as real paragraphs.\n\n'
     + 'WHAT YOU KNOW:\n\n'
     + 'SHOW:\n'
@@ -3630,6 +3636,8 @@ function buildBriefPrompt() {
     + '- Episode 1 guest confirmed and prepped\n\n'
     + 'ADDITIONAL CONTEXT (baked in from prior sessions):\n'
     + bakedCtx + '\n\n'
+    + 'CONVERSATION (what we have discussed in this session — treat this as live working context):\n'
+    + (recentChat || 'No conversation yet.') + '\n\n'
     + '---\n\n'
     + 'Write the Context Brief now. Four sections:\n'
     + '1. What This Show Is and Why It Matters\n'
