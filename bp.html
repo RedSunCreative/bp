@@ -1573,6 +1573,9 @@
 
   .hdr-btn:hover { border-color: var(--teal); color: var(--teal); }
   .hdr-btn.save { border-color: var(--gold); color: var(--gold); }
+  .hdr-btn.gear-btn { font-size: 13px; padding: 5px 10px; }
+  .episode-card.current { border-color: var(--gold); background: rgba(245,208,58,0.06); }
+  .episode-card.current .ep-number { color: var(--gold); }
 
   .ep-switcher { position: relative; display: inline-block; }
   .ep-switch-btn { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: var(--gold); background: rgba(245,208,58,0.08); border: 1px solid var(--gold); border-radius: 6px; padding: 5px 12px; cursor: pointer; letter-spacing: 0.08em; white-space: nowrap; }
@@ -1730,10 +1733,7 @@
     <p>ANNO CODING PODCAST · RED SUN CREATIVE</p>
   </div>
   <div class="header-actions">
-    <div class="ep-switcher" id="ep-switcher">
-      <button class="ep-switch-btn" id="ep-switch-btn" onclick="toggleEpList()">EP 1 ▾</button>
-      <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
-    </div>
+    <button class="hdr-btn gear-btn" onclick="openShowInfo()" title="Show info">⚙</button>
     <button class="hdr-btn" onclick="triggerLoadSession()" title="Load a saved session">⬆ Load</button>
     <button class="hdr-btn save" onclick="saveSession()" id="saveBtn" title="Save session to file">⬇ Save</button>
     <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadSessionFromFile(event)">
@@ -1945,9 +1945,9 @@
   <!-- Right Panel -->
   <div class="right-panel">
     <div class="panel-tabs">
-      <button class="panel-tab active" onclick="setPanelTab('guest', this)">GUEST</button>
+      <button class="panel-tab active" onclick="setPanelTab('episodes', this)">EPISODES</button>
+      <button class="panel-tab" onclick="setPanelTab('guest', this)">GUEST</button>
       <button class="panel-tab" onclick="setPanelTab('dates', this)">DATES</button>
-      <button class="panel-tab" onclick="setPanelTab('info', this)">SHOW</button>
     </div>
     <div class="panel-content" id="panelContent">
       <div class="empty-state">
@@ -2105,7 +2105,7 @@ const state = {
     title: 'TBD',
     status: 'planning',
   },
-  activePanel: 'guest',
+  activePanel: 'episodes',
 };
 
 const actionItems = [];
@@ -2972,7 +2972,26 @@ function updateRightPanel() {
   var content = document.getElementById('panelContent');
   if (!content) return;
 
-  if (state.activePanel === 'guest') {
+  if (state.activePanel === 'episodes') {
+    var episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
+    var currentNum = state.currentEpisode ? state.currentEpisode.number : 1;
+    if (episodes.length === 0) {
+      content.innerHTML = '<div class="empty-state"><div class="empty-icon">🎙️</div><p>Start a season in Boo Chat to see episodes here.</p></div>';
+      return;
+    }
+    var html = '';
+    episodes.forEach(function(ep) {
+      var isCurrent = ep.number === currentNum;
+      html += '<div class="episode-card' + (isCurrent ? ' current' : '') + '" onclick="switchEpisode(' + ep.number + ')" style="cursor:pointer;">'
+        + '<div class="ep-number">EP. ' + ep.number + '</div>'
+        + '<div class="ep-title">' + (ep.title && ep.title !== 'TBD' && ep.title !== 'TBD — pending emotional landing decision' ? ep.title : 'Episode ' + ep.number) + '</div>'
+        + '<span class="ep-status planning">' + (ep.status || 'PLANNING') + '</span>'
+        + '</div>';
+    });
+    html += '<div style="padding:10px 0 4px;"><button class="action-btn teal" style="width:100%;text-align:center;" onclick="addNewEpisode()">+ New Episode</button></div>';
+    content.innerHTML = html;
+
+  } else if (state.activePanel === 'guest') {
     if (!activeEp().guest) {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128100;</div><p>No guest selected yet.<br>Ask Boo to find one.</p></div>';
       return;
@@ -2993,14 +3012,6 @@ function updateRightPanel() {
   } else if (state.activePanel === 'dates') {
     content.innerHTML = renderDatesPanel();
 
-  } else if (state.activePanel === 'info') {
-    content.innerHTML = '<div class="info-row"><div class="info-label">SHOW</div><div class="info-value">' + SHOW_CONFIG.showName + '</div></div>'
-      + '<div class="info-row"><div class="info-label">HOST 1</div><div class="info-value">' + SHOW_CONFIG.host1 + '</div></div>'
-      + '<div class="info-row"><div class="info-label">HOST 2</div><div class="info-value">' + SHOW_CONFIG.host2 + '</div></div>'
-      + '<div class="info-row"><div class="info-label">FORMAT</div><div class="info-value">Audio-first, video for shorts</div></div>'
-      + '<div class="info-row"><div class="info-label">RECORDING</div><div class="info-value">Riverside / In-Person</div></div>'
-      + '<div class="info-row"><div class="info-label">AUDIENCE</div><div class="info-value">K-12 CS Educators</div></div>'
-      + '<div class="info-row"><div class="info-label">PRODUCER</div><div class="info-value">' + SHOW_CONFIG.producerName + ' · ' + SHOW_CONFIG.producerCompany + '</div></div>';
   }
 }
 
@@ -4316,11 +4327,6 @@ function applySession(data) {
   updateContextBar();
   updateRightPanel();
 
-  // Update ep switcher button label
-  const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
-  const epBtn = document.getElementById('ep-switch-btn');
-  if (epBtn) epBtn.textContent = 'EP ' + epNum + ' ▾';
-
   // Inject resume message from Boo
   const guestLine = activeEp().guest ? ' We were working on booking <strong>' + (activeEp().guest.name) + '</strong>.' : '';
   const epLine = state.currentEpisode ? ' Episode: <em>' + (state.currentEpisode.title || 'untitled') + '</em>.' : '';
@@ -4331,41 +4337,20 @@ function applySession(data) {
 
 // ── EPISODE SWITCHER ──
 
-function renderEpList() {
-  const panel = document.getElementById('ep-list-panel');
-  const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
-  const currentNum = state.currentEpisode ? state.currentEpisode.number : 1;
-  let html = episodes.map(function(ep) {
-    const isCurrent = ep.number === currentNum;
-    const label = 'EP ' + ep.number + (ep.title && ep.title !== 'TBD' && ep.title !== 'TBD — pending emotional landing decision' ? ' · ' + ep.title.slice(0, 22) : '');
-    return '<button class="ep-list-item' + (isCurrent ? ' ep-current' : '') + '" onclick="switchEpisode(' + ep.number + ')">' + label + '</button>';
-  }).join('');
-  html += '<button class="ep-list-item ep-new" onclick="addNewEpisode()">+ NEW EPISODE</button>';
-  panel.innerHTML = html;
+function openShowInfo() {
+  document.getElementById('si-show').textContent = SHOW_CONFIG.showName;
+  document.getElementById('si-host1').textContent = SHOW_CONFIG.host1;
+  document.getElementById('si-host2').textContent = SHOW_CONFIG.host2;
+  document.getElementById('si-producer').textContent = SHOW_CONFIG.producerName + ' · ' + SHOW_CONFIG.producerCompany;
+  document.getElementById('showInfoOverlay').style.display = 'flex';
 }
 
-function toggleEpList() {
-  const panel = document.getElementById('ep-list-panel');
-  if (panel.style.display === 'none') {
-    renderEpList();
-    panel.style.display = 'block';
-    setTimeout(function() {
-      document.addEventListener('click', closeEpListOnOutside, { once: true });
-    }, 0);
-  } else {
-    panel.style.display = 'none';
-  }
-}
-
-function closeEpListOnOutside(e) {
-  const switcher = document.getElementById('ep-switcher');
-  if (!switcher.contains(e.target)) {
-    document.getElementById('ep-list-panel').style.display = 'none';
-  }
+function closeShowInfo(e) {
+  if (e && e.target !== document.getElementById('showInfoOverlay')) return;
+  document.getElementById('showInfoOverlay').style.display = 'none';
 }
 
 function switchEpisode(num) {
-  document.getElementById('ep-list-panel').style.display = 'none';
   if (state.currentEpisode && state.currentEpisode.number === num) return;
 
   const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
@@ -4399,9 +4384,6 @@ function switchEpisode(num) {
     prose.innerHTML = '<div class="brief-generating" id="briefPlaceholder"><div class="brief-generating-dots"><span></span><span></span><span></span></div><div>Boo is writing the brief...</div></div>';
   }
 
-  // Update switcher button label
-  document.getElementById('ep-switch-btn').textContent = 'EP ' + num + ' ▾';
-
   updateContextBar();
   updateRightPanel();
   autoSave('episode switch');
@@ -4413,7 +4395,6 @@ function switchEpisode(num) {
 }
 
 function addNewEpisode() {
-  document.getElementById('ep-list-panel').style.display = 'none';
   const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
   const nextNum = episodes.length + 1;
   const newEp = { number: nextNum, title: 'TBD', status: 'planning' };
@@ -4440,5 +4421,20 @@ sendMessage = async function() {
 
 document.addEventListener('DOMContentLoaded', initApp);
 </script>
+
+<!-- Show Info Modal -->
+<div id="showInfoOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:500;display:none;align-items:center;justify-content:center;" onclick="closeShowInfo(event)">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:300px;max-width:400px;">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:16px;">⚙ SHOW INFO</div>
+    <div class="info-row"><div class="info-label">SHOW</div><div class="info-value" id="si-show"></div></div>
+    <div class="info-row"><div class="info-label">HOST 1</div><div class="info-value" id="si-host1"></div></div>
+    <div class="info-row"><div class="info-label">HOST 2</div><div class="info-value" id="si-host2"></div></div>
+    <div class="info-row"><div class="info-label">FORMAT</div><div class="info-value">Audio-first, video for shorts</div></div>
+    <div class="info-row"><div class="info-label">RECORDING</div><div class="info-value">Riverside / In-Person</div></div>
+    <div class="info-row"><div class="info-label">AUDIENCE</div><div class="info-value">K-12 CS Educators</div></div>
+    <div class="info-row"><div class="info-label">PRODUCER</div><div class="info-value" id="si-producer"></div></div>
+    <button class="hdr-btn" style="margin-top:16px;width:100%;text-align:center;" onclick="closeShowInfo()">Close</button>
+  </div>
+</div>
 </body>
 </html>
