@@ -2099,6 +2099,10 @@ const state = {
   recordingDates: [],
 };
 
+const actionItems = [];
+let aiFilter = 'all';
+let aiIdCounter = 1;
+
 const SHOW_CONTEXT = {
   name: 'Anno Coding',
   tagline: 'K–12 Computer Science Education in a Post-Coding Era',
@@ -3898,10 +3902,6 @@ function exportBrief() {
 
 
 // ── ACTION ITEMS ──
-const actionItems = [];
-let aiFilter = 'all';
-let aiIdCounter = 1;
-
 const OWNERS = ['Mark', 'Matt', 'Kartik'];
 
 function addActionItem({ text, owner = 'Mark', source = 'manual', episodeRef = null }) {
