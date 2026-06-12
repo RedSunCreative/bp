@@ -90,15 +90,7 @@
     margin-top: 2px;
   }
 
-  .boo-status-inline {
-    font-family: 'Syne', sans-serif;
-    font-size: 17px;
-    font-weight: 700;
-    font-style: italic;
-    color: #4CAF50;
-    letter-spacing: 0.05em;
-    transition: opacity 0.18s, color 0.3s;
-  }
+
 
   @keyframes pulse {
     0%, 100% { opacity: 1; }
@@ -1721,10 +1713,7 @@
 <header>
   <div class="boo-avatar">🎬</div>
   <div class="header-info">
-    <div style="display:flex;align-items:baseline;gap:14px;">
-      <h1>BOO PRODUCER</h1>
-      <span id="statusLabel" class="boo-status-inline">READY</span>
-    </div>
+    <h1>BOO PRODUCER</h1>
     <p>ANNO CODING PODCAST · RED SUN CREATIVE</p>
   </div>
   <div class="header-actions">
@@ -2505,7 +2494,6 @@ async function sendMessage() {
   input.value = '';
   autoResize(input);
   document.getElementById('sendBtn').disabled = true;
-  setBooStatus('thinking');
 
   addMsg('user', text);
   showTyping();
@@ -2522,7 +2510,6 @@ async function sendMessage() {
   }
 
   document.getElementById('sendBtn').disabled = false;
-  setBooStatus('ready');
 }
 
 function parseReply(text) {
@@ -3197,111 +3184,6 @@ function autoResize(el) {
   el.style.height = 'auto';
   el.style.height = Math.min(el.scrollHeight, 120) + 'px';
 }
-
-// ── BOO STATUS ROTATION ──
-
-const BOO_THINKING = [
-  'On it.',
-  'Let me think...',
-  'Working on it.',
-  'Give me a sec.',
-  'Producing...',
-  'In the edit bay...',
-  'Rolling tape...',
-  'Reading the room...',
-  'Mining the context...',
-  'Cross-referencing...',
-  'Pulling focus...',
-  'In the weeds. Good weeds.',
-  'Cue the music...',
-  'Consulting the arc...',
-  'Checking the run of show...',
-  'Building something here...',
-  'Thinking like a producer...',
-  'Lights. Camera. Thinking.',
-  'On the floor...',
-  'Back in a beat.',
-];
-
-const BOO_READY = [
-  'Ready when you are.',
-  "Let's make something.",
-  'What are we building today?',
-  "I'm in. What's first?",
-  'Lights on. What do we got?',
-  "Coffee's hot. Let's go.",
-  'On your mark.',
-  "Show's not gonna produce itself.",
-  "Let's get after it.",
-  "In the booth.",
-  "What's next?",
-  'Standing by.',
-  "Mic's hot.",
-  'Ready to roll.',
-  'Your move.',
-];
-
-// Context-aware ready phrases — shown ~25% of the time when there's something specific open
-function getContextPhrase() {
-  const ep1 = state.seasons[0] && state.seasons[0].episodes[0];
-  const openActions = (typeof actionItems !== 'undefined' ? actionItems : []).filter(a => !a.done);
-  const phrases = [];
-
-  if (ep1 && (!ep1.feelAfter || ep1.feelAfter === 'TBD — pending answer from hosts')) {
-    phrases.push('Still need that emotional landing for Episode 1...');
-    phrases.push('Episode 1 is waiting on one answer.');
-  }
-  if (!ep1 || !ep1.guest) {
-    phrases.push('Episode 1 guest is still open — want to find one?');
-  }
-  if (openActions.length > 0) {
-    phrases.push((openActions.length) + ' action item' + (openActions.length > 1 ? 's' : '') + ' still open.');
-  }
-  if (state.seasons[0] && state.seasons[0].episodes.length < 3) {
-    phrases.push('Three episode slots still need filling.');
-    phrases.push('Season arc is mapped — episodes are waiting.');
-  }
-
-  return phrases.length > 0 && Math.random() < 0.25
-    ? phrases[Math.floor(Math.random() * phrases.length)]
-    : null;
-}
-
-let thinkingInterval = null;
-
-function setBooStatus(mode) {
-  const label = document.getElementById('statusLabel');
-  if (!label) return;
-
-  if (mode === 'thinking') {
-    let pool = [...BOO_THINKING];
-    let idx = 0;
-
-    const rotate = () => {
-      if (idx >= pool.length) { pool = pool.sort(() => Math.random() - 0.5); idx = 0; }
-      label.style.opacity = '0';
-      setTimeout(() => { label.textContent = pool[idx++]; label.style.opacity = '1'; }, 180);
-    };
-
-    rotate();
-    thinkingInterval = setInterval(rotate, 1800);
-    label.style.color = 'var(--gold)';
-
-  } else {
-    clearInterval(thinkingInterval);
-    thinkingInterval = null;
-
-    const phrase = getContextPhrase() || BOO_READY[Math.floor(Math.random() * BOO_READY.length)];
-    label.style.opacity = '0';
-    setTimeout(() => { label.textContent = phrase; label.style.opacity = '1'; }, 180);
-    label.style.color = '#4CAF50';
-  }
-}
-
-// Set initial ready phrase on load
-setTimeout(() => setBooStatus('ready'), 400);
-
-
 
 
 
