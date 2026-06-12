@@ -2853,32 +2853,6 @@ function formatScript(text) {
 
   return html;
 }
-  lines.forEach(line => {
-    const trimmed = line.trim();
-    // Must have exactly 2 pipes and contain time-like content
-    const parts = trimmed.split('|').map(p => p.trim());
-    if (parts.length === 3) {
-      const hasTime = /\d+:\d+/.test(parts[1]);
-      const hasDuration = /\d+\s*min/i.test(parts[2]);
-      const nameOk = parts[0].length >= 1 && parts[0].length < 60;
-      if ((hasTime || hasDuration) && nameOk) {
-        segments.push({
-          name: parts[0].replace(/^[\d\.\-\*]+\s*/, ''),
-          start: parts[1],
-          duration: parts[2],
-        });
-      }
-    }
-  });
-
-  if (segments.length > 0) {
-    state.runOfShow = segments;
-    // Update ROS title/guest if available
-    if (state.currentEpisode) document.getElementById('rosEpTitle').textContent = state.currentEpisode.title || 'Episode';
-    if (state.currentGuest) document.getElementById('rosGuestName').textContent = state.currentGuest.name || '';
-    updateRosView(segments);
-  }
-
 
 function parseForStateUpdates(html) {
   // Try to detect season/episode info being confirmed
