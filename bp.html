@@ -3587,15 +3587,15 @@ function addDateFromPanel() {
 }
 
 
+let briefContent = '';
+let briefFlags = [];
+let briefFeedOpen = false;
+
 // Initialize panel
 updateRightPanel();
 applyShowConfig();
 
 // ── CONTEXT BRIEF ──
-
-let briefContent = '';
-let briefFlags = [];
-let briefFeedOpen = false;
 
 // System prompt for brief generation
 function buildBriefPrompt() {
