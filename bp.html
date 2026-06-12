@@ -2566,7 +2566,7 @@ function parseReply(text) {
       owner: item.owner,
       source: 'boo',
       episodeRef: state.currentEpisode
-        ? 'EP' + (state.currentEpisode.number || '?')
+        ? 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?')
         : (state.currentSeason ? 'S1' : null),
     });
   });
@@ -2815,7 +2815,7 @@ ${show}: ${SHOW_CONFIG.showTagline}`;
     text: 'Sent invite to ' + (name) + ' — follow up if no reply in 5 days',
     owner: 'Mark',
     source: 'boo',
-    episodeRef: state.currentEpisode ? 'EP' + (state.currentEpisode.number || '?') : 'S1',
+    episodeRef: state.currentEpisode ? 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?') : 'S1-E1',
   });
 
   showToast('Gmail invite opened for ' + (firstName));
@@ -2952,7 +2952,7 @@ function updateContextBar() {
     document.getElementById('ctxSeason').classList.add('teal');
   }
   if (state.currentEpisode) {
-    document.getElementById('ctxEpisode').textContent = 'EP' + (state.currentEpisode.number || '?');
+    document.getElementById('ctxEpisode').textContent = 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?');
   }
   if (activeEp().guest) {
     document.getElementById('ctxGuest').textContent = '👤 ' + activeEp().guest.name;
@@ -2983,7 +2983,7 @@ function updateRightPanel() {
     episodes.forEach(function(ep) {
       var isCurrent = ep.number === currentNum;
       html += '<div class="episode-card' + (isCurrent ? ' current' : '') + '" onclick="switchEpisode(' + ep.number + ')" style="cursor:pointer;">'
-        + '<div class="ep-number">EP. ' + ep.number + '</div>'
+        + '<div class="ep-number">S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + ep.number + '</div>'
         + '<div class="ep-title">' + (ep.title && ep.title !== 'TBD' && ep.title !== 'TBD — pending emotional landing decision' ? ep.title : 'Episode ' + ep.number) + '</div>'
         + '<span class="ep-status planning">' + (ep.status || 'PLANNING') + '</span>'
         + '</div>';
@@ -4039,7 +4039,7 @@ function detectActionItems(booText) {
       owner,
       source: 'boo',
       episodeRef: state.currentEpisode
-        ? 'EP' + (state.currentEpisode.number || '?')
+        ? 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?')
         : (state.currentSeason ? 'S1' : null),
     });
   });
