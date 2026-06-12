@@ -1945,8 +1945,7 @@
   <!-- Right Panel -->
   <div class="right-panel">
     <div class="panel-tabs">
-      <button class="panel-tab active" onclick="setPanelTab('episodes', this)">EPISODES</button>
-      <button class="panel-tab" onclick="setPanelTab('guest', this)">GUEST</button>
+      <button class="panel-tab active" onclick="setPanelTab('guest', this)">GUEST</button>
       <button class="panel-tab" onclick="setPanelTab('dates', this)">DATES</button>
       <button class="panel-tab" onclick="setPanelTab('info', this)">SHOW</button>
     </div>
@@ -2106,11 +2105,7 @@ const state = {
     title: 'TBD',
     status: 'planning',
   },
-  currentGuest: null,
-  script: null,
-  runOfShow: null,
-  activePanel: 'episodes',
-  recordingDates: [],
+  activePanel: 'guest',
 };
 
 const actionItems = [];
@@ -2344,7 +2339,7 @@ THE BROADER ECOSYSTEM (always keep in mind):
 CURRENT STATE:
 - Season: ${state.currentSeason ? JSON.stringify(state.currentSeason) : 'None set yet'}
 - Episode: ${state.currentEpisode ? JSON.stringify(state.currentEpisode) : 'None selected'}
-- Guest: ${state.currentGuest ? JSON.stringify(state.currentGuest) : 'None booked'}
+- Guest: ${activeEp().guest ? JSON.stringify(activeEp().guest) : 'None booked'}
 
 ===== MANDATORY PRE-PRODUCTION WORKFLOW =====
 Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
@@ -2431,7 +2426,7 @@ const episodeStore = {};
 function activeEp() {
   const key = state.currentEpisode ? state.currentEpisode.number : 1;
   if (!episodeStore[key]) {
-    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [] };
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null };
   }
   return episodeStore[key];
 }
@@ -2618,14 +2613,14 @@ function formatRunOfShow(text) {
   });
 
   if (segments.length > 0) {
-    state.runOfShow = segments;
+    activeEp().runOfShow = segments;
     if (state.currentEpisode) {
       var epEl = document.getElementById('rosEpTitle');
       if (epEl) epEl.textContent = state.currentEpisode.title || 'Episode';
     }
-    if (state.currentGuest) {
+    if (activeEp().guest) {
       var gEl = document.getElementById('rosGuestName');
-      if (gEl) gEl.textContent = state.currentGuest.name || '';
+      if (gEl) gEl.textContent = activeEp().guest.name || '';
     }
     updateRosView(segments);
   }
@@ -2828,7 +2823,7 @@ ${show}: ${SHOW_CONFIG.showTagline}`;
 
 
 function formatScript(text) {
-  state.script = text;
+  activeEp().script = text;
   updateTeleprompter(text);
 
   var sections = [];
@@ -2883,7 +2878,7 @@ function parseForStateUpdates(html) {
   }
 }
 function selectGuest(name, title) {
-  state.currentGuest = { name, title };
+  activeEp().guest = { name, title };
   document.querySelectorAll('.guest-card').forEach(c => c.classList.remove('selected'));
   const card = document.getElementById('gc-' + name.replace(/\s/g, '_'));
   if (card) card.classList.add('selected');
@@ -2899,11 +2894,11 @@ function selectGuest(name, title) {
 }
 
 function draftEmailCurrentGuest() {
-  if (state.currentGuest) draftEmail(state.currentGuest.name, state.currentGuest.title || '');
+  if (activeEp().guest) draftEmail(activeEp().guest.name, activeEp().guest.title || '');
 }
 
 function researchCurrentGuest() {
-  if (state.currentGuest) researchGuest(state.currentGuest.name);
+  if (activeEp().guest) researchGuest(activeEp().guest.name);
 }
 
 function draftEmail(name, title) {
@@ -2959,8 +2954,8 @@ function updateContextBar() {
   if (state.currentEpisode) {
     document.getElementById('ctxEpisode').textContent = 'EP' + (state.currentEpisode.number || '?');
   }
-  if (state.currentGuest) {
-    document.getElementById('ctxGuest').textContent = '👤 ' + state.currentGuest.name;
+  if (activeEp().guest) {
+    document.getElementById('ctxGuest').textContent = '👤 ' + activeEp().guest.name;
     document.getElementById('ctxGuest').classList.add('highlight');
   }
 }
@@ -2977,30 +2972,12 @@ function updateRightPanel() {
   var content = document.getElementById('panelContent');
   if (!content) return;
 
-  if (state.activePanel === 'episodes') {
-    if (state.seasons.length === 0) {
-      content.innerHTML = '<div class="empty-state"><div class="empty-icon">&#127897;</div><p>Start a season in Boo Chat to see episodes here.</p></div>';
-      return;
-    }
-    var html = '';
-    state.seasons.forEach(function(s) {
-      html += '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.08em;">SEASON ' + s.number + ' — ' + s.theme + '</div>';
-      (s.episodes || []).forEach(function(ep, i) {
-        html += '<div class="episode-card">'
-          + '<div class="ep-number">EP. ' + (i + 1) + '</div>'
-          + '<div class="ep-title">' + (ep.title || 'Untitled') + '</div>'
-          + '<span class="ep-status planning">' + (ep.status || 'PLANNING') + '</span>'
-          + '</div>';
-      });
-    });
-    content.innerHTML = html;
-
-  } else if (state.activePanel === 'guest') {
-    if (!state.currentGuest) {
+  if (state.activePanel === 'guest') {
+    if (!activeEp().guest) {
       content.innerHTML = '<div class="empty-state"><div class="empty-icon">&#128100;</div><p>No guest selected yet.<br>Ask Boo to find one.</p></div>';
       return;
     }
-    var g = state.currentGuest;
+    var g = activeEp().guest;
     content.innerHTML = '<div style="margin-bottom:12px;">'
       + '<div style="font-family:Syne,sans-serif;font-size:16px;font-weight:700;color:var(--text);margin-bottom:4px;">' + g.name + '</div>'
       + '<div style="font-size:12px;color:var(--teal);">' + (g.title || '') + '</div>'
@@ -3029,9 +3006,9 @@ function updateRightPanel() {
 
 // ── TELEPROMPTER ──
 function loadLastScript() {
-  // 1. Best case: state.script was set by formatScript auto-detection
-  if (state.script && state.script.length > 100) {
-    updateTeleprompter(state.script);
+  // 1. Best case: activeEp().script was set by formatScript auto-detection
+  if (activeEp().script && activeEp().script.length > 100) {
+    updateTeleprompter(activeEp().script);
     const empty = document.getElementById('tpEmptyState');
     if (empty) empty.style.display = 'none';
     showToast('Script loaded into Teleprompter');
@@ -3056,7 +3033,7 @@ function loadLastScript() {
   }
 
   if (found) {
-    state.script = found;
+    activeEp().script = found;
     updateTeleprompter(found);
     const empty = document.getElementById('tpEmptyState');
     if (empty) empty.style.display = 'none';
@@ -3086,13 +3063,13 @@ function pushToTeleprompter(btn) {
   if (bubble) {
     scriptText = (bubble.innerText || bubble.textContent || '').trim();
   }
-  // Fall back to state.script
-  if ((!scriptText || scriptText.length < 50) && state.script) {
-    scriptText = state.script;
+  // Fall back to activeEp().script
+  if ((!scriptText || scriptText.length < 50) && activeEp().script) {
+    scriptText = activeEp().script;
   }
 
   if (scriptText && scriptText.length > 50) {
-    state.script = scriptText;
+    activeEp().script = scriptText;
     updateTeleprompter(scriptText);
     const empty = document.getElementById('tpEmptyState');
     if (empty) empty.style.display = 'none';
@@ -3175,7 +3152,7 @@ function rosStart() {
 }
 
 function rosNext() {
-  if (!state.runOfShow) return;
+  if (!activeEp().runOfShow) return;
   const prev = document.getElementById('ros-seg-' + (rosCurrentSegIdx));
   if (prev) {
     prev.classList.remove('current');
@@ -3203,7 +3180,7 @@ function rosReset() {
   rosCurrentSegIdx = 0;
   document.getElementById('rosTimer').textContent = '00:00';
   document.getElementById('rosStartBtn').textContent = '▶ Start Timer';
-  if (state.runOfShow) updateRosView(state.runOfShow);
+  if (activeEp().runOfShow) updateRosView(activeEp().runOfShow);
 }
 
 // ── HELPERS ──
@@ -3355,16 +3332,16 @@ let dpCustomSlots = [];
 function addRecordingDate(dateStr, timeStr, label) {
   const id = 'rd-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
   const slot = { id, date: dateStr, time: timeStr, label: label || '', assignedGuest: null };
-  state.recordingDates.push(slot);
-  state.recordingDates.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
+  activeEp().recordingDates.push(slot);
+  activeEp().recordingDates.sort(function(a,b){ return (a.date+a.time).localeCompare(b.date+b.time); });
   updateRightPanel();
   autoSave('recording date added');
   return slot;
 }
 
 function removeRecordingDate(id) {
-  const idx = state.recordingDates.findIndex(function(d){ return d.id===id; });
-  if (idx !== -1) state.recordingDates.splice(idx, 1);
+  const idx = activeEp().recordingDates.findIndex(function(d){ return d.id===id; });
+  if (idx !== -1) activeEp().recordingDates.splice(idx, 1);
   updateRightPanel();
   autoSave('recording date removed');
 }
@@ -3388,7 +3365,7 @@ function isSlotPassed(dateStr, timeStr) {
 }
 
 function getAvailableSlots() {
-  return state.recordingDates.filter(function(d){ return !isSlotPassed(d.date, d.time); });
+  return activeEp().recordingDates.filter(function(d){ return !isSlotPassed(d.date, d.time); });
 }
 
 // ── DATE PICKER MODAL ──
@@ -3529,7 +3506,7 @@ function confirmDatepickerAndOpenGmail() {
 // ── DATES PANEL ──
 
 function renderDatesPanel() {
-  var all = state.recordingDates;
+  var all = activeEp().recordingDates;
   var html = '<div style="margin-bottom:12px;">'
     + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Season 1 Recording Slots</div>';
 
@@ -4077,7 +4054,6 @@ const _origBuildSnapshot = buildSessionSnapshot;
 buildSessionSnapshot = function() {
   const snap = _origBuildSnapshot();
   snap.actionItems = actionItems.slice();
-  snap.recordingDates = state.recordingDates ? state.recordingDates.slice() : [];
   snap.episodeStore = JSON.parse(JSON.stringify(episodeStore));
   snap.aiIdCounter = aiIdCounter;
   return snap;
@@ -4094,17 +4070,18 @@ applySession = function(data) {
   } else {
     // Migrate from flat format (old saves)
     var key = (data.state && data.state.currentEpisode) ? data.state.currentEpisode.number : 1;
-    if (!episodeStore[key]) episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [] };
+    if (!episodeStore[key]) episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null };
     if (data.conversationLog) episodeStore[key].conversationLog = data.conversationLog.slice();
     if (data.briefFlags) episodeStore[key].briefFlags = data.briefFlags.slice();
     if (data.bakedContext) episodeStore[key].bakedContext = data.bakedContext.slice();
+    if (data.state && data.state.currentGuest) episodeStore[key].guest = data.state.currentGuest;
+    if (data.state && data.state.script) episodeStore[key].script = data.state.script;
+    if (data.state && data.state.runOfShow) episodeStore[key].runOfShow = data.state.runOfShow;
+    if (data.recordingDates) episodeStore[key].recordingDates = data.recordingDates.slice();
   }
 
   _origApplySession(data);
 
-  if (data.recordingDates && Array.isArray(data.recordingDates)) {
-    state.recordingDates = data.recordingDates;
-  }
   if (data.actionItems && Array.isArray(data.actionItems)) {
     actionItems.length = 0;
     data.actionItems.forEach(a => actionItems.push(a));
@@ -4135,15 +4112,12 @@ function buildSessionSnapshot() {
       seasons: state.seasons,
       currentSeason: state.currentSeason,
       currentEpisode: state.currentEpisode,
-      currentGuest: state.currentGuest,
-      script: state.script,
-      runOfShow: state.runOfShow,
     },
     conversationLog: activeEp().conversationLog.slice(-60), // for message count display on load
     meta: {
       episodeCount: state.seasons.reduce((n, s) => n + (s.episodes || []).length, 0),
-      hasScript: !!state.script,
-      hasRunOfShow: !!state.runOfShow,
+      hasScript: !!activeEp().script,
+      hasRunOfShow: !!activeEp().runOfShow,
     }
   };
 }
@@ -4314,9 +4288,6 @@ function applySession(data) {
   state.seasons = s.seasons || [];
   state.currentSeason = s.currentSeason || null;
   state.currentEpisode = s.currentEpisode || null;
-  state.currentGuest = s.currentGuest || null;
-  state.script = s.script || null;
-  state.runOfShow = s.runOfShow || null;
 
   // Restore conversation from episodeStore (populated by patch before this call)
   const msgs = document.getElementById('messages');
@@ -4340,13 +4311,18 @@ function applySession(data) {
   if (activeEp().briefContent) renderBriefProse(activeEp().briefContent);
 
   // Restore views
-  if (state.runOfShow) updateRosView(state.runOfShow);
-  if (state.script) updateTeleprompter(state.script);
+  if (activeEp().runOfShow) updateRosView(activeEp().runOfShow);
+  if (activeEp().script) updateTeleprompter(activeEp().script);
   updateContextBar();
   updateRightPanel();
 
+  // Update ep switcher button label
+  const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  const epBtn = document.getElementById('ep-switch-btn');
+  if (epBtn) epBtn.textContent = 'EP ' + epNum + ' ▾';
+
   // Inject resume message from Boo
-  const guestLine = state.currentGuest ? ' We were working on booking <strong>' + (state.currentGuest.name) + '</strong>.' : '';
+  const guestLine = activeEp().guest ? ' We were working on booking <strong>' + (activeEp().guest.name) + '</strong>.' : '';
   const epLine = state.currentEpisode ? ' Episode: <em>' + (state.currentEpisode.title || 'untitled') + '</em>.' : '';
   addMsg('boo', 'Welcome back. I\'ve reloaded your session from <strong>' + (data.savedAtDisplay || 'your last save') + '</strong>.' + (epLine) + (guestLine) + ' Pick up wherever you left off — what do you want to work on?');
 
@@ -4457,7 +4433,7 @@ const _origSendMessage = sendMessage;
 sendMessage = async function() {
   await _origSendMessage();
   // Check if script or ROS was just built
-  if (state.script || state.runOfShow) {
+  if (activeEp().script || activeEp().runOfShow) {
     autoSave('script/ROS updated');
   }
 };
