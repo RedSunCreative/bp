@@ -23,6 +23,13 @@
     --user-bubble: #1C2128;
     --radius: 12px;
     --radius-sm: 8px;
+    /* BEB design-system aliases */
+    --card: #2a3040;
+    --panel: #353d50;
+    --dark: #1e2330;
+    --muted: #8a96a8;
+    --white: #f0f2f5;
+    --green: #4ade80;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -844,14 +851,79 @@
 
   /* Right panel */
   .right-panel {
-    width: 320px;
-    background: var(--surface);
+    width: 340px;
     border-left: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
     flex-shrink: 0;
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
   }
+
+  /* ── BEB DATA PANEL — transplanted from BEB verbatim ── */
+  .data-panel{overflow-y:auto;height:100%;padding:20px;flex:1;}
+  .data-section{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden;transition:border-color 0.15s,opacity 0.15s;}
+  .data-section.drag-over{border-color:var(--teal);}
+  .data-section.dragging{opacity:0.4;}
+  .drag-handle{font-size:16px;color:var(--muted);opacity:0.35;cursor:grab;padding-right:6px;flex-shrink:0;user-select:none;line-height:1;}
+  .drag-handle:hover{opacity:1;color:var(--teal);}
+  .drag-handle:active{cursor:grabbing;}
+  .data-section-header{background:var(--panel);padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
+  .data-section-title{font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#F5A623;letter-spacing:0.1em;text-transform:uppercase;flex:1;}
+  .data-section-count{font-family:'DM Mono',monospace;font-size:0.82rem;font-weight:500;color:#FFFFFF;letter-spacing:0.02em;}
+  .data-section-body{padding:14px 16px;}
+  .ep-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .ep-field{background:var(--dark);border-radius:6px;padding:8px 10px;}
+  .ep-label{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;}
+  .ep-val{font-family:'DM Sans',sans-serif;font-size:0.92rem;font-weight:600;color:#FFFFFF;}
+  .ep-val.empty{color:var(--border);font-style:italic;font-size:14px;}
+  .ep-editable{cursor:pointer;}
+  .ep-editable:hover{opacity:0.8;}
+  .cue-item{background:var(--dark);border-radius:6px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--border);transition:opacity 0.15s;}
+  .cue-item.has-data{border-left-color:var(--teal);}
+  .cue-item.dragging{opacity:0.35;}
+  .cue-item.drag-over{outline:2px solid var(--teal);outline-offset:1px;}
+  .cue-num-label{font-family:'Syne',sans-serif;font-size:0.7rem;font-weight:700;color:#F5A623;letter-spacing:0.1em;text-transform:uppercase;}
+  .cue-item-name{font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;color:#FFFFFF;margin:2px 0;}
+  .cue-item-dur{font-family:'DM Mono',monospace;font-size:0.65rem;font-weight:400;color:#8A8A9A;letter-spacing:0.08em;}
+  .cue-item-boo{font-size:11px;color:var(--gold);margin-top:4px;line-height:1.5;}
+  .guest-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+  .guest-item:last-child{border-bottom:none;}
+  .guest-name{font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:600;color:#FFFFFF;}
+  .guest-type{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.1em;text-transform:uppercase;}
+  .crew-inp{background:var(--dark);border:1px solid var(--border);border-radius:4px;padding:4px 6px;color:var(--white);font-size:11px;font-family:'DM Sans',sans-serif;width:100%;box-sizing:border-box;}
+  .crew-inp:focus{outline:none;border-color:var(--teal);}
+  .crew-inp::placeholder{color:var(--muted);}
+  .runtime-bar{background:var(--dark);border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;}
+  .runtime-val{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:#F5A623;}
+  .generate-btn{width:100%;padding:16px;background:#0a2a0a;border:2px solid #2d6a2d;color:var(--green);border-radius:10px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;margin-top:6px;transition:all 0.2s;}
+  .generate-btn:hover{background:#0f3a20;}
+  .generate-btn.ros{background:#0a1a2a;border-color:#1a4a6a;color:var(--teal);}
+  .generate-btn.ros:hover{background:#0f2a3a;}
+  .ros-dropdown-wrap{position:relative;margin-top:6px;}
+  .ros-dropdown-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1a1e26;border:1px solid var(--teal);border-radius:8px;overflow:hidden;z-index:300;box-shadow:0 8px 24px rgba(0,0,0,0.6);}
+  .ros-menu-item{padding:11px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.07);}
+  .ros-menu-item:last-child{border-bottom:none;}
+  .ros-menu-item:hover{background:rgba(0,196,74,0.12);}
+  .ros-item-name{font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;color:#FFFFFF;}
+  .ros-item-desc{font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:400;color:#8A8A9A;margin-top:3px;line-height:1.4;}
+  .cue-edit-btn{font-family:'DM Sans',sans-serif;font-size:0.68rem;font-weight:600;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;background:none;border:1px solid var(--border);border-radius:3px;padding:2px 6px;cursor:pointer;float:right;margin-top:2px;}
+  .cue-edit-btn:hover{color:var(--teal);border-color:var(--teal);}
+  .scene-edit-panel{background:var(--panel);border-radius:8px;padding:14px;margin-top:10px;border:1px solid var(--teal);}
+  .scene-edit-title{font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;color:#F5A623;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;}
+  .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+  .edit-field{display:flex;flex-direction:column;}
+  .edit-field.full{grid-column:1/-1;}
+  .edit-lbl{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px;}
+  .edit-inp{background:var(--dark);border:1px solid var(--border);border-radius:4px;padding:6px 8px;color:#FFFFFF;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;width:100%;}
+  .edit-inp:focus{outline:none;border-color:var(--teal);}
+  .edit-ta{background:var(--dark);border:1px solid var(--border);border-radius:4px;padding:6px 8px;color:#FFFFFF;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:400;width:100%;resize:vertical;min-height:44px;line-height:1.5;}
+  .edit-ta:focus{outline:none;border-color:var(--teal);}
+  .edit-section-head{font-size:9px;color:var(--gold);letter-spacing:3px;margin:10px 0 6px;grid-column:1/-1;border-top:1px solid var(--border);padding-top:8px;}
+  .edit-save-btn{background:var(--teal);color:#003a40;border:none;border-radius:4px;padding:7px 16px;font-family:'Syne',sans-serif;font-size:0.85rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;cursor:pointer;margin-top:4px;}
+  .edit-close-btn{background:none;border:1px solid var(--border);color:var(--muted);border-radius:4px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;margin-top:4px;margin-left:6px;}
+  .tip-q{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;border:1px solid var(--muted);color:var(--muted);font-size:9px;font-weight:700;cursor:help;margin-left:6px;flex-shrink:0;opacity:0.55;vertical-align:middle;line-height:1;font-family:sans-serif;}
+  .tip-q:hover{opacity:1;border-color:var(--gold);color:var(--gold);}
+  #boo-tip{position:fixed;background:#1a1e26;color:#c4b9a8;font-size:0.72rem;font-family:'DM Sans',sans-serif;letter-spacing:0.5px;padding:8px 12px;border-radius:7px;border:1px solid rgba(245,208,58,0.3);max-width:220px;line-height:1.45;text-align:center;pointer-events:none;display:none;z-index:2000;box-shadow:0 4px 16px rgba(0,0,0,0.6);}
 
   .panel-tabs {
     display: flex;
@@ -2096,15 +2168,102 @@
     </div>
   </div>
 
-  <!-- Right Panel -->
+  <!-- Right Panel — BEB transplant -->
   <div class="right-panel">
-    <div id="epStatusCard" class="rp-ep-card"><!-- filled by updateEpisodeStatusCard() --></div>
-    <div class="panel-tabs">
-      <button class="panel-tab active" onclick="setPanelTab('guest', this)">GUEST</button>
-      <button class="panel-tab" onclick="setPanelTab('dates', this)">DATES</button>
-      <button class="panel-tab" onclick="setPanelTab('show', this)">SHOW</button>
+    <div class="data-panel">
+
+      <div class="data-section" data-sec="ep">
+        <div class="data-section-header" onclick="toggleSection('ep-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Episode Info <span class="tip-q" data-tip="Episode basics — number, title, date, runtime. Boo fills these in as you talk." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="ep-complete">—</div>
+        </div>
+        <div class="data-section-body" id="ep-body">
+          <div class="ep-grid">
+            <div class="ep-field"><div class="ep-label">SEASON / EP</div><div class="ep-val" id="d-epnum" style="color:var(--gold);">S1-E1</div></div>
+            <div class="ep-field"><div class="ep-label">STATUS</div><div class="ep-val" id="d-epstatus" style="color:var(--teal);">PLANNING</div></div>
+            <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">TITLE</div><div class="ep-val ep-editable" id="d-eptitle" onclick="epEditTitle(this)" title="Click to edit"><span class="empty">not set</span></div></div>
+            <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">ARC ROLE</div><div class="ep-val" id="d-arcrole" style="font-size:12px;color:var(--muted);"></div></div>
+            <div class="ep-field"><div class="ep-label">TARGET</div><div class="ep-val" id="d-eplen" style="color:var(--muted);">60 min</div></div>
+            <div class="ep-field"><div class="ep-label">SAVED</div><div class="ep-val" id="d-saved" style="font-size:11px;color:var(--muted)">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-section" data-sec="runtime">
+        <div class="data-section-header" onclick="toggleSection('runtime-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Runtime <span class="tip-q" data-tip="Segments against your target runtime. Updated as you build the show." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="runtime-status">0 min</div>
+        </div>
+        <div class="data-section-body" id="runtime-body">
+          <div class="runtime-bar">
+            <div><div class="ep-label">SEGMENTS</div><div class="runtime-val" id="rt-cues" style="color:var(--teal)">0</div></div>
+            <div><div class="ep-label">TOTAL</div><div class="runtime-val" id="rt-total" style="color:var(--gold)">0m</div></div>
+            <div><div class="ep-label">TARGET</div><div class="runtime-val" id="rt-target" style="color:var(--muted)">60m</div></div>
+            <div><div class="ep-label">DELTA</div><div class="runtime-val" id="rt-delta" style="color:var(--green)">—</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-section" data-sec="guests">
+        <div class="data-section-header" onclick="toggleSection('guests-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Guests <span class="tip-q" data-tip="Everyone on the show this episode. Tell Boo who's coming — he logs the details." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="guest-count">0</div>
+        </div>
+        <div class="data-section-body" id="guests-body">
+          <div id="guest-list"><div style="font-size:12px;color:var(--muted)">Tell Boo about your guests...</div></div>
+          <div style="margin-top:12px;">
+            <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ FIND A GUEST</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="data-section" data-sec="cues">
+        <div class="data-section-header" onclick="toggleSection('cues-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Cue List <span class="tip-q" data-tip="Your run of show, segment by segment. Drag to reorder." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="cue-count-badge">0 cues</div>
+        </div>
+        <div class="data-section-body" id="cues-body">
+          <div id="cue-list-display"><div style="font-size:12px;color:var(--muted)">Tell Boo what's in the show...</div></div>
+          <div id="scene-edit-container"></div>
+        </div>
+      </div>
+
+      <div class="data-section" data-sec="memory">
+        <div class="data-section-header" onclick="toggleSection('memory-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Boo's Memory <span class="tip-q" data-tip="How you like things done. Boo keeps notes so you don't have to say it twice." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="memory-count">0</div>
+        </div>
+        <div class="data-section-body" id="memory-body" style="display:none;">
+          <div id="memory-list"><div style="font-size:12px;color:var(--muted)">No memories yet...</div></div>
+        </div>
+      </div>
+
+      <div class="ros-dropdown-wrap" id="ros-dropdown-wrap">
+        <button class="generate-btn ros" id="ros-toggle-btn" onclick="toggleRosMenu()" style="margin-top:0;">📄 SHOW SCRIPTS &nbsp;▾</button>
+        <div class="ros-dropdown-menu" id="ros-dropdown-menu">
+          <div class="ros-menu-item" onclick="bpScriptAction('bsm')">
+            <div class="ros-item-name">⚡ Publish Live Show Script</div>
+            <div class="ros-item-desc">Publishes Boo Show Manager to the web</div>
+          </div>
+          <div class="ros-menu-item" onclick="bpScriptAction('ros')">
+            <div class="ros-item-name">📄 Print Static Show Script</div>
+            <div class="ros-item-desc">Formatted static show script for browser or print</div>
+          </div>
+          <div class="ros-menu-item" onclick="bpScriptAction('scene')">
+            <div class="ros-item-name">📋 Print Static Scene List</div>
+            <div class="ros-item-desc">Simple one-page scene list with names and durations</div>
+          </div>
+        </div>
+      </div>
+      <div id="scripts-share-panel" style="display:none;margin-top:8px;background:var(--dark);border:1px solid var(--teal);border-radius:8px;padding:12px;font-size:12px;"></div>
+      <button class="generate-btn" onclick="bpScriptAction('edit')" style="margin-top:4px;background:transparent;border:2px solid var(--teal);color:var(--teal);">✏️ EDIT SHOW SCRIPT</button>
+
     </div>
-    <div class="panel-content" id="panelContent"></div>
   </div>
 
 </div>
@@ -3741,6 +3900,122 @@ updateRightPanel();
 applyShowConfig();
 setInterval(updateEpisodeStatusCard, 60000); // Live countdown tick
 
+// ── BEB-PANEL STUBS ──
+
+// Section collapse / expand
+function toggleSection(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.style.display = (el.style.display === 'none') ? '' : 'none';
+}
+
+// Inline title edit
+function epEditTitle(el) {
+  var cur = el.dataset.value || (state.currentEpisode && state.currentEpisode.title) || '';
+  var val = prompt('Episode title:', cur);
+  if (val === null) return;
+  val = val.trim();
+  if (!val) return;
+  if (state.currentEpisode) state.currentEpisode.title = val;
+  var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e){ return e.number === (state.currentEpisode ? state.currentEpisode.number : 1); });
+  if (epData) epData.title = val;
+  el.dataset.value = val;
+  el.textContent = val;
+  updateEpisodeStatusCard();
+  autoSave('title edit');
+}
+
+// Sound test (ported from BEB)
+function playSosumi() {
+  try {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)();
+    var t = ctx.currentTime;
+    [[880,0],[1109,0.06]].forEach(function(p){ var freq=p[0],delay=p[1]; var osc=ctx.createOscillator(); var gain=ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.frequency.value=freq; osc.type='sine'; gain.gain.setValueAtTime(0,t+delay); gain.gain.linearRampToValueAtTime(0.4,t+delay+0.01); gain.gain.exponentialRampToValueAtTime(0.001,t+delay+0.9); osc.start(t+delay); osc.stop(t+delay+1.0); });
+  } catch(e) { console.warn('playSosumi:',e); }
+}
+
+// Show Scripts dropdown
+function toggleRosMenu() {
+  var menu = document.getElementById('ros-dropdown-menu');
+  if (!menu) return;
+  menu.style.display = (menu.style.display === 'block') ? 'none' : 'block';
+}
+
+function bpScriptAction(type) {
+  toggleRosMenu();
+  showToast('Script export coming when run-of-show is built.');
+}
+
+// Section drag reorder (visual only — reorders DOM nodes)
+(function() {
+  var dragging = null;
+  document.addEventListener('dragstart', function(e) {
+    var h = e.target.closest && e.target.closest('.drag-handle');
+    if (!h) return;
+    dragging = h.closest('.data-section');
+    if (dragging) { e.dataTransfer.effectAllowed = 'move'; dragging.classList.add('dragging'); }
+  });
+  document.addEventListener('dragend', function() {
+    if (dragging) dragging.classList.remove('dragging');
+    document.querySelectorAll('.data-section').forEach(function(s){ s.classList.remove('drag-over'); });
+    dragging = null;
+  });
+  document.addEventListener('dragover', function(e) {
+    var over = e.target.closest && e.target.closest('.data-section');
+    if (!over || over === dragging) return;
+    e.preventDefault();
+    document.querySelectorAll('.data-section').forEach(function(s){ s.classList.remove('drag-over'); });
+    over.classList.add('drag-over');
+  });
+  document.addEventListener('drop', function(e) {
+    var over = e.target.closest && e.target.closest('.data-section');
+    if (!over || !dragging || over === dragging) return;
+    e.preventDefault();
+    var parent = over.parentNode;
+    var siblings = Array.from(parent.children);
+    var fromIdx = siblings.indexOf(dragging);
+    var toIdx   = siblings.indexOf(over);
+    if (fromIdx < toIdx) parent.insertBefore(dragging, over.nextSibling);
+    else parent.insertBefore(dragging, over);
+  });
+})();
+
+// tip-q tooltip
+(function() {
+  var tip = document.getElementById('boo-tip');
+  if (!tip) return;
+  document.addEventListener('mouseover', function(e) {
+    var q = e.target.closest && e.target.closest('.tip-q');
+    if (!q) return;
+    var text = q.dataset.tip;
+    if (!text) return;
+    tip.textContent = text;
+    tip.style.display = 'block';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (tip.style.display !== 'block') return;
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY + 14) + 'px';
+  });
+  document.addEventListener('mouseout', function(e) {
+    if (e.target.closest && e.target.closest('.tip-q')) tip.style.display = 'none';
+  });
+})();
+
+// Populate BEB-panel static fields from state on load
+(function initBebPanel() {
+  var ep = state.currentEpisode;
+  var epData = state.seasons[0] && state.seasons[0].episodes && state.seasons[0].episodes.find(function(e){ return e.number === (ep ? ep.number : 1); });
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var epNum = ep ? ep.number : 1;
+  function setText(id, val) { var el = document.getElementById(id); if (el && val) el.textContent = val; }
+  setText('d-epnum', 'S' + seasonNum + '-E' + epNum);
+  setText('d-epstatus', ((epData && epData.status) || 'planning').toUpperCase());
+  var title = (epData && epData.title && epData.title.indexOf('TBD') !== 0) ? epData.title : null;
+  if (title) setText('d-eptitle', title);
+  setText('d-arcrole', (epData && epData.arcRole) || '');
+})();
+
 // ── CONTEXT BRIEF ──
 
 // System prompt for brief generation
@@ -4601,5 +4876,7 @@ document.addEventListener('DOMContentLoaded', initApp);
     <button class="hdr-btn" style="margin-top:16px;width:100%;text-align:center;" onclick="closeShowInfo()">Close</button>
   </div>
 </div>
+
+<div id="boo-tip"></div>
 </body>
 </html>
