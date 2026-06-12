@@ -1573,6 +1573,16 @@
 
   .hdr-btn:hover { border-color: var(--teal); color: var(--teal); }
   .hdr-btn.save { border-color: var(--gold); color: var(--gold); }
+
+  .ep-switcher { position: relative; display: inline-block; }
+  .ep-switch-btn { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: var(--gold); background: rgba(245,208,58,0.08); border: 1px solid var(--gold); border-radius: 6px; padding: 5px 12px; cursor: pointer; letter-spacing: 0.08em; white-space: nowrap; }
+  .ep-switch-btn:hover { background: rgba(245,208,58,0.18); }
+  .ep-list-panel { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; min-width: 180px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden; }
+  .ep-list-item { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--border); padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.06em; cursor: pointer; }
+  .ep-list-item:last-child { border-bottom: none; }
+  .ep-list-item:hover { background: var(--card); }
+  .ep-list-item.ep-current { color: var(--gold); }
+  .ep-list-item.ep-new { color: var(--teal); }
   .hdr-btn.save:hover { background: rgba(245,208,58,0.1); }
 
   .save-toast {
@@ -1720,6 +1730,10 @@
     <p>ANNO CODING PODCAST · RED SUN CREATIVE</p>
   </div>
   <div class="header-actions">
+    <div class="ep-switcher" id="ep-switcher">
+      <button class="ep-switch-btn" id="ep-switch-btn" onclick="toggleEpList()">EP 1 ▾</button>
+      <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
+    </div>
     <button class="hdr-btn" onclick="triggerLoadSession()" title="Load a saved session">⬆ Load</button>
     <button class="hdr-btn save" onclick="saveSession()" id="saveBtn" title="Save session to file">⬇ Save</button>
     <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadSessionFromFile(event)">
@@ -2413,10 +2427,17 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
 }
 
 // ── CONVERSATION HISTORY ──
-const conversationLog = [];
+const episodeStore = {};
+function activeEp() {
+  const key = state.currentEpisode ? state.currentEpisode.number : 1;
+  if (!episodeStore[key]) {
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [] };
+  }
+  return episodeStore[key];
+}
 
 function getConversationHistory() {
-  return conversationLog.slice(-20).map(m => ({
+  return activeEp().conversationLog.slice(-20).map(m => ({
     role: m.role === 'boo' ? 'assistant' : 'user',
     content: m.text,
   }));
@@ -2444,7 +2465,7 @@ function addMsg(role, html, actions) {
 
   // Log for API history
   const plainText = html.replace(/<[^>]+>/g, '');
-  conversationLog.push({ role, text: plainText });
+  activeEp().conversationLog.push({ role, text: plainText });
 
   // Parse response for state updates
   if (role === 'boo') parseForStateUpdates(html);
@@ -3561,8 +3582,6 @@ function addDateFromPanel() {
 }
 
 
-let briefContent = '';
-let briefFlags = [];
 let briefFeedOpen = false;
 
 // Initialize panel
@@ -3577,12 +3596,12 @@ function buildBriefPrompt() {
   var openActions = actionItems.filter(function(a){ return !a.done; });
   var feelAfter = (ep1 && ep1.feelAfter && ep1.feelAfter !== 'TBD -- pending answer from hosts')
     ? ep1.feelAfter : 'TBD -- still needs to be decided by Matt and Kartik';
-  var bakedCtx = (state.bakedContext && state.bakedContext.length > 0)
-    ? state.bakedContext.map(function(c){ return '- ' + c; }).join('\n')
+  var bakedCtx = (activeEp().bakedContext.length > 0)
+    ? activeEp().bakedContext.map(function(c){ return '- ' + c; }).join('\n')
     : 'None yet';
 
   // Pull recent chat — last 40 turns, capped at 4000 chars
-  var recentChat = conversationLog.slice(-40).map(function(m) {
+  var recentChat = activeEp().conversationLog.slice(-40).map(function(m) {
     return (m.role === 'boo' ? 'BOO' : 'MARK') + ': ' + m.text;
   }).join('\n');
   if (recentChat.length > 4000) recentChat = recentChat.slice(-4000);
@@ -3675,8 +3694,8 @@ async function generateBrief() {
     const data = await res.json();
     if (data.error) throw new Error(data.error.message);
 
-    briefContent = data.content[0].text;
-    renderBriefProse(briefContent);
+    activeEp().briefContent = data.content[0].text;
+    renderBriefProse(activeEp().briefContent);
 
     const now = new Date().toLocaleString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
@@ -3794,11 +3813,11 @@ async function feedBoo() {
       });
     }
 
-    briefContent = briefText;
+    activeEp().briefContent = briefText;
     renderBriefProse(briefText);
 
     if (newFlags.length > 0) {
-      briefFlags = briefFlags.concat(newFlags);
+      activeEp().briefFlags = activeEp().briefFlags.concat(newFlags);
       renderFlagsPanel();
     }
 
@@ -3818,7 +3837,7 @@ async function feedBoo() {
 function renderFlagsPanel() {
   const panel = document.getElementById('briefFlags');
   const body = document.getElementById('briefFlagsBody');
-  const unbaked = briefFlags.filter(f => !f.baked);
+  const unbaked = activeEp().briefFlags.filter(f => !f.baked);
 
   if (unbaked.length === 0) {
     panel.classList.remove('show');
@@ -3827,7 +3846,7 @@ function renderFlagsPanel() {
 
   panel.classList.add('show');
   body.innerHTML = unbaked.map(function(f, i) {
-    var globalIdx = briefFlags.indexOf(f);
+    var globalIdx = activeEp().briefFlags.indexOf(f);
     return '<div class="brief-flag-item" id="flag-' + i + '">'
       + '<div class="brief-flag-label">NEW</div>'
       + '<div class="brief-flag-text">' + f.text + '</div>'
@@ -3837,13 +3856,11 @@ function renderFlagsPanel() {
 }
 
 function bakeFlag(idx) {
-  const flag = briefFlags[idx];
+  const flag = activeEp().briefFlags[idx];
   if (!flag) return;
   flag.baked = true;
 
-  // Add to a running baked context store
-  if (!state.bakedContext) state.bakedContext = [];
-  state.bakedContext.push(flag.text);
+  activeEp().bakedContext.push(flag.text);
 
   renderFlagsPanel();
   showToast('✓ Baked into Boo\'s permanent context');
@@ -3851,16 +3868,16 @@ function bakeFlag(idx) {
 }
 
 function clearFlags() {
-  briefFlags = briefFlags.map(f => ({ ...f, baked: true }));
+  activeEp().briefFlags = activeEp().briefFlags.map(f => ({ ...f, baked: true }));
   renderFlagsPanel();
 }
 
 function exportBrief() {
-  if (!briefContent) {
+  if (!activeEp().briefContent) {
     showToast('Generate the brief first.');
     return;
   }
-  const plain = briefContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+  const plain = activeEp().briefContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
   const header = [
     'ANNO CODING PODCAST',
     'Context Brief',
@@ -4061,8 +4078,7 @@ buildSessionSnapshot = function() {
   const snap = _origBuildSnapshot();
   snap.actionItems = actionItems.slice();
   snap.recordingDates = state.recordingDates ? state.recordingDates.slice() : [];
-  snap.briefFlags = briefFlags.slice();
-  snap.bakedContext = state.bakedContext ? state.bakedContext.slice() : [];
+  snap.episodeStore = JSON.parse(JSON.stringify(episodeStore));
   snap.aiIdCounter = aiIdCounter;
   return snap;
 };
@@ -4070,15 +4086,24 @@ buildSessionSnapshot = function() {
 // ── PATCH applySession TO RESTORE ACTION ITEMS ──
 const _origApplySession = applySession;
 applySession = function(data) {
+  // Restore episodeStore BEFORE calling base so activeEp() works during conversation render
+  if (data.episodeStore && typeof data.episodeStore === 'object') {
+    Object.keys(data.episodeStore).forEach(function(k) {
+      episodeStore[k] = data.episodeStore[k];
+    });
+  } else {
+    // Migrate from flat format (old saves)
+    var key = (data.state && data.state.currentEpisode) ? data.state.currentEpisode.number : 1;
+    if (!episodeStore[key]) episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [] };
+    if (data.conversationLog) episodeStore[key].conversationLog = data.conversationLog.slice();
+    if (data.briefFlags) episodeStore[key].briefFlags = data.briefFlags.slice();
+    if (data.bakedContext) episodeStore[key].bakedContext = data.bakedContext.slice();
+  }
+
   _origApplySession(data);
+
   if (data.recordingDates && Array.isArray(data.recordingDates)) {
     state.recordingDates = data.recordingDates;
-  }
-  if (data.briefFlags && Array.isArray(data.briefFlags)) {
-    briefFlags = data.briefFlags;
-  }
-  if (data.bakedContext && Array.isArray(data.bakedContext)) {
-    state.bakedContext = data.bakedContext;
   }
   if (data.actionItems && Array.isArray(data.actionItems)) {
     actionItems.length = 0;
@@ -4114,7 +4139,7 @@ function buildSessionSnapshot() {
       script: state.script,
       runOfShow: state.runOfShow,
     },
-    conversationLog: conversationLog.slice(-60), // last 60 messages
+    conversationLog: activeEp().conversationLog.slice(-60), // for message count display on load
     meta: {
       episodeCount: state.seasons.reduce((n, s) => n + (s.episodes || []).length, 0),
       hasScript: !!state.script,
@@ -4293,13 +4318,11 @@ function applySession(data) {
   state.script = s.script || null;
   state.runOfShow = s.runOfShow || null;
 
-  // Restore conversation
+  // Restore conversation from episodeStore (populated by patch before this call)
   const msgs = document.getElementById('messages');
   msgs.innerHTML = '';
-  conversationLog.length = 0;
 
-  (data.conversationLog || []).forEach(entry => {
-    conversationLog.push(entry);
+  activeEp().conversationLog.forEach(entry => {
     const div = document.createElement('div');
     div.className = 'msg ' + (entry.role);
     const avatarText = entry.role === 'boo' ? '🎬' : 'U';
@@ -4313,6 +4336,9 @@ function applySession(data) {
   });
   msgs.scrollTop = msgs.scrollHeight;
 
+  // Restore brief panel if this episode has content
+  if (activeEp().briefContent) renderBriefProse(activeEp().briefContent);
+
   // Restore views
   if (state.runOfShow) updateRosView(state.runOfShow);
   if (state.script) updateTeleprompter(state.script);
@@ -4325,6 +4351,98 @@ function applySession(data) {
   addMsg('boo', 'Welcome back. I\'ve reloaded your session from <strong>' + (data.savedAtDisplay || 'your last save') + '</strong>.' + (epLine) + (guestLine) + ' Pick up wherever you left off — what do you want to work on?');
 
   showToast('✓ Session loaded');
+}
+
+// ── EPISODE SWITCHER ──
+
+function renderEpList() {
+  const panel = document.getElementById('ep-list-panel');
+  const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
+  const currentNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  let html = episodes.map(function(ep) {
+    const isCurrent = ep.number === currentNum;
+    const label = 'EP ' + ep.number + (ep.title && ep.title !== 'TBD' && ep.title !== 'TBD — pending emotional landing decision' ? ' · ' + ep.title.slice(0, 22) : '');
+    return '<button class="ep-list-item' + (isCurrent ? ' ep-current' : '') + '" onclick="switchEpisode(' + ep.number + ')">' + label + '</button>';
+  }).join('');
+  html += '<button class="ep-list-item ep-new" onclick="addNewEpisode()">+ NEW EPISODE</button>';
+  panel.innerHTML = html;
+}
+
+function toggleEpList() {
+  const panel = document.getElementById('ep-list-panel');
+  if (panel.style.display === 'none') {
+    renderEpList();
+    panel.style.display = 'block';
+    setTimeout(function() {
+      document.addEventListener('click', closeEpListOnOutside, { once: true });
+    }, 0);
+  } else {
+    panel.style.display = 'none';
+  }
+}
+
+function closeEpListOnOutside(e) {
+  const switcher = document.getElementById('ep-switcher');
+  if (!switcher.contains(e.target)) {
+    document.getElementById('ep-list-panel').style.display = 'none';
+  }
+}
+
+function switchEpisode(num) {
+  document.getElementById('ep-list-panel').style.display = 'none';
+  if (state.currentEpisode && state.currentEpisode.number === num) return;
+
+  const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
+  const ep = episodes.find(function(e) { return e.number === num; });
+  if (!ep) return;
+
+  state.currentEpisode = { number: ep.number, title: ep.title, status: ep.status };
+
+  // Re-render chat for this episode
+  const msgs = document.getElementById('messages');
+  msgs.innerHTML = '';
+  activeEp().conversationLog.forEach(function(entry) {
+    const div = document.createElement('div');
+    div.className = 'msg ' + entry.role;
+    const avatarText = entry.role === 'boo' ? '🎬' : 'U';
+    const name = entry.role === 'boo' ? 'Boo' : 'You';
+    div.innerHTML = '<div class="msg-avatar">' + avatarText + '</div>'
+      + '<div class="msg-body">'
+      + '<div class="msg-name">' + name + '</div>'
+      + '<div class="msg-bubble">' + formatBubble(entry.text) + '</div>'
+      + '</div>';
+    msgs.appendChild(div);
+  });
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // Restore brief panel for this episode
+  const prose = document.getElementById('briefProse');
+  if (activeEp().briefContent) {
+    renderBriefProse(activeEp().briefContent);
+  } else {
+    prose.innerHTML = '<div class="brief-generating" id="briefPlaceholder"><div class="brief-generating-dots"><span></span><span></span><span></span></div><div>Boo is writing the brief...</div></div>';
+  }
+
+  // Update switcher button label
+  document.getElementById('ep-switch-btn').textContent = 'EP ' + num + ' ▾';
+
+  updateContextBar();
+  updateRightPanel();
+  autoSave('episode switch');
+
+  // Greet if this episode has no conversation yet
+  if (activeEp().conversationLog.length === 0) {
+    addMsg('boo', 'Switched to <strong>Episode ' + num + '</strong>. This episode is a fresh start — what are we building here?');
+  }
+}
+
+function addNewEpisode() {
+  document.getElementById('ep-list-panel').style.display = 'none';
+  const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
+  const nextNum = episodes.length + 1;
+  const newEp = { number: nextNum, title: 'TBD', status: 'planning' };
+  state.seasons[0].episodes.push(newEp);
+  switchEpisode(nextNum);
 }
 
 // Hook auto-save into key milestones
