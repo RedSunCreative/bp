@@ -480,6 +480,14 @@
     border: 1px solid var(--border);
   }
 
+  .guest-card-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    flex-shrink: 0;
+    align-items: stretch;
+  }
+
   .select-guest-btn {
     padding: 5px 12px;
     border-radius: 6px;
@@ -491,10 +499,36 @@
     font-family: 'DM Mono', monospace;
     white-space: nowrap;
     transition: all 0.15s;
-    flex-shrink: 0;
+    text-align: center;
   }
-
   .select-guest-btn:hover { background: rgba(245,208,58,0.12); }
+
+  .invite-compact-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--green);
+    background: transparent;
+    color: var(--green);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .invite-compact-btn:hover { background: rgba(74,222,128,0.12); }
+
+  .guest-tier {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .guest-tier.spotlight { color: var(--gold); }
+  .guest-tier.rising    { color: var(--teal); }
+  .guest-tier.discovery { color: #FF8B3D; }
 
   /* Script view */
   .script-section {
@@ -2769,7 +2803,8 @@ Before planning anything else, gather all of these — but ask them conversation
 STEP 2 — GUEST (only after intent is clear)
 - Ask: Do you have a guest in mind, or should I research and bring you a few options?
 - If researching: return 3-5 profiles, one per line, formatted EXACTLY as:
-  FULL NAME | Title or Role | Why they fit the show | Topic 1, Topic 2, Topic 3 | LinkedIn: linkedin.com/in/their-slug, YouTube: youtube.com/@channel, Substack: name.substack.com, Instagram: instagram.com/handle, Podcast: name-of-show
+  FULL NAME | Title, Organization | 2-3 sentence description: who they are professionally + what makes their perspective unique for THIS show | Topic 1, Topic 2, Topic 3 | Tier: Spotlight/Rising/Discovery, LinkedIn: linkedin.com/in/their-slug, YouTube: youtube.com/@channel, Substack: name.substack.com, Instagram: instagram.com/handle, Podcast: name-of-show
+- Tier definitions — Spotlight: large established platform (100k+ following, major publication, keynote circuit); Rising: growing presence with an engaged niche audience (1k–100k); Discovery: under the radar — a practitioner, researcher, or voice that most hosts would miss but has something remarkable to say. Discovery is the diamond-in-the-rough find.
 - For links: always include LinkedIn and any other channels you know. Use the best-guess URL format (e.g., linkedin.com/in/firstname-lastname). Omit a link type only if you have no idea — never write "N/A". The UI flags all links as unverified so hosts can confirm before sending.
 - After guest is confirmed: offer outreach email and/or guest research brief
 
@@ -3086,13 +3121,24 @@ function parseGuestLinks(text) {
   return links;
 }
 
-function buildGuestCard(name, title, why, topics, links, idx) {
+function buildGuestCard(name, title, why, topics, links, idx, tier) {
   const safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   const safeTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   const cardId = 'gc-' + name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
 
+  // Tier badge
+  const tierNorm = (tier || '').toLowerCase().trim();
+  let tierHtml = '';
+  if (tierNorm === 'spotlight') {
+    tierHtml = '<div class="guest-tier spotlight">★ SPOTLIGHT</div>';
+  } else if (tierNorm === 'rising') {
+    tierHtml = '<div class="guest-tier rising">↑ RISING</div>';
+  } else if (tierNorm === 'discovery') {
+    tierHtml = '<div class="guest-tier discovery">◆ DISCOVERY</div>';
+  }
+
   const tagHtml = topics
-    ? topics.split(',').map(t => '<span class="tag">' + (t.trim()) + '</span>').join('')
+    ? topics.split(',').map(t => t.trim()).filter(Boolean).map(t => '<span class="tag">' + t + '</span>').join('')
     : '';
 
   // Build link pills
@@ -3115,17 +3161,18 @@ function buildGuestCard(name, title, why, topics, links, idx) {
     <div class="guest-card" id="${cardId}" data-name="${safeName}" data-title="${safeTitle}">
       <div class="guest-card-header">
         <div style="flex:1;min-width:0;">
-          <div class="guest-name">${name}</div>
-          <div class="guest-title">${title}</div>
+          ${tierHtml}
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#E8E8E6;line-height:1.2;margin-bottom:3px;">${name}</div>
+          <div style="font-size:12px;color:var(--teal);line-height:1.4;">${title}</div>
         </div>
-        <button class="select-guest-btn" onclick="considerGuest('${safeName}', '${safeTitle}', this)">+ Consider</button>
+        <div class="guest-card-actions">
+          <button class="select-guest-btn" onclick="considerGuest('${safeName}', '${safeTitle}', this)">+ Consider</button>
+          <button class="invite-compact-btn" onclick="openGmailInvite('${safeName}', '${safeTitle}')">✉ Invite</button>
+        </div>
       </div>
-      <div class="guest-why">${why}</div>
-      ${tagHtml ? '<div class="guest-tags">' + (tagHtml) + '</div>' : ''}
+      ${why ? '<div class="guest-why" style="margin-top:8px;">' + why + '</div>' : ''}
+      ${tagHtml ? '<div class="guest-tags">' + tagHtml + '</div>' : ''}
       ${linkHtml}
-      <button class="invite-btn" onclick="openGmailInvite('${safeName}', '${safeTitle}')">
-        ✉ Invite Guest
-      </button>
     </div>`;
 }
 
@@ -3154,17 +3201,19 @@ function formatGuestSuggestions(text) {
       // Join all remaining fields — Boo may return 4 or 5+ pipe-separated parts
       const topicsAndLinks = parts.slice(3).join(', ');
 
-      // Separate links from topics
-      const allItems = topicsAndLinks.split(',').map(s => s.trim());
+      // Separate links, tier, and topics
+      const allItems = topicsAndLinks.split(',').map(s => s.trim()).filter(Boolean);
       const linkKeywords = ['linkedin', 'http', 'youtube', 'youtu.be', 'spotify', 'podcast', 'apple', 'substack', 'instagram'];
       const linkItems = allItems.filter(s => s.includes('.') && linkKeywords.some(k => s.toLowerCase().includes(k)));
-      const topics = allItems.filter(s => !linkItems.includes(s)).join(', ');
+      const tierItem = allItems.find(s => /^tier:/i.test(s));
+      const tier = tierItem ? tierItem.replace(/^tier:\s*/i, '').trim() : '';
+      const topics = allItems.filter(s => !linkItems.includes(s) && s !== tierItem).join(', ');
 
       // Parse links from the link items and from why text
       const rawLinkText = linkItems.join(' ') + ' ' + why;
       const links = parseGuestLinks(rawLinkText);
 
-      guestCards += buildGuestCard(name, title, why, topics, links, cardIdx++);
+      guestCards += buildGuestCard(name, title, why, topics, links, cardIdx++, tier);
     } else if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
       // Bullet points after a card — could be additional guest info
       pendingExtras.push(trimmed);
