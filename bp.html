@@ -2723,6 +2723,25 @@ Which episode slot do you want to fill first?`);
 }
 
 function findGuest(context) {
+  // ── TESTING GUARD (remove this block before beta release) ──────────────────
+  // During testing, if Boo has already responded in this episode, intercept and
+  // ask before wiping the existing hypothesis. In beta, Find a Guest always runs fresh.
+  if (!context) {
+    const log = activeEp().conversationLog || [];
+    if (log.some(function(e) { return e.role === 'boo'; })) {
+      setView('chat');
+      addMsg('boo',
+        'I already have a take on this episode. Pick up where we left off, or start fresh with a new angle?' +
+        '<div class="msg-actions" style="margin-top:10px;">' +
+        '<button class="action-btn teal" onclick="document.getElementById(\'messages\').scrollTop=0">↑ Continue from here</button>' +
+        '<button class="action-btn" onclick="findGuest(\'fresh\')">↺ Start Fresh</button>' +
+        '</div>'
+      );
+      return;
+    }
+  }
+  // ── END TESTING GUARD ──────────────────────────────────────────────────────
+
   const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
   const seasonNum = state.currentSeason ? state.currentSeason.number : 1;
   const epRef = 'S' + seasonNum + '-E' + epNum;
@@ -2748,7 +2767,7 @@ function findGuest(context) {
     if (seasonTheme) prompt += ' Season theme: "' + seasonTheme + '".';
     if (arcRole) prompt += ' Arc role: ' + arcRole + '.';
     if (tension) prompt += ' Central tension: ' + tension + '.';
-    if (context && context !== 'more') prompt += ' Additional context: ' + context + '.';
+    if (context && context !== 'more' && context !== 'fresh') prompt += ' Additional context: ' + context + '.';
     prompt += ' Before pulling names: in 2 sentences, share your hypothesis for the ideal guest type (who they are professionally and the specific angle they bring to this episode). Then ask me ONE specific question — something that would meaningfully change who you look for. Do not return candidate names yet. When you do return names, always include at least one T3 Discovery guest — someone under the radar who may only have a LinkedIn or a blog, but has something remarkable to say.';
   }
 
