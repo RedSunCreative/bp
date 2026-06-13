@@ -3271,9 +3271,8 @@ function formatGuestSuggestions(text) {
       const tier = tierItem ? tierItem.replace(/^tier:\s*/i, '').trim() : '';
       const topics = allItems.filter(s => !linkItems.includes(s) && s !== tierItem).join(', ');
 
-      // Parse links from the link items and from why text
-      const rawLinkText = linkItems.join(' ') + ' ' + why;
-      const links = parseGuestLinks(rawLinkText);
+      // Parse links from the entire line so any URL Boo mentions gets captured
+      const links = parseGuestLinks(trimmed);
 
       guestCards += buildGuestCard(name, title, why, topics, links, cardIdx++, tier);
     } else if (trimmed.startsWith('-') || trimmed.startsWith('•')) {
