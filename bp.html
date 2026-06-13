@@ -902,7 +902,8 @@
   .show-countdown-time.empty{color:var(--border);font-size:13px;letter-spacing:1px;}
   .ep-switch-btn{font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;color:#F5A623;background:rgba(245,208,58,0.1);border:2px solid var(--gold);border-radius:6px;padding:6px 14px;cursor:pointer;letter-spacing:0.08em;white-space:nowrap;min-width:52px;text-align:center;}
   .ep-switch-btn:hover{background:rgba(245,208,58,0.2);}
-  .save-badge{font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:400;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;}
+  .save-badge{font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:400;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;cursor:pointer;background:none;border:none;padding:0;}
+  .save-badge:hover{color:#5ee8fc;}
   .settings-gear{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:21px;transition:border-color 0.15s;line-height:1;}
   .settings-gear:hover{border-color:var(--muted);}
   .release-inputs{display:flex;gap:8px;align-items:center;margin-top:2px;}
@@ -2250,7 +2251,7 @@
             <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
           </div>
           <button class="settings-gear" onclick="openShowInfo()" title="Show info">⚙</button>
-          <div class="save-badge" id="save-badge">● READY</div>
+          <button class="save-badge" id="save-badge" onclick="autoSave('manual')" title="Click to save now">● READY</button>
         </div>
       </div>
 
@@ -2777,7 +2778,7 @@ async function triggerBooDirectly(displayText, apiPrompt) {
     hideTyping();
     const parsed = parseReply(reply);
     addMsg('boo', parsed);
-    if (activeEp().script || activeEp().runOfShow) autoSave('boo direct trigger');
+    autoSave('conversation updated');
   } catch (err) {
     activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
     hideTyping();
@@ -5557,10 +5558,7 @@ function addNewEpisode() {
 const _origSendMessage = sendMessage;
 sendMessage = async function() {
   await _origSendMessage();
-  // Check if script or ROS was just built
-  if (activeEp().script || activeEp().runOfShow) {
-    autoSave('script/ROS updated');
-  }
+  autoSave('conversation updated');
 };
 
 document.addEventListener('DOMContentLoaded', initApp);
