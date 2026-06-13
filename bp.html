@@ -2769,8 +2769,8 @@ Before planning anything else, gather all of these — but ask them conversation
 STEP 2 — GUEST (only after intent is clear)
 - Ask: Do you have a guest in mind, or should I research and bring you a few options?
 - If researching: return 3-5 profiles, one per line, formatted EXACTLY as:
-  FULL NAME | Title or Role | Why they fit the show | Topic 1, Topic 2, Topic 3 | LinkedIn: linkedin.com/in/their-handle, Podcast: podcast name and link or N/A, On Camera: YouTube or other video link or N/A
-- For links: provide your best known URL. Label clearly as LinkedIn, Podcast, or On Camera. If unsure of exact URL, provide the most likely format. The UI will flag all links as unverified for the hosts to confirm before sending.
+  FULL NAME | Title or Role | Why they fit the show | Topic 1, Topic 2, Topic 3 | LinkedIn: linkedin.com/in/their-slug, YouTube: youtube.com/@channel, Substack: name.substack.com, Instagram: instagram.com/handle, Podcast: name-of-show
+- For links: always include LinkedIn and any other channels you know. Use the best-guess URL format (e.g., linkedin.com/in/firstname-lastname). Omit a link type only if you have no idea — never write "N/A". The UI flags all links as unverified so hosts can confirm before sending.
 - After guest is confirmed: offer outreach email and/or guest research brief
 
 STEP 3 — SCRIPT (only after guest is confirmed)
@@ -2867,11 +2867,15 @@ function addMsg(role, html, actions) {
   const avatarText = role === 'boo' ? '🎬' : (role === 'user' ? 'U' : '');
   const name = role === 'boo' ? 'Boo' : 'You';
 
+  // Skip markdown→HTML conversion when content is already rendered HTML
+  const isHtml = html.includes('<div ') || html.includes('<button') || html.includes('<strong>');
+  const content = isHtml ? html : formatBubble(html);
+
   div.innerHTML = `
     <div class="msg-avatar">${avatarText}</div>
     <div class="msg-body">
       <div class="msg-name">${name}</div>
-      <div class="msg-bubble">${formatBubble(html)}${actions ? buildActions(actions) : ''}</div>
+      <div class="msg-bubble">${content}${actions ? buildActions(actions) : ''}</div>
     </div>
   `;
 
@@ -3057,12 +3061,13 @@ function formatRunOfShow(text) {
 
 
 function parseGuestLinks(text) {
-  // Extract LinkedIn, podcast, YouTube/video links from free text
+  // Extract LinkedIn, podcast, YouTube/video, Substack, Instagram links from free text
   const links = [];
   const patterns = [
-    { re: /linkedin\.com\/in\/([a-zA-Z0-9\-]+)/i, label: 'LinkedIn', icon: 'in' },
-    { re: /linkedin\.com\/pub\/([a-zA-Z0-9\-\/]+)/i, label: 'LinkedIn', icon: 'in' },
-    { re: /(youtube\.com\/(watch|channel|@[a-zA-Z0-9_]+)|youtu\.be\/[a-zA-Z0-9_\-]+)/i, label: 'YouTube', icon: '▶' },
+    { re: /linkedin\.com\/(in|pub)\/([a-zA-Z0-9\-_.]+)/i, label: 'LinkedIn', icon: 'in' },
+    { re: /(youtube\.com\/(watch\?[^\s,]*|channel\/[a-zA-Z0-9_\-]+|@[a-zA-Z0-9_]+)|youtu\.be\/[a-zA-Z0-9_\-]+)/i, label: 'YouTube', icon: '▶' },
+    { re: /([a-zA-Z0-9\-]+)\.substack\.com(\/[^\s,]*)?/i, label: 'Substack', icon: '✉' },
+    { re: /instagram\.com\/([a-zA-Z0-9_\.]+)/i, label: 'Instagram', icon: '◉' },
     { re: /(podcasts\.apple\.com|open\.spotify\.com\/show|podcasts\.google\.com)[^\s,]*/i, label: 'Podcast', icon: '🎙' },
     { re: /https?:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,}(\/[^\s,]*)?/i, label: 'Website', icon: '🔗' },
   ];
@@ -3144,14 +3149,15 @@ function formatGuestSuggestions(text) {
       inGuests = true;
       const parts = trimmed.split('|').map(p => p.trim());
       const name = parts[0].replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').trim();
-      const title = parts[1] || '';
-      const why = parts[2] || '';
+      const title = (parts[1] || '').replace(/\*\*/g, '').replace(/\*/g, '').trim();
+      const why = (parts[2] || '').replace(/\*\*/g, '').trim();
       // Join all remaining fields — Boo may return 4 or 5+ pipe-separated parts
       const topicsAndLinks = parts.slice(3).join(', ');
 
       // Separate links from topics
       const allItems = topicsAndLinks.split(',').map(s => s.trim());
-      const linkItems = allItems.filter(s => s.includes('.') && (s.includes('linkedin') || s.includes('http') || s.includes('youtube') || s.includes('spotify') || s.includes('podcast') || s.includes('apple')));
+      const linkKeywords = ['linkedin', 'http', 'youtube', 'youtu.be', 'spotify', 'podcast', 'apple', 'substack', 'instagram'];
+      const linkItems = allItems.filter(s => s.includes('.') && linkKeywords.some(k => s.toLowerCase().includes(k)));
       const topics = allItems.filter(s => !linkItems.includes(s)).join(', ');
 
       // Parse links from the link items and from why text
