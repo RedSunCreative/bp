@@ -859,6 +859,19 @@
     flex-direction: column;
   }
 
+  /* ── BEB RIGHT PANEL TOP-BAR ── */
+  .rp-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px 10px;background:var(--card);border-bottom:1px solid var(--border);margin:-20px -20px 16px -20px;}
+  .show-countdown{display:flex;flex-direction:column;align-items:flex-start;}
+  .show-countdown-label{font-family:'DM Mono',monospace;font-size:0.6rem;font-weight:400;color:#8A8A9A;letter-spacing:0.15em;text-transform:uppercase;line-height:1;}
+  .show-countdown-time{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:#4FC3F7;letter-spacing:0.02em;line-height:1.3;}
+  .show-countdown-time.urgent{color:var(--gold);}
+  .show-countdown-time.empty{color:var(--border);font-size:13px;letter-spacing:1px;}
+  .ep-switch-btn{font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;color:#F5A623;background:rgba(245,208,58,0.1);border:2px solid var(--gold);border-radius:6px;padding:6px 14px;cursor:pointer;letter-spacing:0.08em;white-space:nowrap;min-width:52px;text-align:center;}
+  .ep-switch-btn:hover{background:rgba(245,208,58,0.2);}
+  .save-badge{font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:400;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;}
+  .settings-gear{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:14px;transition:border-color 0.15s;}
+  .settings-gear:hover{border-color:var(--muted);}
+
   /* ── BEB DATA PANEL — transplanted from BEB verbatim ── */
   .data-panel{overflow-y:auto;height:100%;padding:20px;flex:1;}
   .data-section{background:var(--card);border-radius:10px;border:1px solid var(--border);margin-bottom:14px;overflow:hidden;transition:border-color 0.15s,opacity 0.15s;}
@@ -1808,8 +1821,6 @@
   .episode-card.current .ep-number { color: var(--gold); }
 
   .ep-switcher { position: relative; display: inline-block; }
-  .ep-switch-btn { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: var(--gold); background: rgba(245,208,58,0.08); border: 1px solid var(--gold); border-radius: 6px; padding: 5px 12px; cursor: pointer; letter-spacing: 0.08em; white-space: nowrap; }
-  .ep-switch-btn:hover { background: rgba(245,208,58,0.18); }
   .ep-list-panel { position: absolute; right: 0; top: calc(100% + 6px); background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; min-width: 180px; z-index: 200; box-shadow: 0 8px 24px rgba(0,0,0,0.5); overflow: hidden; }
   .ep-list-item { display: block; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--border); padding: 10px 14px; font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 700; color: var(--text); letter-spacing: 0.06em; cursor: pointer; }
   .ep-list-item:last-child { border-bottom: none; }
@@ -2171,6 +2182,23 @@
   <!-- Right Panel — BEB transplant -->
   <div class="right-panel">
     <div class="data-panel">
+
+      <!-- Top bar: countdown + episode switcher + gear + save badge -->
+      <div class="rp-topbar">
+        <div class="show-countdown" title="Countdown to next recording">
+          <div class="show-countdown-label">NEXT SHOW</div>
+          <div class="show-countdown-time empty" id="show-countdown-time">— —</div>
+          <div id="show-countdown-sub" style="font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.08em;line-height:1;margin-top:1px;"></div>
+        </div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+          <div style="position:relative;" id="rp-ep-switcher">
+            <button class="ep-switch-btn" id="ep-switch-btn" onclick="toggleRpEpList()">S1-E1 ▾</button>
+            <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
+          </div>
+          <button class="settings-gear" onclick="openShowInfo()" title="Show info">⚙</button>
+          <div class="save-badge" id="save-badge">● READY</div>
+        </div>
+      </div>
 
       <div class="data-section" data-sec="ep">
         <div class="data-section-header" onclick="toggleSection('ep-body')">
@@ -3338,6 +3366,8 @@ function setPanelTab(tab, el) {
 
 function updateRightPanel() {
   updateEpisodeStatusCard();
+  updateCountdown();
+  updateEpSwitchBtn();
   var content = document.getElementById('panelContent');
   if (!content) return;
 
@@ -4076,6 +4106,135 @@ function bpScriptAction(type) {
   });
 })();
 
+// ── RIGHT PANEL TOP BAR ──────────────────────────────────────────────────────
+
+function makeShowTimeCT(dateStr, timeHHMM) {
+  if (!dateStr || !timeHHMM) return null;
+  var parts = timeHHMM.match(/^(\d{1,2}):(\d{2})$/);
+  if (!parts) return null;
+  var h = parseInt(parts[1], 10), m = parseInt(parts[2], 10);
+  var isoLike = dateStr + 'T' + (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m + ':00';
+  var ctOffset = -6; // CT = UTC-6 (CST); CDT is UTC-5 — simple version uses fixed offset
+  var local = new Date(isoLike);
+  var utc = local.getTime() + local.getTimezoneOffset() * 60000;
+  return new Date(utc - ctOffset * 3600000);
+}
+
+function formatShowTimeCT(timeHHMM) {
+  if (!timeHHMM) return '';
+  var parts = timeHHMM.match(/^(\d{1,2}):(\d{2})$/);
+  if (!parts) return timeHHMM + ' CT';
+  var h = parseInt(parts[1], 10), m = parseInt(parts[2], 10);
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm + ' CT';
+}
+
+function updateCountdown() {
+  var timeEl = document.getElementById('show-countdown-time');
+  var subEl = document.getElementById('show-countdown-sub');
+  if (!timeEl) return;
+  var dates = activeEp().recordingDates || [];
+  var future = dates.filter(function(s) { return !isSlotPassed(s.date, s.time); });
+  future.sort(function(a, b) { return (a.date + a.time) < (b.date + b.time) ? -1 : 1; });
+  if (future.length === 0) {
+    timeEl.textContent = '— —'; timeEl.className = 'show-countdown-time empty';
+    if (subEl) subEl.textContent = '';
+    return;
+  }
+  var slot = future[0];
+  var show = makeShowTimeCT(slot.date, slot.time || '10:00');
+  if (!show || isNaN(show.getTime())) {
+    timeEl.textContent = '— —'; timeEl.className = 'show-countdown-time empty';
+    if (subEl) subEl.textContent = '';
+    return;
+  }
+  if (subEl) subEl.textContent = formatShowTimeCT(slot.time || '10:00');
+  var diff = show.getTime() - Date.now();
+  if (diff <= 0) {
+    timeEl.textContent = 'SHOWTIME'; timeEl.className = 'show-countdown-time urgent';
+    return;
+  }
+  var totalMins = Math.floor(diff / 60000);
+  var d = Math.floor(totalMins / 1440);
+  var h = Math.floor((totalMins % 1440) / 60);
+  var m = totalMins % 60;
+  var parts = [];
+  if (d > 0) parts.push(d + 'd');
+  if (h > 0 || d > 0) parts.push(h + 'h');
+  parts.push(m + 'm');
+  timeEl.textContent = parts.join(' ');
+  timeEl.className = 'show-countdown-time' + (d === 0 ? ' urgent' : '');
+}
+
+function updateEpSwitchBtn() {
+  var btn = document.getElementById('ep-switch-btn');
+  if (!btn) return;
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  btn.textContent = 'S' + seasonNum + '-E' + epNum + ' ▾';
+}
+
+function toggleRpEpList() {
+  var panel = document.getElementById('ep-list-panel');
+  if (!panel) return;
+  if (panel.style.display !== 'none') {
+    panel.style.display = 'none';
+  } else {
+    renderRpEpList();
+    panel.style.display = 'block';
+  }
+}
+
+function renderRpEpList() {
+  var panel = document.getElementById('ep-list-panel');
+  if (!panel) return;
+  var episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
+  var currentNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var html = '';
+  episodes.forEach(function(ep) {
+    var label = 'S' + seasonNum + '-E' + ep.number;
+    var isCurrent = ep.number === currentNum;
+    var title = (ep.title && ep.title.indexOf('TBD') !== 0) ? ep.title : '';
+    html += '<button class="ep-list-item' + (isCurrent ? ' ep-current' : '') + '" onclick="rpSwitchEpisode(' + ep.number + ')">'
+      + '<span>' + label + (isCurrent ? ' ✓' : '') + '</span>'
+      + (title ? '<span style="display:block;font-size:9px;font-weight:400;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">' + title + '</span>' : '')
+      + '</button>';
+  });
+  html += '<button class="ep-list-item ep-new" onclick="rpNewEpisode()">+ NEW EPISODE</button>';
+  panel.innerHTML = html;
+}
+
+function rpSwitchEpisode(num) {
+  var panel = document.getElementById('ep-list-panel');
+  if (panel) panel.style.display = 'none';
+  switchEpisode(num);
+}
+
+function rpNewEpisode() {
+  var panel = document.getElementById('ep-list-panel');
+  if (panel) panel.style.display = 'none';
+  addNewEpisode();
+}
+
+function setSaveBadge(text, color) {
+  var el = document.getElementById('save-badge');
+  if (el) { el.textContent = text; el.style.color = color || ''; }
+}
+
+// Close episode dropdown when clicking outside it
+document.addEventListener('click', function(e) {
+  var switcher = document.getElementById('rp-ep-switcher');
+  var panel = document.getElementById('ep-list-panel');
+  if (switcher && panel && !switcher.contains(e.target) && panel.style.display !== 'none') {
+    panel.style.display = 'none';
+  }
+});
+
+// Refresh countdown every minute
+setInterval(updateCountdown, 60000);
+
 // Populate BEB-panel static fields from state on load
 (function initBebPanel() {
   var ep = state.currentEpisode;
@@ -4089,6 +4248,8 @@ function bpScriptAction(type) {
   if (title) setText('d-eptitle', title);
   setText('d-arcrole', (epData && epData.arcRole) || '');
   renderConsiderations();
+  updateEpSwitchBtn();
+  updateCountdown();
 })();
 
 // ── CONTEXT BRIEF ──
@@ -4671,6 +4832,7 @@ function saveSession() {
 function autoSave(reason) {
   clearTimeout(autoSaveTimeout);
   autoSaveTimeout = setTimeout(async () => {
+    setSaveBadge('● SAVING', '#8a96a8');
     const snapshot = buildSessionSnapshot();
     try {
       sessionStorage.setItem('boo_autosave', JSON.stringify(snapshot));
@@ -4686,8 +4848,10 @@ function autoSave(reason) {
         },
         body: JSON.stringify({ data: snapshot }),
       });
+      setSaveBadge('● SAVED', '#4FC3F7');
       showToast('✓ Auto-saved (' + reason + ')');
     } catch(e) {
+      setSaveBadge('● LOCAL', '#8a96a8');
       showToast('✓ Saved locally (' + reason + ')');
     }
   }, 1500);
@@ -4701,6 +4865,7 @@ async function loadFromSupabase() {
     const rows = await res.json();
     if (rows?.[0]?.data && Object.keys(rows[0].data).length > 0) {
       applySession(rows[0].data);
+      setSaveBadge('● LOADED', '#4ade80');
       showToast('✓ Session restored');
     }
   } catch(e) {}
