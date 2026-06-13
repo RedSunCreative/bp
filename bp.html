@@ -3191,12 +3191,16 @@ function buildGuestCard(name, title, why, topics, links, idx, tier) {
   // Tier badge
   const tierNorm = (tier || '').toLowerCase().trim();
   let tierHtml = '';
+  let tierNumTag = '';
   if (tierNorm === 'spotlight') {
-    tierHtml = '<div class="guest-tier spotlight">★ SPOTLIGHT</div>';
+    tierHtml = '<div class="guest-tier spotlight">T1 · SPOTLIGHT ★</div>';
+    tierNumTag = '<span style="font-size:10px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--teal);opacity:0.8;margin-left:6px;vertical-align:middle;">T1</span>';
   } else if (tierNorm === 'rising') {
-    tierHtml = '<div class="guest-tier rising">↑ RISING</div>';
+    tierHtml = '<div class="guest-tier rising">T2 · RISING ↑</div>';
+    tierNumTag = '<span style="font-size:10px;font-weight:700;font-family:\'DM Mono\',monospace;color:var(--gold);opacity:0.8;margin-left:6px;vertical-align:middle;">T2</span>';
   } else if (tierNorm === 'discovery') {
-    tierHtml = '<div class="guest-tier discovery">◆ DISCOVERY</div>';
+    tierHtml = '<div class="guest-tier discovery">T3 · DISCOVERY ◆</div>';
+    tierNumTag = '<span style="font-size:10px;font-weight:700;font-family:\'DM Mono\',monospace;color:#a78bfa;opacity:0.8;margin-left:6px;vertical-align:middle;">T3</span>';
   }
 
   const tagHtml = topics
@@ -3224,7 +3228,7 @@ function buildGuestCard(name, title, why, topics, links, idx, tier) {
       <div class="guest-card-header">
         <div style="flex:1;min-width:0;">
           ${tierHtml}
-          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#E8E8E6;line-height:1.2;margin-bottom:3px;">${name}</div>
+          <div style="font-family:'Syne',sans-serif;font-size:16px;font-weight:700;color:#E8E8E6;line-height:1.2;margin-bottom:3px;">${name}${tierNumTag}</div>
           <div style="font-size:12px;color:var(--teal);line-height:1.4;">${title}</div>
         </div>
         <div class="guest-card-actions">
