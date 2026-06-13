@@ -2023,7 +2023,7 @@
         <span class="action-dot" id="actionDot"></span>
       </button>
       <button class="nav-btn" onclick="setView('brief')" id="navBrief">
-        <span class="nav-icon">📋</span> Context Brief
+        <span class="nav-icon">📋</span> Master Brief
       </button>
     </div>
     <div class="divider"></div>
@@ -2111,8 +2111,8 @@
   <div class="chat-area brief-view" id="briefView" style="display:none; flex-direction:column;">
     <div class="brief-header">
       <div>
-        <div class="brief-title">📋 Anno Coding Context Brief</div>
-        <div class="brief-subtitle">LIVING DOCUMENT · BOO-GENERATED · FOR MATT, KARTIK &amp; MARK</div>
+        <div class="brief-title">📋 Anno Coding — Master Context Brief</div>
+        <div class="brief-subtitle">SHOW-LEVEL BIBLE · BOO-GENERATED · FOR MATT, KARTIK &amp; MARK</div>
       </div>
       <div class="brief-header-btns">
         <button class="brief-btn" onclick="toggleFeedPanel()">+ Add to Brief</button>
@@ -2295,6 +2295,18 @@
         </div>
         <div class="data-section-body" id="cues-body">
           <div id="cue-list-display"></div>
+        </div>
+      </div>
+
+      <div class="data-section" data-sec="ep-brief">
+        <div class="data-section-header" onclick="toggleSection('ep-brief-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Episode Brief <span class="tip-q" data-tip="Boo-generated brief for this episode. Switches with the episode dropdown." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="ep-brief-badge">—</div>
+        </div>
+        <div class="data-section-body" id="ep-brief-body" style="display:none;">
+          <div id="ep-brief-prose" style="font-size:11.5px;line-height:1.6;color:var(--muted);"></div>
+          <button id="ep-brief-generate-btn" onclick="generateEpisodeBrief()" style="margin-top:10px;width:100%;background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">↺ GENERATE EPISODE BRIEF</button>
         </div>
       </div>
 
@@ -2481,6 +2493,9 @@ const state = {
     status: 'planning',
   },
   activePanel: 'guest',
+  masterBriefContent: '',
+  masterBriefItems: [],
+  masterBriefFlags: [],
   showTemplate: [
     { id: 'st-1', name: 'Cold Open', note: 'Cut in post — pull charged moment from interview' },
     { id: 'st-2', name: 'Introductions', note: '' },
@@ -2552,7 +2567,7 @@ What do you want to work on?`, [
     { label: '🎤 Finish Episode 1 intent', action: () => finishEp1() },
     { label: '🔍 Find a guest', action: () => findGuest() },
     { label: '🌅 Work on A Moment of Hope', action: () => workOnHope() },
-    { label: '📋 Open Context Brief', action: () => setView('brief') },
+    { label: '📋 Open Master Brief', action: () => setView('brief') },
   ]);
 }
 
@@ -2634,7 +2649,7 @@ Here's what we now have for Episode 1:
 
 Episode 1 intent is complete. Ready to find a guest?`, [
     { label: '🔍 Find a guest for Episode 1', action: () => findGuest() },
-    { label: '📋 Open Context Brief', action: () => setView('brief') },
+    { label: '📋 Open Master Brief', action: () => setView('brief') },
   ]);
   autoSave('Episode 1 intent complete');
 }
@@ -2771,6 +2786,14 @@ Question of the Week | 2:00 | 5 min
 Guest Interview | 7:00 | 25 min
 Does It Matter? | 32:00 | 8 min
 Outro | 40:00 | 3 min
+
+===== SHOW-LEVEL DECISIONS =====
+When you recognize something as a show-level decision — something that applies to EVERY episode, not just this one — flag it at the END of your response using this exact format:
+SHOW-BRIEF: [the decision, stated clearly in one sentence]
+Examples:
+SHOW-BRIEF: Cold Open is always cut in post-production from the interview — not scripted in advance.
+SHOW-BRIEF: Every guest closes the interview with Fear / Opportunity / Wish, then introduces A Moment of Hope.
+Only flag genuinely show-level decisions. One or two per response maximum. Never mid-response.
 
 ===== ACTION ITEMS =====
 You automatically flag action items as you work. When you assign a task to someone, use this exact format at the END of your response (never mid-response):
@@ -3395,9 +3418,13 @@ function setView(view) {
     document.getElementById('actionDot').classList.remove('show');
     renderActionItems();
   }
-  // Generate brief when opening
   if (view === 'brief') {
-    generateBrief();
+    if (state.masterBriefContent) {
+      renderBriefProse(state.masterBriefContent, 'briefProse');
+    } else {
+      document.getElementById('briefProse').innerHTML = '<div class="brief-generating" id="briefPlaceholder"><div class="brief-generating-dots"><span></span><span></span><span></span></div><div>Hit ↺ Regenerate to generate the Master Brief.</div></div>';
+    }
+    renderMasterFlagsPanel();
   }
 }
 
@@ -3436,6 +3463,7 @@ function updateRightPanel() {
   if (sumEl3) sumEl3.value = activeEp().summary || '';
   renderShowTemplate();
   renderCueList();
+  renderEpisodeBrief();
   var content = document.getElementById('panelContent');
   if (!content) return;
 
@@ -4405,6 +4433,38 @@ function onSummaryEdit(val) {
   autoSave('episode summary edited');
 }
 
+function renderEpisodeBrief() {
+  var el = document.getElementById('ep-brief-prose');
+  var badge = document.getElementById('ep-brief-badge');
+  var btn = document.getElementById('ep-brief-generate-btn');
+  if (!el) return;
+  var content = activeEp().briefContent || '';
+  if (!content) {
+    el.innerHTML = '<div style="font-style:italic;color:var(--border);">Not generated yet.</div>';
+    if (badge) badge.textContent = '—';
+    if (btn) btn.textContent = '↺ GENERATE EPISODE BRIEF';
+    return;
+  }
+  // Render condensed prose
+  var html = content
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>');
+  var lines = html.split('\n');
+  var out = '';
+  lines.forEach(function(line) {
+    var t = line.trim();
+    if (!t) return;
+    if (t.startsWith('##') || (t.startsWith('**') && t.endsWith('**') && t.length < 60)) {
+      out += '<div style="font-family:\'DM Mono\',monospace;font-size:0.65rem;letter-spacing:0.1em;text-transform:uppercase;color:#F5A623;margin:10px 0 4px;">' + t.replace(/^#+\s*/, '').replace(/\*\*/g, '') + '</div>';
+    } else {
+      out += '<div style="margin-bottom:4px;">' + t + '</div>';
+    }
+  });
+  el.innerHTML = out;
+  if (badge) badge.textContent = '✓';
+  if (btn) btn.textContent = '↺ REGENERATE';
+}
+
 function updateEpSwitchBtn() {
   var btn = document.getElementById('ep-switch-btn');
   if (!btn) return;
@@ -4496,96 +4556,110 @@ setInterval(updateCountdown, 60000);
   if (sumEl) sumEl.value = activeEp().summary || '';
   renderShowTemplate();
   renderCueList();
+  renderEpisodeBrief();
 })();
 
 // ── CONTEXT BRIEF ──
 
 // System prompt for brief generation
-function buildBriefPrompt() {
-  var ep1 = state.seasons[0] && state.seasons[0].episodes[0];
+function buildMasterBriefPrompt() {
   var openActions = actionItems.filter(function(a){ return !a.done; });
-  var feelAfter = (ep1 && ep1.feelAfter && ep1.feelAfter !== 'TBD -- pending answer from hosts')
-    ? ep1.feelAfter : 'TBD -- still needs to be decided by Matt and Kartik';
-  var bakedCtx = (activeEp().bakedContext.length > 0)
-    ? activeEp().bakedContext.map(function(c){ return '- ' + c; }).join('\n')
+  var masterItems = (state.masterBriefItems || []).length > 0
+    ? state.masterBriefItems.map(function(c){ return '- ' + c; }).join('\n')
     : 'None yet';
+  var templateStr = (state.showTemplate || []).map(function(s, i){
+    return (i+1) + '. ' + s.name + (s.note ? ' — ' + s.note : '');
+  }).join('\n') || 'Not yet defined';
+  var openActionsStr = openActions.length > 0
+    ? openActions.map(function(a){ return '- [' + a.owner + '] ' + a.task; }).join('\n')
+    : 'None open';
 
-  // Pull recent chat — last 40 turns, capped at 4000 chars
-  var recentChat = activeEp().conversationLog.slice(-40).map(function(m) {
-    return (m.role === 'boo' ? 'BOO' : 'MARK') + ': ' + m.text;
-  }).join('\n');
-  if (recentChat.length > 4000) recentChat = recentChat.slice(-4000);
-
-  return 'You are Boo, producer for the ' + SHOW_CONFIG.showName + ' Podcast. Write a Context Brief -- a clean, readable, producer document -- based on the following decisions made so far. Write in confident prose, not bullet points or database fields. This should read like something a smart collaborator would want to read before joining the project. Use section headers, but write the content as real paragraphs.\n\n'
-    + 'WHAT YOU KNOW:\n\n'
+  return 'You are Boo, producer for the ' + SHOW_CONFIG.showName + ' Podcast. Write the Master Context Brief — the show-level bible. This is NOT episode-specific. It covers what this show is, how it works, and how every episode is built. Write in confident prose with section headers. Smart collaborators will read this before joining the project.\n\n'
     + 'SHOW:\n'
-    + '- ' + SHOW_CONFIG.showName + ' -- ' + SHOW_CONFIG.showTagline + '\n'
+    + '- ' + SHOW_CONFIG.showName + ' — ' + SHOW_CONFIG.showTagline + '\n'
     + '- Mission: If AI can write the code, what are we teaching students?\n'
     + '- Core tension: Matt holds the educational ideal. Kartik holds the economic reality. Neither is wrong. That tension is the show.\n'
     + '- Hosts: ' + SHOW_CONFIG.host1 + ' (AI researcher, former Google/Facebook, PhD UC Berkeley) and ' + SHOW_CONFIG.host2 + ' (Director of Innovation, South Fayette Township School District)\n'
-    + '- Dual audience: K-12 CS teachers and administrators AND tech managers who hire these students and can influence curriculum\n'
-    + '- Format: Audio-first. Video recorded for shorts. Riverside (remote) and in-person.\n'
-    + '- Produced by our work here together. - Boo\n\n'
-    + 'THE ECOSYSTEM:\n'
-    + '- This is not just a podcast -- it is a movement with a feedback loop\n'
-    + '- Podcast is the public-facing signal fire\n'
-    + '- Slack community where Matt and Kartik host workshops, projects, ideas -- listeners become contributors\n'
+    + '- Dual audience: K-12 CS teachers and administrators AND tech managers who hire these students\n'
+    + '- Format: Audio-first. Video recorded for shorts. Riverside (remote) and in-person.\n\n'
+    + 'ECOSYSTEM:\n'
+    + '- This is a movement, not just a podcast\n'
+    + '- Slack community: Matt and Kartik host workshops and projects — listeners become contributors\n'
     + '- Weekly experiments listeners can try; their work gets featured on the show\n'
     + '- Patreon/subscription layer for deeper engagement\n'
-    + '- Feedback loop: Podcast to Community to Experiments to Featured back on podcast to Repeat\n'
-    + '- Slack and Patreon both need to be built before launch\n\n'
+    + '- Feedback loop: Podcast → Community → Experiments → Featured on podcast → Repeat\n'
+    + '- Slack and Patreon must both be live before Episode 1 launches\n\n'
     + 'SEASON 1:\n'
     + '- Theme: "What Do We Teach Now?"\n'
     + '- 8 episodes, launching mid-August\n'
-    + '- Structure: Plot Mountain at season level AND inside every episode\n'
-    + '- Season arc: Exposition (eps 1-2) to Conflict (3-4) to Rising Action (5-6) to Climax (7) to Resolution (8)\n'
-    + '- Every episode: opens in tension, interview digs into conflict, closes with A Moment of Hope\n'
+    + '- Season arc (Plot Mountain): Exposition (eps 1-2) → Conflict (3-4) → Rising Action (5-6) → Climax (7) → Resolution (8)\n'
+    + '- Every episode also has its own mini Plot Mountain: opens in tension, interview digs in, closes with A Moment of Hope\n'
     + '- Audience arrives anxious. Honor that. End every episode with hope.\n\n'
     + 'A MOMENT OF HOPE:\n'
     + '- 2-minute documentary micro-feature, shot separately, edited independently\n'
-    + '- Centers on a real person or program: student, graduate, teacher, intern, program in action\n'
-    + '- May have Matt or Kartik narrating but the subject is the story\n'
+    + '- Centers on a real person or program: student, graduate, teacher, intern\n'
     + '- The denouement of every episode. Human, specific, shareable.\n'
-    + '- Stories TBD -- sourcing from South Fayette, Kartik company, students, graduates\n\n'
-    + 'EPISODE 1 -- IN PROGRESS:\n'
-    + '- Arc role: Exposition -- open the crisis, establish the tension, invite both audiences in\n'
-    + '- Central tension: Matt ideal vs Kartik reality\n'
-    + '- What listeners should THINK: Thank god -- there is a conversation like this\n'
-    + '- What listeners should FEEL: ' + feelAfter + '\n'
-    + '- What listeners should DO: Join the Slack community and/or Patreon. Try the weekly experiment.\n'
-    + '- CTA dependency: Slack and Patreon must be live before Episode 1 drops\n'
-    + '- Episode title: TBD -- waiting on emotional landing decision\n'
-    + '- Guest: Not yet selected\n'
-    + '- Next step: Lock emotional landing, name episode, find guest\n\n'
-    + 'PRODUCTION DEPENDENCIES (must be ready before launch):\n'
-    + '- Slack community built and live\n'
-    + '- Patreon set up and live\n'
-    + '- Episode 1 CTA points to working URLs\n'
-    + '- A Moment of Hope for Episode 1 sourced and produced\n'
-    + '- Episode 1 guest confirmed and prepped\n\n'
-    + 'STANDARD EPISODE STRUCTURE (locked in for every episode):\n'
-    + ((state.showTemplate || []).length > 0
-        ? (state.showTemplate || []).map(function(s, i){ return (i+1) + '. ' + s.name + (s.note ? ' — ' + s.note : ''); }).join('\n')
-        : 'Not yet defined')
-    + '\n\n'
-    + 'THREE THROUGH-LINE QUESTIONS (close every guest interview, verbatim, every episode):\n'
+    + '- Stories sourced as we go — South Fayette, Kartik\'s network, graduates, students\n\n'
+    + 'STANDARD EPISODE STRUCTURE (applies to every episode):\n'
+    + templateStr + '\n\n'
+    + 'THREE THROUGH-LINE QUESTIONS (close every guest interview, same every episode — verbatim):\n'
     + '1. What is your greatest Fear?\n'
     + '2. What is your greatest Opportunity?\n'
     + '3. What is your greatest Wish?\n\n'
-    + 'EPISODE SUMMARY (this episode):\n'
-    + (activeEp().summary || 'Not yet written') + '\n\n'
-    + 'ADDITIONAL CONTEXT (baked in from prior sessions):\n'
-    + bakedCtx + '\n\n'
-    + 'CONVERSATION (what we have discussed in this session — treat this as live working context):\n'
-    + (recentChat || 'No conversation yet.') + '\n\n'
+    + 'ACCUMULATED SHOW-LEVEL INSIGHTS:\n'
+    + masterItems + '\n\n'
+    + 'OPEN ACTION ITEMS (show-level):\n'
+    + openActionsStr + '\n\n'
     + '---\n\n'
-    + 'Write the Context Brief now. Five sections:\n'
+    + 'Write the Master Context Brief. Four sections:\n'
     + '1. What This Show Is and Why It Matters\n'
     + '2. The Season We Are Building\n'
-    + '3. How We Build Every Episode (structure, through-line questions, key production decisions)\n'
-    + '4. Where We Are Right Now\n'
-    + '5. What Needs to Happen Before Launch\n\n'
-    + 'Write in present tense. Be specific. Be honest about what is decided and what is still open. Use **bold** for names and key terms. This document will be shared with Matt and Kartik to orient them.';
+    + '3. How We Build Every Episode\n'
+    + '4. What Needs to Happen Before Launch\n\n'
+    + 'Write in present tense. Be specific. Be honest about what is decided vs. open. Use **bold** for names and key terms. This is shared with Matt, Kartik, and any new collaborator.';
+}
+
+function buildEpisodeBriefPrompt() {
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var epRef = 'S' + seasonNum + '-E' + epNum;
+  var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e){ return e.number === epNum; });
+  var ep = activeEp();
+
+  var guestStr = ep.guest ? ep.guest.name + (ep.guest.title ? ' — ' + ep.guest.title : '') : 'Not yet selected';
+  var cueStr = (ep.cues || []).length > 0
+    ? ep.cues.map(function(c, i){ return (i+1) + '. ' + c.name + (c.duration ? ' (' + c.duration + ')' : ''); }).join('\n')
+    : 'Not yet built';
+  var bakedCtx = (ep.bakedContext || []).length > 0
+    ? ep.bakedContext.map(function(c){ return '- ' + c; }).join('\n') : 'None yet';
+  var recentChat = ep.conversationLog.slice(-30).map(function(m){
+    return (m.role === 'boo' ? 'BOO' : 'MARK') + ': ' + m.text;
+  }).join('\n');
+  if (recentChat.length > 3000) recentChat = recentChat.slice(-3000);
+  var masterFoundation = state.masterBriefContent
+    ? 'MASTER BRIEF (show-level context — do not repeat this in the episode brief, just use it as foundation):\n' + state.masterBriefContent.slice(0, 1500)
+    : 'No master brief generated yet. Show: Anno Coding — K-12 CS Education in a Post-Coding Era.';
+
+  return 'You are Boo. Write the Episode Brief for ' + epRef + ' of ' + SHOW_CONFIG.showName + '.\n\n'
+    + masterFoundation + '\n\n'
+    + 'EPISODE-SPECIFIC:\n'
+    + '- Arc role: ' + ((epData && epData.arcRole) || 'Not set') + '\n'
+    + '- Central tension: ' + ((epData && epData.centralTension) || 'Not set') + '\n'
+    + '- Think after: ' + ((epData && epData.thinkAfter) || 'TBD') + '\n'
+    + '- Feel after: ' + ((epData && epData.feelAfter) || 'TBD') + '\n'
+    + '- Remember/Do: ' + ((epData && epData.rememberDo) || 'TBD') + '\n'
+    + '- Guest: ' + guestStr + '\n'
+    + '- Release date: ' + (ep.releaseDate || 'Not set') + (ep.releaseTime ? ' at ' + ep.releaseTime : '') + '\n'
+    + '- Episode summary: ' + (ep.summary || 'Not written yet') + '\n\n'
+    + 'CUE LIST:\n' + cueStr + '\n\n'
+    + 'BAKED CONTEXT:\n' + bakedCtx + '\n\n'
+    + 'CONVERSATION (this episode):\n' + (recentChat || 'None yet.') + '\n\n'
+    + '---\n\n'
+    + 'Write the Episode Brief for ' + epRef + '. Three sections:\n'
+    + '1. This Episode — what it is, who it\'s for, what it should accomplish\n'
+    + '2. The Guest — who they are and why they fit\n'
+    + '3. What\'s Still Open — honest list of what needs to be decided or done before recording\n\n'
+    + 'Write in present tense. Be specific. Flag what is decided vs. still open. **Bold** key names and terms.';
 }
 
 
@@ -4593,45 +4667,51 @@ async function generateBrief() {
   const prose = document.getElementById('briefProse');
   prose.innerHTML = '<div class="brief-generating">'
     + '<div class="brief-generating-dots"><span></span><span></span><span></span></div>'
-    + '<div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.06em;">Boo is writing the brief...</div>'
+    + '<div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.06em;">Boo is writing the Master Brief...</div>'
     + '</div>';
-
   document.getElementById('briefTimestamp').textContent = '';
-
   try {
     const res = await fetch(PROXY, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SB_ANON}`,
-        'apikey': SB_ANON,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1200,
-        messages: [{ role: 'user', content: buildBriefPrompt() }],
-      }),
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_ANON}`, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: MODEL, max_tokens: 1400, messages: [{ role: 'user', content: buildMasterBriefPrompt() }] }),
     });
-
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
-
-    activeEp().briefContent = data.content[0].text;
-    renderBriefProse(activeEp().briefContent);
-
-    const now = new Date().toLocaleString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit', hour12: true
-    });
+    if (data.error) throw new Error(data.error.message || data.error);
+    state.masterBriefContent = data.content[0].text;
+    renderBriefProse(state.masterBriefContent, 'briefProse');
+    const now = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
     document.getElementById('briefTimestamp').textContent = 'Generated by Boo · ' + now;
-
+    autoSave('master brief generated');
   } catch (err) {
-    prose.innerHTML = '<div class="brief-generating" style="color:var(--orange);">Could not generate brief: ' + err.message + '</div>';
+    prose.innerHTML = '<div class="brief-generating" style="color:var(--orange);">Could not generate: ' + err.message + '</div>';
   }
 }
 
-function renderBriefProse(text) {
-  const prose = document.getElementById('briefProse');
+async function generateEpisodeBrief() {
+  const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  const seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  const targetId = 'ep-brief-body-' + epNum;
+  const el = document.getElementById(targetId);
+  if (el) el.innerHTML = '<div style="font-size:11px;color:var(--muted);font-style:italic;">Boo is writing Episode ' + epNum + ' brief...</div>';
+  try {
+    const res = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_ANON}`, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: MODEL, max_tokens: 1000, messages: [{ role: 'user', content: buildEpisodeBriefPrompt() }] }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || data.error);
+    activeEp().briefContent = data.content[0].text;
+    renderEpisodeBrief();
+    autoSave('episode brief generated');
+  } catch (err) {
+    if (el) el.innerHTML = '<div style="font-size:11px;color:var(--orange);">Error: ' + err.message + '</div>';
+  }
+}
+
+function renderBriefProse(text, targetId) {
+  const prose = document.getElementById(targetId || 'briefProse');
   // Convert markdown-style to HTML
   let html = text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
@@ -4693,13 +4773,13 @@ async function feedBoo() {
     + '<div style="font-family:DM Mono,monospace;font-size:11px;letter-spacing:0.06em;">Boo is reading and folding in your material...</div>'
     + '</div>';
 
-  var feedPrompt = buildBriefPrompt()
+  var feedPrompt = buildMasterBriefPrompt()
     + '\n\n---\nNEW MATERIAL TO FOLD IN:\n'
     + material
     + '\n\n---\nDo two things:\n'
-    + '1. Write the updated Context Brief, incorporating any new or deepening context from the material above. If it confirms or enriches something already known, weave it in. If it introduces something genuinely new, add it to the right section.\n\n'
-    + '2. After the brief, add a section called FLAGGED FOR PERMANENT CONTEXT that lists 1-5 specific things from the new material that should be permanently baked into knowledge. Format each flag exactly as:\nFLAG: [the specific insight or decision in one clear sentence]\n\n'
-    + 'Keep flags concise and specific. Only flag genuinely new or deepening context, not things already known.';
+    + '1. Write the updated Master Context Brief, incorporating any new or deepening context. Weave it in — do not just append.\n\n'
+    + '2. After the brief, add a section called FLAGGED FOR PERMANENT CONTEXT that lists 1-5 specific show-level insights. Format each as:\nFLAG: [the specific insight in one clear sentence]\n\n'
+    + 'Only flag show-level decisions that apply to every episode, not episode-specific details.';
 
   try {
     var res = await fetch(PROXY, {
@@ -4735,12 +4815,12 @@ async function feedBoo() {
       });
     }
 
-    activeEp().briefContent = briefText;
-    renderBriefProse(briefText);
+    state.masterBriefContent = briefText;
+    renderBriefProse(briefText, 'briefProse');
 
     if (newFlags.length > 0) {
-      activeEp().briefFlags = activeEp().briefFlags.concat(newFlags);
-      renderFlagsPanel();
+      state.masterBriefFlags = (state.masterBriefFlags || []).concat(newFlags);
+      renderMasterFlagsPanel();
     }
 
     var now = new Date().toLocaleString('en-US', {
@@ -4756,32 +4836,41 @@ async function feedBoo() {
   }
 }
 
-function renderFlagsPanel() {
+function renderMasterFlagsPanel() {
   const panel = document.getElementById('briefFlags');
   const body = document.getElementById('briefFlagsBody');
-  const unbaked = activeEp().briefFlags.filter(f => !f.baked);
-
-  if (unbaked.length === 0) {
-    panel.classList.remove('show');
-    return;
-  }
-
+  if (!panel || !body) return;
+  const flags = state.masterBriefFlags || [];
+  const unbaked = flags.filter(f => !f.baked);
+  if (unbaked.length === 0) { panel.classList.remove('show'); return; }
   panel.classList.add('show');
   body.innerHTML = unbaked.map(function(f, i) {
-    var globalIdx = activeEp().briefFlags.indexOf(f);
-    return '<div class="brief-flag-item" id="flag-' + i + '">'
+    var globalIdx = flags.indexOf(f);
+    return '<div class="brief-flag-item">'
       + '<div class="brief-flag-label">NEW</div>'
       + '<div class="brief-flag-text">' + f.text + '</div>'
-      + '<button class="brief-flag-bake-btn" onclick="bakeFlag(' + globalIdx + ')">Bake In ✓</button>'
+      + '<button class="brief-flag-bake-btn" onclick="bakeMasterFlag(' + globalIdx + ')">Bake In ✓</button>'
       + '</div>';
   }).join('');
+}
+
+function renderFlagsPanel() { renderMasterFlagsPanel(); }
+
+function bakeMasterFlag(idx) {
+  const flag = (state.masterBriefFlags || [])[idx];
+  if (!flag) return;
+  flag.baked = true;
+  state.masterBriefItems = state.masterBriefItems || [];
+  state.masterBriefItems.push(flag.text);
+  renderMasterFlagsPanel();
+  autoSave('master brief item baked');
+  showToast('Baked into Master Brief');
 }
 
 function bakeFlag(idx) {
   const flag = activeEp().briefFlags[idx];
   if (!flag) return;
   flag.baked = true;
-
   activeEp().bakedContext.push(flag.text);
 
   renderFlagsPanel();
@@ -4795,27 +4884,26 @@ function clearFlags() {
 }
 
 function exportBrief() {
-  if (!activeEp().briefContent) {
-    showToast('Generate the brief first.');
+  if (!state.masterBriefContent) {
+    showToast('Generate the Master Brief first.');
     return;
   }
-  const plain = activeEp().briefContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
+  const plain = state.masterBriefContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
   const header = [
     'ANNO CODING PODCAST',
-    'Context Brief',
+    'Master Context Brief',
     'Produced by our work here together. - Boo · ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     '='.repeat(60),
     '',
   ].join('\n');
-
   const blob = new Blob([header + plain], { type: 'text/plain' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'anno-coding-context-brief-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.download = 'anno-coding-master-brief-' + new Date().toISOString().slice(0,10) + '.txt';
   a.click();
   URL.revokeObjectURL(url);
-  showToast('✓ Context Brief exported');
+  showToast('✓ Master Brief exported');
 }
 
 
@@ -4939,6 +5027,24 @@ function renderActionItems() {
 
 // ── BOO AUTO-DETECTION ──
 // Scans Boo responses for natural task language
+function detectShowBriefItems(booText) {
+  const plain = booText.replace(/<[^>]+>/g, '');
+  const lines = plain.split('\n');
+  const found = [];
+  lines.forEach(function(line) {
+    var m = line.trim().match(/^SHOW-BRIEF:\s*(.+)$/i);
+    if (m) found.push(m[1].trim());
+  });
+  if (found.length === 0) return;
+  state.masterBriefItems = state.masterBriefItems || [];
+  found.forEach(function(item) {
+    var already = state.masterBriefItems.some(function(x) { return x.slice(0, 30) === item.slice(0, 30); });
+    if (!already) state.masterBriefItems.push(item);
+  });
+  autoSave('show-brief item detected');
+  showToast('Boo added ' + found.length + ' item' + (found.length > 1 ? 's' : '') + ' to Master Brief');
+}
+
 function detectActionItems(booText) {
   const plain = booText.replace(/<[^>]+>/g, '');
   const sentences = plain.split(/[.\n!?]+/).map(s => s.trim()).filter(s => s.length > 12);
@@ -4989,8 +5095,10 @@ const _origAddMsg = addMsg;
 addMsg = function(role, html, actions) {
   _origAddMsg(role, html, actions);
   if (role === 'boo') {
-    // Small delay so the message renders first
-    setTimeout(() => detectActionItems(html), 300);
+    setTimeout(() => {
+      detectActionItems(html);
+      detectShowBriefItems(html);
+    }, 300);
   }
 };
 
@@ -5002,6 +5110,9 @@ buildSessionSnapshot = function() {
   snap.episodeStore = JSON.parse(JSON.stringify(episodeStore));
   snap.aiIdCounter = aiIdCounter;
   snap.showTemplate = JSON.parse(JSON.stringify(state.showTemplate || []));
+  snap.masterBriefContent = state.masterBriefContent || '';
+  snap.masterBriefItems = JSON.parse(JSON.stringify(state.masterBriefItems || []));
+  snap.masterBriefFlags = JSON.parse(JSON.stringify(state.masterBriefFlags || []));
   return snap;
 };
 
@@ -5038,6 +5149,9 @@ applySession = function(data) {
   if (data.showTemplate && Array.isArray(data.showTemplate)) {
     state.showTemplate = data.showTemplate;
   }
+  if (data.masterBriefContent) state.masterBriefContent = data.masterBriefContent;
+  if (data.masterBriefItems) state.masterBriefItems = data.masterBriefItems;
+  if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
 };
 
 // ── UPDATE SYSTEM PROMPT AWARENESS ──
