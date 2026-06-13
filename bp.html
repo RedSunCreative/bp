@@ -2735,7 +2735,7 @@ const episodeStore = {};
 function activeEp() {
   const key = state.currentEpisode ? state.currentEpisode.number : 1;
   if (!episodeStore[key]) {
-    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null };
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [] };
   }
   return episodeStore[key];
 }
@@ -3002,7 +3002,7 @@ function buildGuestCard(name, title, why, topics, links, idx) {
           <div class="guest-name">${name}</div>
           <div class="guest-title">${title}</div>
         </div>
-        <button class="select-guest-btn" onclick="selectGuest('${safeName}', '${safeTitle}')">Select →</button>
+        <button class="select-guest-btn" onclick="considerGuest('${safeName}', '${safeTitle}', this)">+ Consider</button>
       </div>
       <div class="guest-why">${why}</div>
       ${tagHtml ? '<div class="guest-tags">' + (tagHtml) + '</div>' : ''}
@@ -3185,19 +3185,80 @@ function parseForStateUpdates(html) {
   }
 }
 function selectGuest(name, title) {
-  activeEp().guest = { name, title };
-  document.querySelectorAll('.guest-card').forEach(c => c.classList.remove('selected'));
-  const card = document.getElementById('gc-' + name.replace(/\s/g, '_'));
-  if (card) card.classList.add('selected');
+  considerGuest(name, title, null);
+}
 
+function considerGuest(name, title, btn) {
+  var list = activeEp().considerations;
+  if (!list) { activeEp().considerations = []; list = activeEp().considerations; }
+  var already = list.find(function(g) { return g.name === name; });
+  if (already) {
+    showToast(name.split(' ')[0] + ' is already on your shortlist.');
+    return;
+  }
+  list.push({ name: name, title: title, status: 'considering' });
+
+  // Visual feedback on the card button
+  if (btn) { btn.textContent = '✓ Added'; btn.disabled = true; btn.style.color = 'var(--teal)'; btn.style.borderColor = 'var(--teal)'; }
+
+  // Highlight the card
+  var cardEl = document.getElementById('gc-' + name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, ''));
+  if (cardEl) cardEl.style.borderColor = 'var(--teal)';
+
+  renderConsiderations();
   updateContextBar();
-  updateRightPanel();
+  autoSave('guest added to consideration');
 
-  addMsg('boo', '<strong>' + (name) + '</strong> selected. Here\'s what I can do next:', [
-    { label: '📧 Draft outreach email', action: () => draftEmail(name, title) },
-    { label: '🔍 Research this guest', action: () => researchGuest(name) },
-    { label: '📝 Build script with this guest', action: () => buildScript(name) },
-  ]);
+  addMsg('boo', '<strong>' + name + '</strong> added to your shortlist. Review in the Guests panel — when you\'re ready, hit Invite to send outreach.');
+}
+
+function renderConsiderations() {
+  var el = document.getElementById('guest-list');
+  if (!el) return;
+  var list = activeEp().considerations || [];
+  var badge = document.getElementById('guest-count');
+  if (badge) badge.textContent = list.length || '0';
+  if (list.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No guests on the shortlist yet.</div>';
+    return;
+  }
+  var html = '';
+  list.forEach(function(g) {
+    var safeName  = g.name.replace(/'/g, "\\'");
+    var safeTitle = (g.title || '').replace(/'/g, "\\'");
+    var invited   = g.status === 'invited';
+    html += '<div class="guest-item">'
+      + '<div style="min-width:0;flex:1;">'
+      + '<div class="guest-name">' + g.name + '</div>'
+      + '<div class="guest-type">' + (g.title || '') + '</div>'
+      + '<span style="font-family:DM Mono,monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;color:' + (invited ? 'var(--teal)' : 'var(--gold)') + ';">'
+      + (invited ? '✓ INVITED' : 'FOR CONSIDERATION') + '</span>'
+      + '</div>'
+      + '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">'
+      + (!invited
+          ? '<button onclick="inviteConsideration(\'' + safeName + '\',\'' + safeTitle + '\')" style="font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:DM Mono,monospace;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">✉ Invite</button>'
+          : '<span style="font-size:10px;color:var(--teal);font-family:DM Mono,monospace;white-space:nowrap;">Email sent</span>')
+      + '<button onclick="removeConsideration(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;" title="Remove">✕</button>'
+      + '</div>'
+      + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function inviteConsideration(name, title) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (g) g.status = 'invited';
+  renderConsiderations();
+  autoSave('guest invited');
+  draftEmail(name, title);
+}
+
+function removeConsideration(name) {
+  var list = activeEp().considerations;
+  if (!list) return;
+  activeEp().considerations = list.filter(function(g) { return g.name !== name; });
+  renderConsiderations();
+  autoSave('guest removed from consideration');
 }
 
 function draftEmailCurrentGuest() {
@@ -4027,6 +4088,7 @@ function bpScriptAction(type) {
   var title = (epData && epData.title && epData.title.indexOf('TBD') !== 0) ? epData.title : null;
   if (title) setText('d-eptitle', title);
   setText('d-arcrole', (epData && epData.arcRole) || '');
+  renderConsiderations();
 })();
 
 // ── CONTEXT BRIEF ──
@@ -4779,6 +4841,7 @@ function applySession(data) {
   if (activeEp().script) updateTeleprompter(activeEp().script);
   updateContextBar();
   updateRightPanel();
+  renderConsiderations();
 
   // Inject resume message from Boo
   const guestLine = activeEp().guest ? ' We were working on booking <strong>' + (activeEp().guest.name) + '</strong>.' : '';
@@ -4856,11 +4919,7 @@ function addNewEpisode() {
 }
 
 // Hook auto-save into key milestones
-const _origSelectGuest = selectGuest;
-selectGuest = function(name, title) {
-  _origSelectGuest(name, title);
-  autoSave('guest selected');
-};
+// (considerGuest already calls autoSave directly; no wrapper needed)
 
 // Patch sendMessage to auto-save after script or ROS is built
 const _origSendMessage = sendMessage;
