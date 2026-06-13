@@ -2777,7 +2777,7 @@ async function triggerBooDirectly(displayText, apiPrompt) {
     activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
     hideTyping();
     const parsed = parseReply(reply);
-    addMsg('boo', parsed);
+    addMsg('boo', parsed, null, reply); // pass original reply for clean API context
     autoSave('conversation updated');
   } catch (err) {
     activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
@@ -2944,14 +2944,16 @@ function activeEp() {
 }
 
 function getConversationHistory() {
+  // Use rawText when available (original API text, not display-processed version)
   return activeEp().conversationLog.slice(-14).map(m => ({
     role: m.role === 'boo' ? 'assistant' : 'user',
-    content: m.text,
+    content: m.rawText || m.text,
   }));
 }
 
 // ── MESSAGING ──
-function addMsg(role, html, actions) {
+// rawText: original pre-parse text (for Boo responses — so API context stays clean)
+function addMsg(role, html, actions, rawText) {
   const msgs = document.getElementById('messages');
   const div = document.createElement('div');
   div.className = 'msg ' + (role);
@@ -2974,9 +2976,12 @@ function addMsg(role, html, actions) {
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
 
-  // Log for API history
+  // Log for history — store rawText (original API output) separately from display html
   const plainText = html.replace(/<[^>]+>/g, '');
-  activeEp().conversationLog.push({ role, text: plainText });
+  const entry = { role, text: plainText };
+  if (rawText) entry.rawText = rawText;          // clean original for API context
+  if (isHtml) entry.html = content;              // rendered HTML for display on restore
+  activeEp().conversationLog.push(entry);
 
   // Parse response for state updates
   if (role === 'boo') parseForStateUpdates(html);
@@ -3039,7 +3044,7 @@ async function sendMessage() {
     hideTyping();
     // Parse reply for special content types
     const parsed = parseReply(reply);
-    addMsg('boo', parsed);
+    addMsg('boo', parsed, null, reply); // pass original reply for clean API context
   } catch (err) {
     hideTyping();
     addMsg('boo', 'Hmm, I hit a snag: <em>' + (err.message) + '</em>. Try again?');
@@ -5460,7 +5465,7 @@ function applySession(data) {
     div.innerHTML = '<div class="msg-avatar">' + avatarText + '</div>'
       + '<div class="msg-body">'
       + '<div class="msg-name">' + name + '</div>'
-      + '<div class="msg-bubble">' + formatBubble(entry.text) + '</div>'
+      + '<div class="msg-bubble">' + (entry.html || formatBubble(entry.text)) + '</div>'
       + '</div>';
     msgs.appendChild(div);
   });
@@ -5519,7 +5524,7 @@ function switchEpisode(num) {
     div.innerHTML = '<div class="msg-avatar">' + avatarText + '</div>'
       + '<div class="msg-body">'
       + '<div class="msg-name">' + name + '</div>'
-      + '<div class="msg-bubble">' + formatBubble(entry.text) + '</div>'
+      + '<div class="msg-bubble">' + (entry.html || formatBubble(entry.text)) + '</div>'
       + '</div>';
     msgs.appendChild(div);
   });
