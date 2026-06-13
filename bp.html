@@ -2356,25 +2356,34 @@
         </div>
       </div>
 
-      <div class="ros-dropdown-wrap" id="ros-dropdown-wrap">
-        <button class="generate-btn ros" id="ros-toggle-btn" onclick="toggleRosMenu()" style="margin-top:0;">📄 SHOW SCRIPTS &nbsp;▾</button>
-        <div class="ros-dropdown-menu" id="ros-dropdown-menu">
-          <div class="ros-menu-item" onclick="bpScriptAction('bsm')">
-            <div class="ros-item-name">⚡ Publish Live Show Script</div>
-            <div class="ros-item-desc">Publishes Boo Show Manager to the web</div>
+      <div class="data-section" data-sec="scripts">
+        <div class="data-section-header" onclick="toggleSection('scripts-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Show Scripts <span class="tip-q" data-tip="Publish the live show script, print a static version, or edit the script in chat." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="scripts-badge">—</div>
+        </div>
+        <div class="data-section-body" id="scripts-body" style="display:none;">
+          <div class="ros-dropdown-wrap" id="ros-dropdown-wrap">
+            <button class="generate-btn ros" id="ros-toggle-btn" onclick="toggleRosMenu()" style="margin-top:0;">📄 SHOW SCRIPTS &nbsp;▾</button>
+            <div class="ros-dropdown-menu" id="ros-dropdown-menu">
+              <div class="ros-menu-item" onclick="bpScriptAction('bsm')">
+                <div class="ros-item-name">⚡ Publish Live Show Script</div>
+                <div class="ros-item-desc">Publishes Boo Show Manager to the web</div>
+              </div>
+              <div class="ros-menu-item" onclick="bpScriptAction('ros')">
+                <div class="ros-item-name">📄 Print Static Show Script</div>
+                <div class="ros-item-desc">Formatted static show script for browser or print</div>
+              </div>
+              <div class="ros-menu-item" onclick="bpScriptAction('scene')">
+                <div class="ros-item-name">📋 Print Static Scene List</div>
+                <div class="ros-item-desc">Simple one-page scene list with names and durations</div>
+              </div>
+            </div>
           </div>
-          <div class="ros-menu-item" onclick="bpScriptAction('ros')">
-            <div class="ros-item-name">📄 Print Static Show Script</div>
-            <div class="ros-item-desc">Formatted static show script for browser or print</div>
-          </div>
-          <div class="ros-menu-item" onclick="bpScriptAction('scene')">
-            <div class="ros-item-name">📋 Print Static Scene List</div>
-            <div class="ros-item-desc">Simple one-page scene list with names and durations</div>
-          </div>
+          <div id="scripts-share-panel" style="display:none;margin-top:8px;background:var(--dark);border:1px solid var(--teal);border-radius:8px;padding:12px;font-size:12px;"></div>
+          <button class="generate-btn" onclick="bpScriptAction('edit')" style="margin-top:4px;background:transparent;border:2px solid var(--teal);color:var(--teal);">✏️ EDIT SHOW SCRIPT</button>
         </div>
       </div>
-      <div id="scripts-share-panel" style="display:none;margin-top:8px;background:var(--dark);border:1px solid var(--teal);border-radius:8px;padding:12px;font-size:12px;"></div>
-      <button class="generate-btn" onclick="bpScriptAction('edit')" style="margin-top:4px;background:transparent;border:2px solid var(--teal);color:var(--teal);">✏️ EDIT SHOW SCRIPT</button>
 
     </div>
   </div>
