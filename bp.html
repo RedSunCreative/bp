@@ -3379,14 +3379,27 @@ function renderPersonCard(name, subtitle, role, status) {
 }
 
 function findGuestChat() {
-  var epRef = 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode ? state.currentEpisode.number : 1);
-  var arcRole = state.seasons[0] && state.seasons[0].episodes[0] && state.seasons[0].episodes[0].arcRole || '';
+  setView('chat');
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var epRef = 'S' + seasonNum + '-E' + epNum;
+  var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e) { return e.number === epNum; });
+  var seasonTheme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
+  var arcRole       = (epData && epData.arcRole) || '';
+  var tension       = (epData && epData.centralTension) || '';
+  var audience      = (epData && epData.audience) || '';
+  var thinkAfter    = (epData && epData.thinkAfter) || '';
+
+  var prompt = 'Find me 3-5 specific, real guest candidates for ' + epRef + ' of ' + SHOW_CONFIG.showName + '.';
+  if (seasonTheme)  prompt += ' Season theme: "' + seasonTheme + '".';
+  if (arcRole)      prompt += ' This episode\'s arc role: ' + arcRole + '.';
+  if (tension)      prompt += ' Central tension to explore: ' + tension + '.';
+  if (audience)     prompt += ' Primary audience: ' + audience + '.';
+  if (thinkAfter)   prompt += ' Listener should think after: "' + thinkAfter + '".';
+  prompt += ' If you have any clarifying questions about angle or fit, ask them now — but also immediately bring back 3-5 specific, nameable candidates based on what you already know. Return real people — researchers, educators, technologists, practitioners, or authors — with something specific and credible to say about CS education in the AI era. Include their LinkedIn, any podcast appearances, and on-camera presence. Format each as a guest profile card.';
+
   var input = document.getElementById('chatInput');
-  if (input) {
-    input.value = 'Help me find a great guest for ' + epRef + ' of ' + SHOW_CONFIG.showName + (arcRole ? '. Episode arc: ' + arcRole : '') + '. What kind of guest fits, and who specifically would you suggest?';
-    input.focus();
-    setView('chat');
-  }
+  if (input) { input.value = prompt; sendMessage(); }
 }
 
 function renderShowPanel(content) {
