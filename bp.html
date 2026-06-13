@@ -874,6 +874,23 @@
   .release-inputs{display:flex;gap:8px;align-items:center;margin-top:2px;}
   .release-inputs input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;padding:2px 0;cursor:pointer;outline:none;width:auto;}
   .release-inputs input::-webkit-calendar-picker-indicator{filter:invert(0.5);cursor:pointer;}
+  .seg-row{display:flex;align-items:center;gap:6px;padding:5px 2px;border-bottom:1px solid rgba(255,255,255,0.04);}
+  .seg-row:last-of-type{border-bottom:none;}
+  .seg-row-handle{color:var(--border);cursor:grab;font-size:14px;flex-shrink:0;padding:0 2px;user-select:none;}
+  .seg-row-handle:active{cursor:grabbing;}
+  .seg-row-name{flex:1;background:transparent;border:none;color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;outline:none;padding:2px 4px;border-radius:3px;min-width:0;}
+  .seg-row-name:focus{background:rgba(255,255,255,0.05);}
+  .seg-row-dur{width:48px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;text-align:center;outline:none;padding:2px 3px;flex-shrink:0;}
+  .seg-row-dur::placeholder{color:var(--border);}
+  .seg-row-del{background:none;border:none;color:var(--border);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0;line-height:1;}
+  .seg-row-del:hover{color:#ff6b6b;}
+  .seg-row.drag-over-top{border-top:2px solid var(--teal);}
+  .seg-note{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);padding:0 4px 5px 26px;opacity:0.65;line-height:1.4;}
+  .seg-add-row{display:flex;justify-content:center;margin-top:8px;}
+  .seg-add-row button{background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:6px;padding:5px 14px;font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;cursor:pointer;transition:border-color 0.15s,color 0.15s;}
+  .seg-add-row button:hover{border-color:var(--teal);color:var(--teal);}
+  .ep-summary-input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:400;width:100%;resize:none;min-height:52px;padding:4px 0;outline:none;line-height:1.5;}
+  .ep-summary-input::placeholder{color:var(--border);font-style:italic;}
 
   /* ── BEB DATA PANEL — transplanted from BEB verbatim ── */
   .data-panel{overflow-y:auto;height:100%;padding:20px;flex:1;}
@@ -2215,6 +2232,7 @@
             <div class="ep-field"><div class="ep-label">STATUS</div><div class="ep-val" id="d-epstatus" style="color:var(--teal);">PLANNING</div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">TITLE</div><div class="ep-val ep-editable" id="d-eptitle" onclick="epEditTitle(this)" title="Click to edit"><span class="empty">not set</span></div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">ARC ROLE</div><div class="ep-val" id="d-arcrole" style="font-size:12px;color:var(--muted);"></div></div>
+            <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">EPISODE SUMMARY</div><textarea id="d-ep-summary" class="ep-summary-input" onchange="onSummaryEdit(this.value)" placeholder="Boo fills this in as you plan..."></textarea></div>
             <div class="ep-field"><div class="ep-label">TARGET TIME</div><div class="ep-val" id="d-eplen" style="color:var(--muted);">60 min</div></div>
             <div class="ep-field" style="grid-column:1/-1">
               <div class="ep-label">RELEASE DATE &amp; TIME</div>
@@ -2257,15 +2275,26 @@
         </div>
       </div>
 
+      <div class="data-section" data-sec="template">
+        <div class="data-section-header" onclick="toggleSection('template-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Show Template <span class="tip-q" data-tip="Default segment order for every episode. Drag to reorder. Cue List loads from this." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="template-count">7 segs</div>
+        </div>
+        <div class="data-section-body" id="template-body" style="display:none;">
+          <div id="template-list"></div>
+          <div class="seg-add-row"><button onclick="addTemplateSegment()">+ ADD SEGMENT</button></div>
+        </div>
+      </div>
+
       <div class="data-section" data-sec="cues">
         <div class="data-section-header" onclick="toggleSection('cues-body')">
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
-          <div class="data-section-title">Cue List <span class="tip-q" data-tip="Your run of show, segment by segment. Drag to reorder." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-title">Cue List <span class="tip-q" data-tip="This episode's run of show. Load from template to start, then edit per episode." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="cue-count-badge">0 cues</div>
         </div>
         <div class="data-section-body" id="cues-body">
-          <div id="cue-list-display"><div style="font-size:12px;color:var(--muted)">Tell Boo what's in the show...</div></div>
-          <div id="scene-edit-container"></div>
+          <div id="cue-list-display"></div>
         </div>
       </div>
 
@@ -2452,6 +2481,15 @@ const state = {
     status: 'planning',
   },
   activePanel: 'guest',
+  showTemplate: [
+    { id: 'st-1', name: 'Cold Open', note: 'Cut in post — pull charged moment from interview' },
+    { id: 'st-2', name: 'Introductions', note: '' },
+    { id: 'st-3', name: 'Anno Community Workshop Update', note: '' },
+    { id: 'st-4', name: "What's for Lunch?", note: '60-90 sec community UGC clip' },
+    { id: 'st-5', name: 'Guest Interview', note: '20-25 min — closes with Fear / Opportunity / Wish' },
+    { id: 'st-6', name: 'MoH Bridge', note: 'Guest introduces A Moment of Hope (2 sentences)' },
+    { id: 'st-7', name: 'A Moment of Hope', note: '2-min doc micro-feature, shot separately' },
+  ],
 };
 
 const actionItems = [];
@@ -2655,6 +2693,18 @@ SHOW CONTEXT:
 - Format: Audio-first, video recorded for shorts. Records on Riverside (remote) and sometimes in-person.
 - Available segments: Interview, Question of the Week, A Moment of Hope, AI News Minute, Am I Human?, Does It Matter?
 
+STANDARD EPISODE STRUCTURE (show template — editable by Mark, current order):
+${(state.showTemplate || []).map((s, i) => (i+1) + '. ' + s.name + (s.note ? ' — ' + s.note : '')).join('\n') || 'No template set yet'}
+
+THREE THROUGH-LINE QUESTIONS (close every guest interview, same every episode — do not paraphrase):
+1. What is your greatest Fear?
+2. What is your greatest Opportunity?
+3. What is your greatest Wish?
+These go at the end of every guest interview, before the guest's MoH Bridge.
+
+EPISODE CUE LIST (this episode's run of show — ${(activeEp().cues || []).length} cues):
+${(activeEp().cues || []).length > 0 ? (activeEp().cues || []).map((c, i) => (i+1) + '. ' + c.name + (c.duration ? ' (' + c.duration + ')' : '')).join('\n') : 'Not yet built — user can click Load from Template in the Cue List panel'}
+
 SEASON 1 — ALREADY DECIDED (do not re-ask these):
 - Theme: "What Do We Teach Now?"
 - Episodes: 8, launching mid-August
@@ -2773,7 +2823,7 @@ const episodeStore = {};
 function activeEp() {
   const key = state.currentEpisode ? state.currentEpisode.number : 1;
   if (!episodeStore[key]) {
-    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], releaseDate: '', releaseTime: '' };
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], releaseDate: '', releaseTime: '', cues: [], summary: '' };
   }
   return episodeStore[key];
 }
@@ -3382,6 +3432,10 @@ function updateRightPanel() {
   var rtEl = document.getElementById('d-release-time');
   if (rdEl) rdEl.value = activeEp().releaseDate || '';
   if (rtEl) rtEl.value = activeEp().releaseTime || '';
+  var sumEl3 = document.getElementById('d-ep-summary');
+  if (sumEl3) sumEl3.value = activeEp().summary || '';
+  renderShowTemplate();
+  renderCueList();
   var content = document.getElementById('panelContent');
   if (!content) return;
 
@@ -4192,6 +4246,165 @@ function setReleaseTime(val) {
   autoSave('release time set');
 }
 
+// ── SHOW TEMPLATE ────────────────────────────────────────────────────────────
+
+function initSegDrag(container, arr, onChange) {
+  container.addEventListener('dragstart', function(e) {
+    var row = e.target.closest('.seg-row');
+    if (!row) return;
+    container._dragging = row;
+    setTimeout(function() { row.style.opacity = '0.4'; }, 0);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  container.addEventListener('dragend', function() {
+    var d = container._dragging;
+    if (d) { d.style.opacity = ''; container._dragging = null; }
+    container.querySelectorAll('.seg-row').forEach(function(r) { r.classList.remove('drag-over-top'); });
+    var newOrder = [];
+    container.querySelectorAll('.seg-row').forEach(function(r) {
+      var id = r.getAttribute('data-seg-id');
+      var found = arr.find(function(s) { return s.id === id; });
+      if (found) newOrder.push(found);
+    });
+    arr.length = 0;
+    newOrder.forEach(function(s) { arr.push(s); });
+    if (onChange) onChange();
+  });
+  container.addEventListener('dragover', function(e) {
+    e.preventDefault();
+    var d = container._dragging;
+    if (!d) return;
+    var target = e.target.closest('.seg-row');
+    if (!target || target === d) return;
+    var rect = target.getBoundingClientRect();
+    if (e.clientY < rect.top + rect.height / 2) {
+      container.insertBefore(d, target);
+    } else {
+      container.insertBefore(d, target.nextSibling);
+    }
+  });
+  container.addEventListener('drop', function(e) { e.preventDefault(); });
+}
+
+function renderShowTemplate() {
+  var el = document.getElementById('template-list');
+  if (!el) return;
+  var segs = state.showTemplate || [];
+  var countEl = document.getElementById('template-count');
+  if (countEl) countEl.textContent = segs.length + ' seg' + (segs.length !== 1 ? 's' : '');
+  if (segs.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0;">No segments yet.</div>';
+    return;
+  }
+  el.innerHTML = segs.map(function(s) {
+    var sid = s.id.replace(/'/g, '');
+    var sname = (s.name || '').replace(/"/g, '&quot;');
+    var noteHtml = s.note ? '<div class="seg-note">' + s.note + '</div>' : '';
+    return '<div class="seg-row" data-seg-id="' + sid + '" draggable="true">'
+      + '<span class="seg-row-handle">⠿</span>'
+      + '<input class="seg-row-name" value="' + sname + '" onchange="saveTemplateName(\'' + sid + '\',this.value)" placeholder="Segment name">'
+      + '<button class="seg-row-del" onclick="deleteTemplateSegment(\'' + sid + '\')" title="Remove">✕</button>'
+      + '</div>' + noteHtml;
+  }).join('');
+  initSegDrag(el, state.showTemplate, function() { autoSave('template reordered'); });
+}
+
+function addTemplateSegment() {
+  if (!state.showTemplate) state.showTemplate = [];
+  state.showTemplate.push({ id: 'st-' + Date.now(), name: '', note: '' });
+  renderShowTemplate();
+  autoSave('template segment added');
+  setTimeout(function() {
+    var inputs = document.querySelectorAll('#template-list .seg-row-name');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function deleteTemplateSegment(id) {
+  state.showTemplate = (state.showTemplate || []).filter(function(s) { return s.id !== id; });
+  renderShowTemplate();
+  autoSave('template segment removed');
+}
+
+function saveTemplateName(id, val) {
+  var seg = (state.showTemplate || []).find(function(s) { return s.id === id; });
+  if (seg) { seg.name = val; }
+  var countEl = document.getElementById('template-count');
+  if (countEl) countEl.textContent = (state.showTemplate || []).length + ' segs';
+  autoSave('template renamed');
+}
+
+// ── CUE LIST ────────────────────────────────────────────────────────────────
+
+function renderCueList() {
+  var el = document.getElementById('cue-list-display');
+  if (!el) return;
+  var cues = activeEp().cues || [];
+  var badge = document.getElementById('cue-count-badge');
+  if (badge) badge.textContent = cues.length + ' cue' + (cues.length !== 1 ? 's' : '');
+  if (cues.length === 0) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">No cues yet.</div>'
+      + '<button onclick="loadCuesFromTemplate()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:\'DM Mono\',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">⬇ LOAD FROM TEMPLATE</button>';
+    return;
+  }
+  var html = cues.map(function(c) {
+    var cid = c.id.replace(/'/g, '');
+    var cname = (c.name || '').replace(/"/g, '&quot;');
+    var cdur = (c.duration || '').replace(/"/g, '&quot;');
+    return '<div class="seg-row" data-seg-id="' + cid + '" draggable="true">'
+      + '<span class="seg-row-handle">⠿</span>'
+      + '<input class="seg-row-name" value="' + cname + '" onchange="saveCueName(\'' + cid + '\',this.value)" placeholder="Segment name">'
+      + '<input class="seg-row-dur" value="' + cdur + '" onchange="saveCueDuration(\'' + cid + '\',this.value)" placeholder="dur">'
+      + '<button class="seg-row-del" onclick="deleteCue(\'' + cid + '\')" title="Remove">✕</button>'
+      + '</div>';
+  }).join('');
+  html += '<div class="seg-add-row"><button onclick="addCue()">+ ADD CUE</button></div>';
+  el.innerHTML = html;
+  initSegDrag(el, activeEp().cues, function() { autoSave('cues reordered'); });
+}
+
+function loadCuesFromTemplate() {
+  activeEp().cues = (state.showTemplate || []).map(function(s) {
+    return { id: 'cue-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), name: s.name, duration: '', note: s.note || '' };
+  });
+  renderCueList();
+  autoSave('cues loaded from template');
+}
+
+function addCue() {
+  if (!activeEp().cues) activeEp().cues = [];
+  activeEp().cues.push({ id: 'cue-' + Date.now(), name: '', duration: '', note: '' });
+  renderCueList();
+  autoSave('cue added');
+  setTimeout(function() {
+    var inputs = document.querySelectorAll('#cue-list-display .seg-row-name');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+
+function deleteCue(id) {
+  activeEp().cues = (activeEp().cues || []).filter(function(c) { return c.id !== id; });
+  renderCueList();
+  autoSave('cue removed');
+}
+
+function saveCueName(id, val) {
+  var cue = (activeEp().cues || []).find(function(c) { return c.id === id; });
+  if (cue) cue.name = val;
+  autoSave('cue renamed');
+}
+
+function saveCueDuration(id, val) {
+  var cue = (activeEp().cues || []).find(function(c) { return c.id === id; });
+  if (cue) cue.duration = val;
+  autoSave('cue duration set');
+}
+
+function onSummaryEdit(val) {
+  activeEp().summary = val;
+  autoSave('episode summary edited');
+}
+
 function updateEpSwitchBtn() {
   var btn = document.getElementById('ep-switch-btn');
   if (!btn) return;
@@ -4279,6 +4492,10 @@ setInterval(updateCountdown, 60000);
   var rtEl = document.getElementById('d-release-time');
   if (rdEl) rdEl.value = activeEp().releaseDate || '';
   if (rtEl) rtEl.value = activeEp().releaseTime || '';
+  var sumEl = document.getElementById('d-ep-summary');
+  if (sumEl) sumEl.value = activeEp().summary || '';
+  renderShowTemplate();
+  renderCueList();
 })();
 
 // ── CONTEXT BRIEF ──
@@ -4772,6 +4989,7 @@ buildSessionSnapshot = function() {
   snap.actionItems = actionItems.slice();
   snap.episodeStore = JSON.parse(JSON.stringify(episodeStore));
   snap.aiIdCounter = aiIdCounter;
+  snap.showTemplate = JSON.parse(JSON.stringify(state.showTemplate || []));
   return snap;
 };
 
@@ -4804,6 +5022,9 @@ applySession = function(data) {
     aiIdCounter = data.aiIdCounter || (actionItems.length + 1);
     updateAiCounts();
     renderActionItems();
+  }
+  if (data.showTemplate && Array.isArray(data.showTemplate)) {
+    state.showTemplate = data.showTemplate;
   }
 };
 
