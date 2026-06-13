@@ -2722,12 +2722,68 @@ Which episode slot do you want to fill first?`);
 }
 
 function findGuest(context) {
-  addMsg('user', 'Find a guest.');
-  addMsg('boo', `On it. To find the best guests, tell me:
+  const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  const seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  const epRef = 'S' + seasonNum + '-E' + epNum;
+  const epData = state.seasons[0] && state.seasons[0].episodes
+    ? state.seasons[0].episodes.find(function(e) { return e.number === epNum; }) : null;
+  const seasonTheme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
+  const arcRole = (epData && epData.arcRole) || '';
+  const tension = (epData && epData.centralTension) || '';
 
-<strong>What's the episode angle?</strong> For example: "A classroom teacher who's actually using AI tools with students" or "A researcher questioning whether coding should still be taught at all."
+  let prompt;
+  if (context === 'more') {
+    // Already returned cards — find more, go straight to results
+    prompt = 'Bring 3-5 more guest candidates for ' + epRef + '.';
+    if (seasonTheme) prompt += ' Season theme: "' + seasonTheme + '".';
+    if (tension) prompt += ' Central tension: ' + tension + '.';
+    prompt += ' Use different angles or backgrounds from the previous suggestions. Return formatted guest profile cards now.';
+  } else {
+    // Initial search — propose a guest profile hypothesis + one deepening question before pulling names
+    prompt = 'Find a guest for ' + epRef + '.';
+    if (seasonTheme) prompt += ' Season theme: "' + seasonTheme + '".';
+    if (arcRole) prompt += ' Arc role: ' + arcRole + '.';
+    if (tension) prompt += ' Central tension: ' + tension + '.';
+    if (context && context !== 'more') prompt += ' Additional context: ' + context + '.';
+    prompt += ' Before pulling names: in 2 sentences, share your hypothesis for the ideal guest type (who they are professionally and the specific angle they bring to this episode). Then ask me ONE specific question — something that would meaningfully change who you look for. Do not return candidate names yet.';
+  }
 
-The more specific you are, the better my suggestions.`);
+  const displayText = context === 'more' ? 'Find more guests for ' + epRef : 'Find a guest for ' + epRef;
+  setView('chat');
+  triggerBooDirectly(displayText, prompt);
+}
+
+// Direct API call — shows a short label in chat, sends full context to Boo,
+// never touches the chat input field
+async function triggerBooDirectly(displayText, apiPrompt) {
+  const btn = document.getElementById('sendBtn');
+  if (btn) btn.disabled = true;
+
+  // Show short user label in chat (DOM only — log entry added after response)
+  const msgs = document.getElementById('messages');
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'msg user';
+  msgDiv.innerHTML = '<div class="msg-avatar">U</div>'
+    + '<div class="msg-body"><div class="msg-name">You</div>'
+    + '<div class="msg-bubble">' + displayText + '</div></div>';
+  msgs.appendChild(msgDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  showTyping();
+  try {
+    const reply = await callBoo(apiPrompt);
+    // Log user turn now (before boo's response) so history stays alternating
+    activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
+    hideTyping();
+    const parsed = parseReply(reply);
+    addMsg('boo', parsed);
+    if (activeEp().script || activeEp().runOfShow) autoSave('boo direct trigger');
+  } catch (err) {
+    activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
+    hideTyping();
+    addMsg('boo', 'Hmm, I hit a snag: <em>' + err.message + '</em>. Try again?');
+  }
+  if (btn) btn.disabled = false;
 }
 
 // ── API CALL ──
@@ -3227,7 +3283,7 @@ function formatGuestSuggestions(text) {
   let html = preamble.trim() ? '<p>' + (preamble.trim()) + '</p>' : '';
   html += '<div class="card-grid">' + (guestCards) + '</div>';
   html += '<div class="msg-actions">'
-    + '<button class="action-btn orange" onclick="findGuest()">&#128269; Find More Guests</button>'
+    + '<button class="action-btn orange" onclick="findGuest(\'more\')">&#128269; Find More Guests</button>'
     + '<button class="action-btn" onclick="refineGuestSearch()">Refine Search</button>'
     + '</div>';
   return html;
@@ -3621,27 +3677,7 @@ function renderPersonCard(name, subtitle, role, status) {
 }
 
 function findGuestChat() {
-  setView('chat');
-  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
-  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
-  var epRef = 'S' + seasonNum + '-E' + epNum;
-  var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e) { return e.number === epNum; });
-  var seasonTheme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
-  var arcRole       = (epData && epData.arcRole) || '';
-  var tension       = (epData && epData.centralTension) || '';
-  var audience      = (epData && epData.audience) || '';
-  var thinkAfter    = (epData && epData.thinkAfter) || '';
-
-  var prompt = 'Find me 3-5 specific, real guest candidates for ' + epRef + ' of ' + SHOW_CONFIG.showName + '.';
-  if (seasonTheme)  prompt += ' Season theme: "' + seasonTheme + '".';
-  if (arcRole)      prompt += ' This episode\'s arc role: ' + arcRole + '.';
-  if (tension)      prompt += ' Central tension to explore: ' + tension + '.';
-  if (audience)     prompt += ' Primary audience: ' + audience + '.';
-  if (thinkAfter)   prompt += ' Listener should think after: "' + thinkAfter + '".';
-  prompt += ' If you have any clarifying questions about angle or fit, ask them now — but also immediately bring back 3-5 specific, nameable candidates based on what you already know. Return real people — researchers, educators, technologists, practitioners, or authors — with something specific and credible to say about CS education in the AI era. Include their LinkedIn, any podcast appearances, and on-camera presence. Format each as a guest profile card.';
-
-  var input = document.getElementById('chatInput');
-  if (input) { input.value = prompt; sendMessage(); }
+  findGuest();
 }
 
 function renderShowPanel(content) {
