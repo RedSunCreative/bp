@@ -4563,16 +4563,28 @@ function buildBriefPrompt() {
     + '- Episode 1 CTA points to working URLs\n'
     + '- A Moment of Hope for Episode 1 sourced and produced\n'
     + '- Episode 1 guest confirmed and prepped\n\n'
+    + 'STANDARD EPISODE STRUCTURE (locked in for every episode):\n'
+    + ((state.showTemplate || []).length > 0
+        ? (state.showTemplate || []).map(function(s, i){ return (i+1) + '. ' + s.name + (s.note ? ' — ' + s.note : ''); }).join('\n')
+        : 'Not yet defined')
+    + '\n\n'
+    + 'THREE THROUGH-LINE QUESTIONS (close every guest interview, verbatim, every episode):\n'
+    + '1. What is your greatest Fear?\n'
+    + '2. What is your greatest Opportunity?\n'
+    + '3. What is your greatest Wish?\n\n'
+    + 'EPISODE SUMMARY (this episode):\n'
+    + (activeEp().summary || 'Not yet written') + '\n\n'
     + 'ADDITIONAL CONTEXT (baked in from prior sessions):\n'
     + bakedCtx + '\n\n'
     + 'CONVERSATION (what we have discussed in this session — treat this as live working context):\n'
     + (recentChat || 'No conversation yet.') + '\n\n'
     + '---\n\n'
-    + 'Write the Context Brief now. Four sections:\n'
+    + 'Write the Context Brief now. Five sections:\n'
     + '1. What This Show Is and Why It Matters\n'
     + '2. The Season We Are Building\n'
-    + '3. Where We Are Right Now\n'
-    + '4. What Needs to Happen Before Launch\n\n'
+    + '3. How We Build Every Episode (structure, through-line questions, key production decisions)\n'
+    + '4. Where We Are Right Now\n'
+    + '5. What Needs to Happen Before Launch\n\n'
     + 'Write in present tense. Be specific. Be honest about what is decided and what is still open. Use **bold** for names and key terms. This document will be shared with Matt and Kartik to orient them.';
 }
 
