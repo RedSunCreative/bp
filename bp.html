@@ -869,8 +869,11 @@
   .ep-switch-btn{font-family:'Syne',sans-serif;font-size:0.88rem;font-weight:700;color:#F5A623;background:rgba(245,208,58,0.1);border:2px solid var(--gold);border-radius:6px;padding:6px 14px;cursor:pointer;letter-spacing:0.08em;white-space:nowrap;min-width:52px;text-align:center;}
   .ep-switch-btn:hover{background:rgba(245,208,58,0.2);}
   .save-badge{font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:400;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;white-space:nowrap;}
-  .settings-gear{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:14px;transition:border-color 0.15s;}
+  .settings-gear{background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:6px 8px;cursor:pointer;font-size:21px;transition:border-color 0.15s;line-height:1;}
   .settings-gear:hover{border-color:var(--muted);}
+  .release-inputs{display:flex;gap:8px;align-items:center;margin-top:2px;}
+  .release-inputs input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--white);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;padding:2px 0;cursor:pointer;outline:none;width:auto;}
+  .release-inputs input::-webkit-calendar-picker-indicator{filter:invert(0.5);cursor:pointer;}
 
   /* ── BEB DATA PANEL — transplanted from BEB verbatim ── */
   .data-panel{overflow-y:auto;height:100%;padding:20px;flex:1;}
@@ -2186,7 +2189,7 @@
       <!-- Top bar: countdown + episode switcher + gear + save badge -->
       <div class="rp-topbar">
         <div class="show-countdown" title="Countdown to next recording">
-          <div class="show-countdown-label">NEXT SHOW</div>
+          <div class="show-countdown-label">NEXT RELEASE</div>
           <div class="show-countdown-time empty" id="show-countdown-time">— —</div>
           <div id="show-countdown-sub" style="font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.08em;line-height:1;margin-top:1px;"></div>
         </div>
@@ -2212,8 +2215,14 @@
             <div class="ep-field"><div class="ep-label">STATUS</div><div class="ep-val" id="d-epstatus" style="color:var(--teal);">PLANNING</div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">TITLE</div><div class="ep-val ep-editable" id="d-eptitle" onclick="epEditTitle(this)" title="Click to edit"><span class="empty">not set</span></div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">ARC ROLE</div><div class="ep-val" id="d-arcrole" style="font-size:12px;color:var(--muted);"></div></div>
-            <div class="ep-field"><div class="ep-label">TARGET</div><div class="ep-val" id="d-eplen" style="color:var(--muted);">60 min</div></div>
-            <div class="ep-field"><div class="ep-label">SAVED</div><div class="ep-val" id="d-saved" style="font-size:11px;color:var(--muted)">—</div></div>
+            <div class="ep-field"><div class="ep-label">TARGET TIME</div><div class="ep-val" id="d-eplen" style="color:var(--muted);">60 min</div></div>
+            <div class="ep-field" style="grid-column:1/-1">
+              <div class="ep-label">RELEASE DATE &amp; TIME</div>
+              <div class="release-inputs">
+                <input type="date" id="d-release-date" onchange="setReleaseDate(this.value)" title="Release date">
+                <input type="time" id="d-release-time" onchange="setReleaseTime(this.value)" title="Release time">
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2747,14 +2756,15 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 1500,
+      max_tokens: 2000,
       system: systemPrompt,
       messages: conversationHistory,
     }),
   });
 
   const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
+  if (data.error) throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'API error'));
+  if (!data.content?.[0]?.text) throw new Error('Empty response from API');
   return data.content[0].text;
 }
 
@@ -2763,13 +2773,13 @@ const episodeStore = {};
 function activeEp() {
   const key = state.currentEpisode ? state.currentEpisode.number : 1;
   if (!episodeStore[key]) {
-    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [] };
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], releaseDate: '', releaseTime: '' };
   }
   return episodeStore[key];
 }
 
 function getConversationHistory() {
-  return activeEp().conversationLog.slice(-20).map(m => ({
+  return activeEp().conversationLog.slice(-14).map(m => ({
     role: m.role === 'boo' ? 'assistant' : 'user',
     content: m.text,
   }));
@@ -3368,6 +3378,10 @@ function updateRightPanel() {
   updateEpisodeStatusCard();
   updateCountdown();
   updateEpSwitchBtn();
+  var rdEl = document.getElementById('d-release-date');
+  var rtEl = document.getElementById('d-release-time');
+  if (rdEl) rdEl.value = activeEp().releaseDate || '';
+  if (rtEl) rtEl.value = activeEp().releaseTime || '';
   var content = document.getElementById('panelContent');
   if (!content) return;
 
@@ -4134,25 +4148,24 @@ function updateCountdown() {
   var timeEl = document.getElementById('show-countdown-time');
   var subEl = document.getElementById('show-countdown-sub');
   if (!timeEl) return;
-  var dates = activeEp().recordingDates || [];
-  var future = dates.filter(function(s) { return !isSlotPassed(s.date, s.time); });
-  future.sort(function(a, b) { return (a.date + a.time) < (b.date + b.time) ? -1 : 1; });
-  if (future.length === 0) {
+  var ep = activeEp();
+  var dateStr = ep.releaseDate || '';
+  var timeStr = ep.releaseTime || '00:00';
+  if (!dateStr) {
     timeEl.textContent = '— —'; timeEl.className = 'show-countdown-time empty';
     if (subEl) subEl.textContent = '';
     return;
   }
-  var slot = future[0];
-  var show = makeShowTimeCT(slot.date, slot.time || '10:00');
-  if (!show || isNaN(show.getTime())) {
+  var target = new Date(dateStr + 'T' + timeStr + ':00');
+  if (isNaN(target.getTime())) {
     timeEl.textContent = '— —'; timeEl.className = 'show-countdown-time empty';
     if (subEl) subEl.textContent = '';
     return;
   }
-  if (subEl) subEl.textContent = formatShowTimeCT(slot.time || '10:00');
-  var diff = show.getTime() - Date.now();
+  if (subEl) subEl.textContent = formatShowTimeCT(timeStr);
+  var diff = target.getTime() - Date.now();
   if (diff <= 0) {
-    timeEl.textContent = 'SHOWTIME'; timeEl.className = 'show-countdown-time urgent';
+    timeEl.textContent = 'LIVE'; timeEl.className = 'show-countdown-time urgent';
     return;
   }
   var totalMins = Math.floor(diff / 60000);
@@ -4165,6 +4178,18 @@ function updateCountdown() {
   parts.push(m + 'm');
   timeEl.textContent = parts.join(' ');
   timeEl.className = 'show-countdown-time' + (d === 0 ? ' urgent' : '');
+}
+
+function setReleaseDate(val) {
+  activeEp().releaseDate = val;
+  updateCountdown();
+  autoSave('release date set');
+}
+
+function setReleaseTime(val) {
+  activeEp().releaseTime = val;
+  updateCountdown();
+  autoSave('release time set');
 }
 
 function updateEpSwitchBtn() {
@@ -4250,6 +4275,10 @@ setInterval(updateCountdown, 60000);
   renderConsiderations();
   updateEpSwitchBtn();
   updateCountdown();
+  var rdEl = document.getElementById('d-release-date');
+  var rtEl = document.getElementById('d-release-time');
+  if (rdEl) rdEl.value = activeEp().releaseDate || '';
+  if (rtEl) rtEl.value = activeEp().releaseTime || '';
 })();
 
 // ── CONTEXT BRIEF ──
