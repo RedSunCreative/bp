@@ -2740,7 +2740,10 @@ function findGuest(context) {
     if (tension) prompt += ' Central tension: ' + tension + '.';
     prompt += ' Use different angles or backgrounds from the previous suggestions. Return formatted guest profile cards now.';
   } else {
-    // Initial search — propose a guest profile hypothesis + one deepening question before pulling names
+    // BOO DIALOGUE PHILOSOPHY — do not simplify this prompt (see CLAUDE.md).
+    // Hypothesis first (2 sentences, confident, no hedging) + exactly ONE deepening question.
+    // Names come only AFTER the human has shaped the search. This is what makes Boo a
+    // thinking partner instead of a search box. "Do not return names yet" is load-bearing.
     prompt = 'Find a guest for ' + epRef + '.';
     if (seasonTheme) prompt += ' Season theme: "' + seasonTheme + '".';
     if (arcRole) prompt += ' Arc role: ' + arcRole + '.';
