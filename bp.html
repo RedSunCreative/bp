@@ -4842,6 +4842,8 @@ function saveScriptEdit() {
     var text = q.dataset.tip;
     if (!text) return;
     tip.textContent = text;
+    tip.style.left = (e.clientX + 14) + 'px';
+    tip.style.top  = (e.clientY + 14) + 'px';
     tip.style.display = 'block';
   });
   document.addEventListener('mousemove', function(e) {
@@ -4850,7 +4852,9 @@ function saveScriptEdit() {
     tip.style.top  = (e.clientY + 14) + 'px';
   });
   document.addEventListener('mouseout', function(e) {
-    if (e.target.closest && e.target.closest('[data-tip]')) tip.style.display = 'none';
+    var q = e.target.closest && e.target.closest('[data-tip]');
+    if (!q) return;
+    if (!q.contains(e.relatedTarget)) tip.style.display = 'none';
   });
 })();
 
