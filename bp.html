@@ -4832,8 +4832,8 @@ function saveScriptEdit() {
   });
 })();
 
-// tip-q tooltip
-(function() {
+// tip-q tooltip — must run after DOM is ready; #boo-tip is after </script>
+document.addEventListener('DOMContentLoaded', function() {
   var tip = document.getElementById('boo-tip');
   if (!tip) return;
   document.addEventListener('mouseover', function(e) {
@@ -4856,7 +4856,7 @@ function saveScriptEdit() {
     if (!q) return;
     if (!q.contains(e.relatedTarget)) tip.style.display = 'none';
   });
-})();
+});
 
 // ── RIGHT PANEL TOP BAR ──────────────────────────────────────────────────────
 

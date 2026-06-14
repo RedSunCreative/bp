@@ -36,6 +36,9 @@ if [[ "$BREAK_MODE" == "--break" ]]; then
   # T11: remove renderSeasonsList() from applySession patch
   sed -i '' 's/  renderSeasonsList();$/  \/\/ BREAK-renderSeasonsList-removed/' "$BP"
   echo "  Injected: removed renderSeasonsList() from applySession patch"
+  # T12: disable tooltip DOMContentLoaded so it never fires (tip stays null)
+  sed -i '' "s/addEventListener('DOMContentLoaded', function() {$/addEventListener('DISABLED', function() {/" "$BP"
+  echo "  Injected: tooltip DOMContentLoaded renamed to DISABLED — tip stays null"
   echo ""
 fi
 
@@ -311,6 +314,42 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 12 (behavioral): tooltip init runs inside DOMContentLoaded
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 12: tooltip init inside DOMContentLoaded (not at parse time) ---"
+cat > /tmp/bp_t12.js << 'NODEEOF'
+const fs = require('fs');
+const src = fs.readFileSync('bp.html', 'utf8');
+
+// The #boo-tip element is after </script>, so getElementById must run post-DOM
+// Verify the tooltip init is inside a DOMContentLoaded callback, not an IIFE
+const dcl = "addEventListener('DOMContentLoaded', function() {";
+const dclIdx = src.indexOf(dcl);
+if (dclIdx === -1) {
+  console.log('FAIL: no DOMContentLoaded callback found for tooltip init');
+  process.exit(0);
+}
+const block = src.slice(dclIdx, dclIdx + 800);
+if (!block.includes("getElementById('boo-tip')")) {
+  console.log('FAIL: DOMContentLoaded callback found but does not contain getElementById(boo-tip)');
+  process.exit(0);
+}
+// Also verify the IIFE pattern is NOT present for boo-tip
+if (/\(function\s*\(\s*\)\s*\{[\s\S]{0,100}getElementById\('boo-tip'\)/.test(src)) {
+  console.log('FAIL: tooltip init is still in an IIFE — boo-tip will be null at parse time');
+  process.exit(0);
+}
+console.log('PASS');
+NODEEOF
+T12_RESULT=$(node /tmp/bp_t12.js 2>&1)
+if [[ "$T12_RESULT" == PASS ]]; then
+  pass "tooltip init inside DOMContentLoaded — boo-tip found when listeners attach"
+else
+  fail "tooltip will not work: $T12_RESULT"
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
@@ -319,6 +358,7 @@ if [[ "$BREAK_MODE" == "--break" ]]; then
   sed -i '' 's/state\.seasons = s\.seasons || \[\];/if (s.seasons \&\& s.seasons.length) state.seasons = s.seasons;/' "$BP"
   sed -i '' 's/let autoSaveTimeout = null;/var autoSaveTimeout = null;/' "$BP"
   sed -i '' 's/  \/\/ BREAK-renderSeasonsList-removed/  renderSeasonsList();/' "$BP"
+  sed -i '' "s/addEventListener('DISABLED', function() {$/addEventListener('DOMContentLoaded', function() {/" "$BP"
   echo ""
   echo "  (break-test injections removed — file restored)"
 fi
