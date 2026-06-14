@@ -39,6 +39,9 @@ if [[ "$BREAK_MODE" == "--break" ]]; then
   # T12: disable tooltip DOMContentLoaded so it never fires (tip stays null)
   sed -i '' "s/addEventListener('DOMContentLoaded', function() {$/addEventListener('DISABLED', function() {/" "$BP"
   echo "  Injected: tooltip DOMContentLoaded renamed to DISABLED — tip stays null"
+  # T13: inject </script> literal inside the script block to simulate early close
+  sed -i '' "s|// tip-q tooltip — must run after DOM is ready; #boo-tip is after the script block|// tip-q tooltip — must run after DOM is ready; #boo-tip is after </script>|" "$BP"
+  echo "  Injected: </script> literal in comment inside script block"
   echo ""
 fi
 
@@ -350,6 +353,43 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 13 (structural): no </script> literal inside the <script> block
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 13: no </script> literal inside script block (kills the page) ---"
+cat > /tmp/bp_t13.js << 'NODEEOF'
+const fs = require('fs');
+const src = fs.readFileSync('bp.html', 'utf8');
+
+// A </script> literal inside a JS comment cuts the script block at that point.
+// The browser stops reading JS at the FIRST </script> it encounters.
+// Guard: verify the last line of the real script block is still reachable —
+// i.e., the script body (up to the first </script>) contains the initApp sentinel.
+const scriptStart = src.indexOf('<script>');
+if (scriptStart === -1) { console.log('FAIL: no inline <script> tag found'); process.exit(0); }
+
+const scriptEnd = src.indexOf('</script>', scriptStart);
+if (scriptEnd === -1) { console.log('FAIL: no </script> found after <script>'); process.exit(0); }
+
+// Everything the browser actually parses as JS
+const scriptBody = src.slice(scriptStart + '<script>'.length, scriptEnd);
+
+// The real closing line is: document.addEventListener('DOMContentLoaded', initApp);
+// If a spurious </script> cuts the block early, this line will be missing.
+if (!scriptBody.includes("addEventListener('DOMContentLoaded', initApp)")) {
+  console.log('FAIL: script block cut short — initApp DOMContentLoaded sentinel not found. A </script> literal likely appears inside a comment before the real closing tag.');
+  process.exit(0);
+}
+console.log('PASS');
+NODEEOF
+T13_RESULT=$(node /tmp/bp_t13.js 2>&1)
+if [[ "$T13_RESULT" == PASS ]]; then
+  pass "no </script> literal inside script block"
+else
+  fail "script block will be cut short: $T13_RESULT"
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
@@ -359,6 +399,7 @@ if [[ "$BREAK_MODE" == "--break" ]]; then
   sed -i '' 's/let autoSaveTimeout = null;/var autoSaveTimeout = null;/' "$BP"
   sed -i '' 's/  \/\/ BREAK-renderSeasonsList-removed/  renderSeasonsList();/' "$BP"
   sed -i '' "s/addEventListener('DISABLED', function() {$/addEventListener('DOMContentLoaded', function() {/" "$BP"
+  sed -i '' "s|// tip-q tooltip — must run after DOM is ready; #boo-tip is after </script>|// tip-q tooltip — must run after DOM is ready; #boo-tip is after the script block|" "$BP"
   echo ""
   echo "  (break-test injections removed — file restored)"
 fi
