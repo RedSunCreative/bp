@@ -2201,9 +2201,8 @@
     <!-- Prose output -->
     <div class="brief-body">
       <div id="briefProse" class="brief-prose">
-        <div class="brief-generating" id="briefPlaceholder">
-          <div class="brief-generating-dots"><span></span><span></span><span></span></div>
-          <div>Boo is writing the brief...</div>
+        <div class="brief-generating" id="briefPlaceholder" style="gap:0;">
+          <div style="font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;color:var(--text-muted);">No brief yet — hit ↺ Regenerate above to generate it.</div>
         </div>
       </div>
     </div>
@@ -3664,7 +3663,7 @@ function setView(view) {
     if (state.masterBriefContent) {
       renderBriefProse(state.masterBriefContent, 'briefProse');
     } else {
-      document.getElementById('briefProse').innerHTML = '<div class="brief-generating" id="briefPlaceholder"><div class="brief-generating-dots"><span></span><span></span><span></span></div><div>Hit ↺ Regenerate to generate the Master Brief.</div></div>';
+      document.getElementById('briefProse').innerHTML = '<div class="brief-generating" id="briefPlaceholder" style="gap:0;"><div style="font-family:\'DM Mono\',monospace;font-size:11px;letter-spacing:0.06em;color:var(--text-muted);">No brief yet — hit ↺ Regenerate above to generate it.</div></div>';
     }
     renderMasterFlagsPanel();
   }
@@ -5107,7 +5106,7 @@ async function generateBrief() {
     + '</div>';
   document.getElementById('briefTimestamp').textContent = '';
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 45000);
+  const timer = setTimeout(() => controller.abort(), 60000);
   try {
     const res = await fetch(PROXY, {
       method: 'POST',
@@ -5115,9 +5114,10 @@ async function generateBrief() {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_ANON}`, 'apikey': SB_ANON },
       body: JSON.stringify({ model: MODEL, max_tokens: 1400, messages: [{ role: 'user', content: buildMasterBriefPrompt() }] }),
     });
-    clearTimeout(timer);
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message || data.error);
+    clearTimeout(timer);
+    if (!res.ok || data.error) throw new Error((data.error && (data.error.message || data.error)) || ('HTTP ' + res.status));
+    if (!data.content || !data.content[0]) throw new Error('Empty response from API');
     state.masterBriefContent = data.content[0].text;
     renderBriefProse(state.masterBriefContent, 'briefProse');
     const now = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -5125,8 +5125,8 @@ async function generateBrief() {
     autoSave('master brief generated');
   } catch (err) {
     clearTimeout(timer);
-    const msg = err.name === 'AbortError' ? 'Timed out after 45s — click Regenerate to try again.' : 'Could not generate: ' + err.message;
-    prose.innerHTML = '<div class="brief-generating" style="color:var(--orange);">' + msg + '</div>';
+    const msg = err.name === 'AbortError' ? 'Timed out — click Regenerate to try again.' : 'Could not generate: ' + err.message;
+    prose.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--orange);padding:20px;">' + msg + '</div>';
   }
 }
 
