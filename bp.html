@@ -924,6 +924,12 @@
   .seg-add-row{display:flex;justify-content:center;margin-top:8px;}
   .seg-add-row button{background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:6px;padding:5px 14px;font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;cursor:pointer;transition:border-color 0.15s,color 0.15s;}
   .seg-add-row button:hover{border-color:var(--teal);color:var(--teal);}
+  .seg-available-label{font-family:'DM Mono',monospace;font-size:0.6rem;font-weight:400;color:rgba(255,255,255,0.2);letter-spacing:0.12em;text-transform:uppercase;padding:8px 0 4px;border-top:1px solid rgba(255,255,255,0.05);margin-top:8px;}
+  .seg-row-avail{display:flex;align-items:center;gap:7px;padding:4px 4px;border-radius:4px;cursor:pointer;margin-bottom:1px;transition:background 0.12s,opacity 0.12s;opacity:0.38;}
+  .seg-row-avail:hover{background:rgba(255,255,255,0.05);opacity:0.75;}
+  .seg-row-avail-plus{color:var(--teal);font-size:13px;font-weight:700;flex-shrink:0;line-height:1;}
+  .seg-row-avail-name{flex:1;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;color:var(--text-muted);min-width:0;}
+  .seg-row-avail-note{font-family:'DM Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
   .ep-summary-input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:400;width:100%;resize:none;min-height:52px;padding:4px 0;outline:none;line-height:1.5;}
   .ep-summary-input::placeholder{color:var(--border);font-style:italic;}
 
@@ -2541,13 +2547,18 @@ const state = {
   masterBriefItems: [],
   masterBriefFlags: [],
   showTemplate: [
-    { id: 'st-1', name: 'Cold Open', note: 'Cut in post — pull charged moment from interview' },
-    { id: 'st-2', name: 'Introductions', note: '' },
-    { id: 'st-3', name: 'Anno Community Workshop Update', note: '' },
-    { id: 'st-4', name: "What's for Lunch?", note: '60-90 sec community UGC clip' },
-    { id: 'st-5', name: 'Guest Interview', note: '20-25 min — closes with Fear / Opportunity / Wish' },
-    { id: 'st-6', name: 'MoH Bridge', note: 'Guest introduces A Moment of Hope (2 sentences)' },
-    { id: 'st-7', name: 'A Moment of Hope', note: '2-min doc micro-feature, shot separately' },
+    { id: 'st-1',  name: 'Cold Open',                     note: 'Cut in post — pull charged moment from interview', default: true  },
+    { id: 'st-2',  name: 'Introductions',                  note: 'Host intro + guest intro',                         default: true  },
+    { id: 'st-5',  name: 'Guest Interview',                note: '20-25 min — closes with Fear / Opportunity / Wish', default: true  },
+    { id: 'st-12', name: 'Close / Outro',                  note: 'Sign-off + where to find guest + subscribe CTA',   default: true  },
+    { id: 'st-3',  name: 'Anno Community Workshop Update', note: '',                                                  default: false },
+    { id: 'st-4',  name: "What's for Lunch?",              note: '60-90 sec community UGC clip',                     default: false },
+    { id: 'st-6',  name: 'MoH Bridge',                    note: 'Guest introduces A Moment of Hope (2 sentences)',   default: false },
+    { id: 'st-7',  name: 'A Moment of Hope',               note: '2-min doc micro-feature, shot separately',         default: false },
+    { id: 'st-8',  name: 'Question of the Week',           note: '',                                                  default: false },
+    { id: 'st-9',  name: 'AI News Minute',                 note: '',                                                  default: false },
+    { id: 'st-10', name: 'Am I Human?',                    note: '',                                                  default: false },
+    { id: 'st-11', name: 'Does It Matter?',                note: '',                                                  default: false },
   ],
 };
 
@@ -4592,15 +4603,23 @@ function saveTemplateName(id, val) {
 function renderCueList() {
   var el = document.getElementById('cue-list-display');
   if (!el) return;
-  var cues = activeEp().cues || [];
+
+  // Auto-seed defaults on first open
+  if (!activeEp().cues || activeEp().cues.length === 0) {
+    activeEp().cues = (state.showTemplate || [])
+      .filter(function(s) { return s.default; })
+      .map(function(s) {
+        return { id: 'cue-' + Date.now() + '-' + Math.random().toString(36).slice(2,6), templateId: s.id, name: s.name, duration: '', note: s.note || '' };
+      });
+    autoSave('cues seeded from defaults');
+  }
+
+  var cues = activeEp().cues;
   var badge = document.getElementById('cue-count-badge');
   if (badge) badge.textContent = cues.length + ' cue' + (cues.length !== 1 ? 's' : '');
-  if (cues.length === 0) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">No cues yet.</div>'
-      + '<button onclick="loadCuesFromTemplate()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:\'DM Mono\',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">⬇ LOAD FROM TEMPLATE</button>';
-    return;
-  }
-  var html = cues.map(function(c) {
+
+  // Active cue rows
+  var activeHtml = cues.map(function(c) {
     var cid = c.id.replace(/'/g, '');
     var cname = (c.name || '').replace(/"/g, '&quot;');
     var cdur = (c.duration || '').replace(/"/g, '&quot;');
@@ -4608,20 +4627,48 @@ function renderCueList() {
       + '<span class="seg-row-handle">⠿</span>'
       + '<input class="seg-row-name" value="' + cname + '" onchange="saveCueName(\'' + cid + '\',this.value)" placeholder="Segment name">'
       + '<input class="seg-row-dur" value="' + cdur + '" onchange="saveCueDuration(\'' + cid + '\',this.value)" placeholder="dur">'
-      + '<button class="seg-row-del" onclick="deleteCue(\'' + cid + '\')" title="Remove">✕</button>'
+      + '<button class="seg-row-del" onclick="deleteCue(\'' + cid + '\')" title="Remove from episode">✕</button>'
       + '</div>';
   }).join('');
-  html += '<div class="seg-add-row"><button onclick="addCue()">+ ADD CUE</button></div>';
-  el.innerHTML = html;
+
+  // Available (not yet active) template segments
+  var activeTplIds = {};
+  cues.forEach(function(c) { if (c.templateId) activeTplIds[c.templateId] = true; });
+  var available = (state.showTemplate || []).filter(function(s) { return !activeTplIds[s.id]; });
+  var availHtml = '';
+  if (available.length > 0) {
+    availHtml = '<div class="seg-available-label">Add to this episode</div>'
+      + available.map(function(s) {
+          var sid = (s.id || '').replace(/'/g,'').replace(/"/g,'&quot;');
+          var noteSnip = s.note ? s.note.substring(0, 28) + (s.note.length > 28 ? '…' : '') : '';
+          return '<div class="seg-row-avail" onclick="addCueFromTemplate(\'' + sid + '\')" title="Add to episode">'
+            + '<span class="seg-row-avail-plus">+</span>'
+            + '<span class="seg-row-avail-name">' + (s.name || '') + '</span>'
+            + (noteSnip ? '<span class="seg-row-avail-note">' + noteSnip + '</span>' : '')
+            + '</div>';
+        }).join('');
+  }
+
+  el.innerHTML = activeHtml
+    + '<div class="seg-add-row"><button onclick="addCue()">+ CUSTOM CUE</button></div>'
+    + availHtml;
   initSegDrag(el, activeEp().cues, function() { autoSave('cues reordered'); });
 }
 
 function loadCuesFromTemplate() {
-  activeEp().cues = (state.showTemplate || []).map(function(s) {
-    return { id: 'cue-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), name: s.name, duration: '', note: s.note || '' };
-  });
+  // Kept for back-compat; now just re-seeds defaults
+  activeEp().cues = [];
   renderCueList();
-  autoSave('cues loaded from template');
+}
+
+function addCueFromTemplate(templateId) {
+  var tpl = (state.showTemplate || []).find(function(s) { return s.id === templateId; });
+  if (!tpl) return;
+  if (!activeEp().cues) activeEp().cues = [];
+  // Prepend so it appears at the top — user can drag to position
+  activeEp().cues.unshift({ id: 'cue-' + Date.now(), templateId: tpl.id, name: tpl.name, duration: '', note: tpl.note || '' });
+  renderCueList();
+  autoSave('cue added from template');
 }
 
 function addCue() {
