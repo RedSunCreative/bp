@@ -952,6 +952,7 @@
   .ep-val.empty{color:var(--border);font-style:italic;font-size:14px;}
   .ep-editable{cursor:pointer;}
   .ep-editable:hover{opacity:0.8;}
+  .ep-editable[contenteditable="true"]{cursor:text;opacity:1;border-bottom:1px solid var(--teal);outline:none;}
   .cue-item{background:var(--dark);border-radius:6px;padding:10px 12px;margin-bottom:8px;border-left:3px solid var(--border);transition:opacity 0.15s;}
   .cue-item.has-data{border-left-color:var(--teal);}
   .cue-item.dragging{opacity:0.35;}
@@ -4655,18 +4656,40 @@ function toggleSection(id) {
 
 // Inline title edit
 function epEditTitle(el) {
+  if (el.contentEditable === 'true') return;
   var cur = el.dataset.value || (state.currentEpisode && state.currentEpisode.title) || '';
-  var val = prompt('Episode title:', cur);
-  if (val === null) return;
-  val = val.trim();
-  if (!val) return;
-  if (state.currentEpisode) state.currentEpisode.title = val;
-  var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e){ return e.number === (state.currentEpisode ? state.currentEpisode.number : 1); });
-  if (epData) epData.title = val;
-  el.dataset.value = val;
-  el.textContent = val;
-  updateEpisodeStatusCard();
-  autoSave('title edit');
+  el.textContent = cur;
+  el.contentEditable = 'true';
+  el.focus();
+  var range = document.createRange();
+  range.selectNodeContents(el);
+  var sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  function save() {
+    el.onblur = null;
+    el.onkeydown = null;
+    el.contentEditable = 'false';
+    var val = el.textContent.trim();
+    if (!val) {
+      el.innerHTML = '<span class="empty">not set</span>';
+      el.dataset.value = '';
+      return;
+    }
+    el.dataset.value = val;
+    if (state.currentEpisode) state.currentEpisode.title = val;
+    var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e){ return e.number === (state.currentEpisode ? state.currentEpisode.number : 1); });
+    if (epData) epData.title = val;
+    updateEpisodeStatusCard();
+    autoSave('title edit');
+  }
+
+  el.onblur = save;
+  el.onkeydown = function(e) {
+    if (e.key === 'Enter') { e.preventDefault(); el.blur(); }
+    if (e.key === 'Escape') { el.textContent = cur || ''; el.blur(); }
+  };
 }
 
 // Sound test (ported from BEB)
