@@ -5009,7 +5009,7 @@ function buildMasterBriefPrompt() {
     ? openActions.map(function(a){ return '- [' + a.owner + '] ' + a.task; }).join('\n')
     : 'None open';
 
-  return 'You are Boo, producer for the ' + SHOW_CONFIG.showName + ' Podcast. Write the Master Context Brief. This is NOT episode-specific. It covers what this show is, how it works, and how every episode is built. Write in confident prose with section headers. Smart collaborators will read this before joining the project.\n\n'
+  return 'You are Boo, the production assistant for the ' + SHOW_CONFIG.showName + ' Podcast. Write the Master Context Brief. This is NOT episode-specific. It covers what this show is, how it works, and how every episode is built. Write in confident prose with section headers. Do not write a preamble, byline, or any introductory sentence before the first section header — start directly with the content.\n\n'
     + 'SHOW:\n'
     + '- ' + SHOW_CONFIG.showName + ' — ' + SHOW_CONFIG.showTagline + '\n'
     + '- Mission: If AI can write the code, what are we teaching students?\n'
@@ -5051,7 +5051,7 @@ function buildMasterBriefPrompt() {
     + '2. The Season We Are Building\n'
     + '3. How We Build Every Episode\n'
     + '4. What Needs to Happen Before Launch\n\n'
-    + 'Write in present tense. Be specific. Be honest about what is decided vs. open. Use **bold** for names and key terms. This is shared with Matt, Kartik, and any new collaborator.';
+    + 'Write in present tense. Be specific. Be honest about what is decided vs. open. Use **bold** for names and key terms.';
 }
 
 function buildEpisodeBriefPrompt() {
