@@ -1588,10 +1588,10 @@
   .season-ep-row.active-ep { border-color:var(--teal); background:rgba(59,184,201,0.06); }
   .season-ep-row.dragging { opacity:0.35; }
   .season-ep-row.drag-over { border-color:var(--teal) !important; background:rgba(59,184,201,0.1) !important; }
-  .season-ep-drag { cursor:grab; color:rgba(255,255,255,0.18); font-size:15px; padding:0 2px; flex-shrink:0; user-select:none; line-height:1; }
+  .season-ep-drag { cursor:grab; color:rgba(255,255,255,0.18); font-size:15px; padding:0 2px; flex:0 0 24px; user-select:none; line-height:1; text-align:center; }
   .season-ep-drag:active { cursor:grabbing; }
   .season-ep-ref { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:var(--text-muted); width:52px; flex-shrink:0; }
-  .season-ep-arc { flex-shrink:0; min-width:82px; }
+  .season-ep-arc { flex:0 0 88px; }
   .season-ep-title { flex:1; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; color:var(--white); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text; border-bottom:1px solid transparent; }
   .season-ep-title:focus { outline:none; border-bottom-color:var(--teal); white-space:normal; overflow:visible; }
   .season-ep-title.empty { color:var(--text-muted); font-weight:400; font-style:italic; }
@@ -1610,15 +1610,14 @@
   .season-ep-delete:hover { color:#ff6b6b; }
   .sv-add-ep-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border:1px dashed rgba(255,255,255,0.18); border-radius:7px; background:rgba(255,255,255,0.02); color:rgba(255,255,255,0.45); font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; letter-spacing:0.02em; cursor:pointer; width:100%; margin-top:6px; transition:all 0.15s; }
   .sv-add-ep-btn:hover { border-color:var(--teal); color:var(--teal); background:rgba(59,184,201,0.05); }
-  .sv-ep-header { display:flex; align-items:center; gap:10px; padding:0 14px 8px 14px; }
-  .sv-ep-header > div { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; }
-  .sv-h-drag { width:21px; flex-shrink:0; }
-  .sv-h-ref { width:52px; flex-shrink:0; }
-  .sv-h-arc { min-width:82px; flex-shrink:0; }
+  .sv-ep-header { display:flex; align-items:center; gap:10px; padding:0 14px 10px 14px; }
+  .sv-ep-header > div { font-family:'DM Sans',sans-serif; font-size:11px; font-weight:600; color:rgba(255,255,255,0.85); letter-spacing:0.01em; }
+  .sv-h-drag { flex:0 0 24px; }
+  .sv-h-season { flex:0 0 52px; }
+  .sv-h-current { flex:0 0 88px; }
   .sv-h-title { flex:1; }
-  .sv-h-bar { width:72px; flex-shrink:0; text-align:center; }
-  .sv-h-stage { width:128px; flex-shrink:0; }
-  .sv-h-end { width:58px; flex-shrink:0; }
+  .sv-h-bar { flex:0 0 72px; text-align:center; }
+  .sv-h-stage { flex:0 0 128px; }
   .sv-brief-section { margin-top:28px; padding-top:22px; border-top:1px solid var(--border); }
   .sv-brief-label { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
   .sv-brief-gen-btn { font-family:'DM Mono',monospace; font-size:9px; color:var(--teal); background:rgba(59,184,201,0.1); border:1px solid rgba(59,184,201,0.25); border-radius:3px; padding:3px 10px; cursor:pointer; letter-spacing:0.05em; transition:background 0.12s; }
@@ -2333,12 +2332,11 @@
       </div>
       <div class="sv-ep-header">
         <div class="sv-h-drag"></div>
-        <div class="sv-h-ref">Current</div>
-        <div class="sv-h-arc"></div>
+        <div class="sv-h-season">Season</div>
+        <div class="sv-h-current">Current</div>
         <div class="sv-h-title">Title</div>
         <div class="sv-h-bar">% Complete</div>
         <div class="sv-h-stage">Stage</div>
-        <div class="sv-h-end"></div>
       </div>
       <div id="sv-episode-list"></div>
       <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ Add Episode</button>
