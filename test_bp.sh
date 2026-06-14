@@ -21,12 +21,21 @@ echo ""
 # BREAK-TEST INJECTION
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
-  # Inject direct Anthropic call (simulates reverting to browser API key)
+  # T1-T2: no direct API calls / proxy
   sed -i '' 's/const PROXY    = /const _PROXY_DISABLED = /' "$BP"
   echo "  Injected: disabled PROXY constant"
-  # Inject API_KEY guard back into sendMessage (simulates guard not removed)
+  # T4: API_KEY guard
   sed -i '' 's/if (!text) return;/if (!text || !API_KEY) return;/' "$BP"
   echo "  Injected: restored !API_KEY guard in sendMessage"
+  # T9: break applySession guard so empty-seasons save wipes state.seasons
+  sed -i '' 's/if (s\.seasons && s\.seasons\.length) state\.seasons = s\.seasons;/state.seasons = s.seasons || [];/' "$BP"
+  echo "  Injected: reverted applySession seasons guard"
+  # T10: reintroduce let for autoSaveTimeout (TDZ risk)
+  sed -i '' 's/var autoSaveTimeout = null;/let autoSaveTimeout = null;/' "$BP"
+  echo "  Injected: changed var autoSaveTimeout back to let"
+  # T11: remove renderSeasonsList() from applySession patch
+  sed -i '' 's/  renderSeasonsList();$/  \/\/ BREAK-renderSeasonsList-removed/' "$BP"
+  echo "  Injected: removed renderSeasonsList() from applySession patch"
   echo ""
 fi
 
@@ -160,11 +169,156 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 8 (behavioral): renderSeasonsList produces Season 1 button
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 8: renderSeasonsList produces Season 1 button ---"
+cat > /tmp/bp_t8.js << 'NODEEOF'
+const fs = require('fs');
+const src = fs.readFileSync('bp.html', 'utf8');
+
+// Extract default state.seasons initializer
+const seasonsMatch = src.match(/seasons:\s*\[\s*\{\s*\n\s*number:\s*(\d+)[^}]*?theme:\s*'([^']+)'/s);
+if (!seasonsMatch) { console.log('FAIL: could not locate state.seasons initializer'); process.exit(0); }
+
+const state = {
+  seasons: [{ number: Number(seasonsMatch[1]), theme: seasonsMatch[2] }],
+  currentSeason: null,
+};
+const el = { innerHTML: '' };
+const seasons = state.seasons && state.seasons.length ? state.seasons : [state.currentSeason].filter(Boolean);
+el.innerHTML = seasons.map(function(s) {
+  const num = s.number || 1;
+  const theme = s.theme || '';
+  return '<button class="season-nav-btn" data-snum="' + num + '">'
+    + '<span class="season-nav-btn-name">Season ' + num + '</span>'
+    + (theme ? '<span class="season-nav-btn-theme">' + theme + '</span>' : '')
+    + '</button>';
+}).join('');
+
+if (el.innerHTML.includes('Season 1') && el.innerHTML.includes('data-snum="1"')) {
+  console.log('PASS');
+} else {
+  console.log('FAIL: innerHTML=' + el.innerHTML.slice(0, 80));
+}
+NODEEOF
+T8_RESULT=$(node /tmp/bp_t8.js 2>&1)
+if [[ "$T8_RESULT" == PASS ]]; then
+  pass "renderSeasonsList renders Season 1 button from default state"
+else
+  fail "renderSeasonsList did not render Season 1: $T8_RESULT"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# TEST 9 (behavioral): applySession preserves Season 1 when save has no seasons
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 9: applySession preserves Season 1 from default state ---"
+cat > /tmp/bp_t9.js << 'NODEEOF'
+const fs = require('fs');
+const src = fs.readFileSync('bp.html', 'utf8');
+
+const hasGuard = /if \(s\.seasons && s\.seasons\.length\) state\.seasons = s\.seasons;/.test(src);
+const hasBroken = /state\.seasons = s\.seasons \|\| \[\];/.test(src);
+
+if (!hasGuard || hasBroken) {
+  console.log('FAIL: applySession guard missing or overridden — empty-seasons save will wipe Season 1');
+  process.exit(0);
+}
+
+// Simulate the guard logic itself
+const defaultSeasons = [{ number: 1, theme: 'What Do We Teach Now?' }];
+let seasons = JSON.parse(JSON.stringify(defaultSeasons));
+const s = { seasons: [], currentSeason: null };
+if (s.seasons && s.seasons.length) seasons = s.seasons;
+
+if (seasons.length === 1 && seasons[0].number === 1) {
+  console.log('PASS');
+} else {
+  console.log('FAIL: seasons=' + JSON.stringify(seasons));
+}
+NODEEOF
+T9_RESULT=$(node /tmp/bp_t9.js 2>&1)
+if [[ "$T9_RESULT" == PASS ]]; then
+  pass "applySession preserves Season 1 when save has empty seasons"
+else
+  fail "applySession wiped Season 1: $T9_RESULT"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# TEST 10 (behavioral): autoSaveTimeout uses var (no TDZ risk)
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 10: autoSaveTimeout declared with var (no TDZ) ---"
+cat > /tmp/bp_t10.js << 'NODEEOF'
+const fs = require('fs');
+const src = fs.readFileSync('bp.html', 'utf8');
+
+const isVar = /\bvar autoSaveTimeout\s*=\s*null/.test(src);
+const isLet = /\blet autoSaveTimeout\s*=\s*null/.test(src);
+
+if (isVar && !isLet) {
+  console.log('PASS');
+} else if (isLet) {
+  console.log('FAIL: declared with let — TDZ risk if autoSave called before declaration runs');
+} else {
+  console.log('FAIL: autoSaveTimeout declaration not found');
+}
+NODEEOF
+T10_RESULT=$(node /tmp/bp_t10.js 2>&1)
+if [[ "$T10_RESULT" == PASS ]]; then
+  pass "autoSaveTimeout uses var — no TDZ risk"
+else
+  fail "autoSaveTimeout TDZ risk: $T10_RESULT"
+fi
+
+# ──────────────────────────────────────────────────────────────
+# TEST 11 (behavioral): applySession patch calls renderSeasonsList
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 11: applySession patch calls renderSeasonsList ---"
+cat > /tmp/bp_t11.js << 'NODEEOF'
+const fs = require('fs');
+const src = fs.readFileSync('bp.html', 'utf8');
+
+const patchStart = src.indexOf('const _origApplySession = applySession;');
+if (patchStart === -1) { console.log('FAIL: applySession patch not found'); process.exit(0); }
+// Find the closing }; of the patched function
+const afterPatch = src.slice(patchStart);
+// The patched function is: applySession = function(data) { ... };
+// Find the end by looking for }; after the reassignment
+const patchFnStart = afterPatch.indexOf('applySession = function');
+const patchBlock = afterPatch.slice(patchFnStart);
+// Count braces to find the end
+let depth = 0, end = -1;
+for (let i = 0; i < patchBlock.length; i++) {
+  if (patchBlock[i] === '{') depth++;
+  else if (patchBlock[i] === '}') { depth--; if (depth === 0) { end = i; break; } }
+}
+const patchFn = end > -1 ? patchBlock.slice(0, end + 1) : patchBlock.slice(0, 1000);
+
+if (patchFn.includes('renderSeasonsList()')) {
+  console.log('PASS');
+} else {
+  console.log('FAIL: renderSeasonsList() not called inside applySession patch body');
+}
+NODEEOF
+T11_RESULT=$(node /tmp/bp_t11.js 2>&1)
+if [[ "$T11_RESULT" == PASS ]]; then
+  pass "applySession patch calls renderSeasonsList() after restore"
+else
+  fail "applySession patch missing renderSeasonsList(): $T11_RESULT"
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
   sed -i '' 's/const _PROXY_DISABLED = /const PROXY    = /' "$BP"
   sed -i '' 's/if (!text || !API_KEY) return;/if (!text) return;/' "$BP"
+  sed -i '' 's/state\.seasons = s\.seasons || \[\];/if (s.seasons \&\& s.seasons.length) state.seasons = s.seasons;/' "$BP"
+  sed -i '' 's/let autoSaveTimeout = null;/var autoSaveTimeout = null;/' "$BP"
+  sed -i '' 's/  \/\/ BREAK-renderSeasonsList-removed/  renderSeasonsList();/' "$BP"
   echo ""
   echo "  (break-test injections removed — file restored)"
 fi

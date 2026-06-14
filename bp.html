@@ -5600,6 +5600,7 @@ applySession = function(data) {
   if (data.masterBriefContent) state.masterBriefContent = data.masterBriefContent;
   if (data.masterBriefItems) state.masterBriefItems = data.masterBriefItems;
   if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
+  renderSeasonsList();
 };
 
 // ── UPDATE SYSTEM PROMPT AWARENESS ──
@@ -5608,7 +5609,7 @@ applySession = function(data) {
 // ── SESSION SAVE / LOAD ──
 
 let pendingSessionData = null;
-let autoSaveTimeout = null;
+var autoSaveTimeout = null;
 
 function buildSessionSnapshot() {
   return {
