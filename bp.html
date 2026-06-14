@@ -1591,13 +1591,13 @@
   .season-ep-drag { cursor:grab; color:rgba(255,255,255,0.18); font-size:15px; padding:0 2px; flex-shrink:0; user-select:none; line-height:1; }
   .season-ep-drag:active { cursor:grabbing; }
   .season-ep-ref { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:var(--text-muted); width:52px; flex-shrink:0; }
-  .season-ep-arc { flex-shrink:0; }
+  .season-ep-arc { flex-shrink:0; min-width:82px; }
   .season-ep-title { flex:1; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; color:var(--white); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text; border-bottom:1px solid transparent; }
   .season-ep-title:focus { outline:none; border-bottom-color:var(--teal); white-space:normal; overflow:visible; }
   .season-ep-title.empty { color:var(--text-muted); font-weight:400; font-style:italic; }
   .season-ep-mini-bar { flex:0 0 72px; height:4px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden; flex-shrink:0; }
   .season-ep-mini-fill { height:100%; border-radius:3px; transition:width 0.35s; }
-  .season-ep-status-sel { appearance:none; -webkit-appearance:none; font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 20px 3px 8px; border-radius:3px; border:none; cursor:pointer; flex-shrink:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M0 0l3.5 4L7 0z' fill='rgba(255,255,255,0.25)'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 5px center; background-size:7px; }
+  .season-ep-status-sel { appearance:none; -webkit-appearance:none; font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 20px 3px 8px; border-radius:3px; border:none; cursor:pointer; flex-shrink:0; width:128px; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M0 0l3.5 4L7 0z' fill='rgba(255,255,255,0.25)'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 5px center; background-size:7px; }
   .season-ep-status-sel.not-started     { color:rgba(255,255,255,0.3); background-color:rgba(255,255,255,0.04); }
   .season-ep-status-sel.planning        { color:var(--teal);  background-color:rgba(59,184,201,0.12); }
   .season-ep-status-sel.ready-to-record { color:var(--gold);  background-color:rgba(245,208,58,0.12); }
@@ -1608,8 +1608,17 @@
   .season-ep-chevron:hover { color:var(--white); }
   .season-ep-delete { color:rgba(255,255,255,0.1); font-size:18px; cursor:pointer; flex-shrink:0; line-height:1; padding:0 2px; transition:color 0.12s; font-weight:300; }
   .season-ep-delete:hover { color:#ff6b6b; }
-  .sv-add-ep-btn { display:flex; align-items:center; justify-content:center; gap:7px; padding:11px 14px; border:1px dashed rgba(255,255,255,0.12); border-radius:7px; background:transparent; color:rgba(255,255,255,0.28); font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; cursor:pointer; width:100%; margin-top:4px; transition:all 0.15s; text-transform:uppercase; }
-  .sv-add-ep-btn:hover { border-color:var(--teal); color:var(--teal); }
+  .sv-add-ep-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border:1px dashed rgba(255,255,255,0.18); border-radius:7px; background:rgba(255,255,255,0.02); color:rgba(255,255,255,0.45); font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; letter-spacing:0.02em; cursor:pointer; width:100%; margin-top:6px; transition:all 0.15s; }
+  .sv-add-ep-btn:hover { border-color:var(--teal); color:var(--teal); background:rgba(59,184,201,0.05); }
+  .sv-ep-header { display:flex; align-items:center; gap:10px; padding:0 14px 8px 14px; }
+  .sv-ep-header > div { font-family:'DM Mono',monospace; font-size:9px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; }
+  .sv-h-drag { width:21px; flex-shrink:0; }
+  .sv-h-ref { width:52px; flex-shrink:0; }
+  .sv-h-arc { min-width:82px; flex-shrink:0; }
+  .sv-h-title { flex:1; }
+  .sv-h-bar { width:72px; flex-shrink:0; text-align:center; }
+  .sv-h-stage { width:128px; flex-shrink:0; }
+  .sv-h-end { width:58px; flex-shrink:0; }
   .sv-brief-section { margin-top:28px; padding-top:22px; border-top:1px solid var(--border); }
   .sv-brief-label { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
   .sv-brief-gen-btn { font-family:'DM Mono',monospace; font-size:9px; color:var(--teal); background:rgba(59,184,201,0.1); border:1px solid rgba(59,184,201,0.25); border-radius:3px; padding:3px 10px; cursor:pointer; letter-spacing:0.05em; transition:background 0.12s; }
@@ -2322,9 +2331,17 @@
           <div class="arc-beat denouement">DENOUEMENT<br><span style="opacity:0.6;font-weight:400;">Ep 9+</span></div>
         </div>
       </div>
-      <div class="season-ep-label">EPISODES</div>
+      <div class="sv-ep-header">
+        <div class="sv-h-drag"></div>
+        <div class="sv-h-ref">Current</div>
+        <div class="sv-h-arc"></div>
+        <div class="sv-h-title">Title</div>
+        <div class="sv-h-bar">% Complete</div>
+        <div class="sv-h-stage">Stage</div>
+        <div class="sv-h-end"></div>
+      </div>
       <div id="sv-episode-list"></div>
-      <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ ADD EPISODE</button>
+      <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ Add Episode</button>
       <div class="sv-brief-section">
         <div class="sv-brief-label">
           SEASON CONTEXT BRIEF
@@ -3698,7 +3715,15 @@ function setView(view) {
     }
     renderMasterFlagsPanel();
   }
-  if (view === 'season') renderSeasonView();
+  if (view === 'season') {
+    renderSeasonView();
+    if (!_seasonBriefAutoGen) {
+      _seasonBriefAutoGen = true;
+      if (!(state.seasons[0] || {}).seasonBrief) {
+        setTimeout(generateSeasonBrief, 300);
+      }
+    }
+  }
 }
 
 // ── SEASON VIEW ──────────────────────────────────────────────────────────────
@@ -5815,6 +5840,7 @@ applySession = function(data) {
 
 let pendingSessionData = null;
 var autoSaveTimeout = null;
+var _seasonBriefAutoGen = false;
 
 function buildSessionSnapshot() {
   return {
