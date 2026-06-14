@@ -5798,10 +5798,11 @@ function confirmLoad() {
 }
 
 function applySession(data) {
-  // Restore state
+  // Restore state — only override defaults when saved data is non-empty,
+  // so Season 1 survives saves that predate the seasons feature.
   const s = data.state;
-  state.seasons = s.seasons || [];
-  state.currentSeason = s.currentSeason || null;
+  if (s.seasons && s.seasons.length) state.seasons = s.seasons;
+  if (s.currentSeason) state.currentSeason = s.currentSeason;
   state.currentEpisode = s.currentEpisode || null;
 
   // Restore conversation from episodeStore (populated by patch before this call)
