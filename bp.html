@@ -1565,15 +1565,15 @@
   /* Season View */
   .season-view { flex:1; display:none; flex-direction:column; overflow:hidden; background:var(--bg); }
   .season-view-header { padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface); flex-shrink:0; }
-  .season-view-title { font-family:'Syne',sans-serif; font-size:17px; font-weight:700; color:var(--gold); letter-spacing:0.05em; line-height:1.3; }
-  .season-view-sub { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.05em; margin-top:2px; }
+  .season-view-title { font-family:'Syne',sans-serif; font-size:22px; font-weight:700; color:var(--gold); letter-spacing:0.05em; line-height:1.3; }
+  .season-view-sub { font-family:'DM Mono',monospace; font-size:13px; color:var(--text-muted); letter-spacing:0.05em; margin-top:2px; }
   .season-view-body { flex:1; overflow-y:auto; padding:20px; }
   .season-progress-wrap { margin-bottom:20px; }
   .season-progress-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; display:flex; justify-content:space-between; }
   .season-progress-bar { height:6px; background:rgba(255,255,255,0.07); border-radius:4px; overflow:hidden; }
   .season-progress-fill { height:100%; background:var(--teal); border-radius:4px; transition:width 0.4s; }
   .season-arc-wrap { margin-bottom:20px; }
-  .season-arc-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+  .season-arc-label { font-family:'DM Mono',monospace; font-size:12px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
   .season-arc-beats { display:flex; gap:4px; flex-wrap:wrap; }
   .arc-beat { padding:4px 10px; border-radius:4px; font-family:'DM Mono',monospace; font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; }
   .arc-beat.exposition  { background:rgba(59,184,201,0.15); color:var(--teal); }
@@ -1581,19 +1581,41 @@
   .arc-beat.rising      { background:rgba(255,139,61,0.15);  color:#FF8B3D; }
   .arc-beat.climax      { background:rgba(255,107,107,0.15); color:#ff6b6b; }
   .arc-beat.resolution  { background:rgba(74,222,128,0.15);  color:var(--green); }
-  .season-ep-label { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
-  .season-ep-row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:7px; border:1px solid var(--border); margin-bottom:6px; cursor:pointer; transition:background 0.12s, border-color 0.12s; background:var(--surface); }
+  .arc-beat.denouement  { background:rgba(167,139,250,0.15); color:#a78bfa; }
+  .season-ep-label { font-family:'DM Mono',monospace; font-size:12px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
+  .season-ep-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:7px; border:1px solid var(--border); margin-bottom:7px; cursor:pointer; transition:background 0.12s, border-color 0.12s; background:var(--surface); }
   .season-ep-row:hover { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.12); }
   .season-ep-row.active-ep { border-color:var(--teal); background:rgba(59,184,201,0.06); }
-  .season-ep-ref { font-family:'DM Mono',monospace; font-size:11px; font-weight:700; color:var(--text-muted); width:44px; flex-shrink:0; }
+  .season-ep-row.dragging { opacity:0.35; }
+  .season-ep-row.drag-over { border-color:var(--teal) !important; background:rgba(59,184,201,0.1) !important; }
+  .season-ep-drag { cursor:grab; color:rgba(255,255,255,0.18); font-size:15px; padding:0 2px; flex-shrink:0; user-select:none; line-height:1; }
+  .season-ep-drag:active { cursor:grabbing; }
+  .season-ep-ref { font-family:'DM Mono',monospace; font-size:13px; font-weight:700; color:var(--text-muted); width:52px; flex-shrink:0; }
   .season-ep-arc { flex-shrink:0; }
-  .season-ep-title { flex:1; font-family:'DM Sans',sans-serif; font-size:13px; font-weight:600; color:var(--white); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .season-ep-title { flex:1; font-family:'DM Sans',sans-serif; font-size:15px; font-weight:600; color:var(--white); min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:text; border-bottom:1px solid transparent; }
+  .season-ep-title:focus { outline:none; border-bottom-color:var(--teal); white-space:normal; overflow:visible; }
   .season-ep-title.empty { color:var(--text-muted); font-weight:400; font-style:italic; }
-  .season-ep-status { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; flex-shrink:0; padding:2px 7px; border-radius:3px; }
-  .season-ep-status.planning   { color:var(--teal);  background:rgba(59,184,201,0.12); }
-  .season-ep-status.scripted   { color:var(--green); background:rgba(74,222,128,0.12); }
-  .season-ep-status.not-started{ color:rgba(255,255,255,0.2); background:rgba(255,255,255,0.04); }
-  .season-ep-chevron { color:rgba(255,255,255,0.2); font-size:12px; flex-shrink:0; }
+  .season-ep-mini-bar { flex:0 0 72px; height:4px; background:rgba(255,255,255,0.07); border-radius:3px; overflow:hidden; flex-shrink:0; }
+  .season-ep-mini-fill { height:100%; border-radius:3px; transition:width 0.35s; }
+  .season-ep-status-sel { appearance:none; -webkit-appearance:none; font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; padding:3px 20px 3px 8px; border-radius:3px; border:none; cursor:pointer; flex-shrink:0; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M0 0l3.5 4L7 0z' fill='rgba(255,255,255,0.25)'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 5px center; background-size:7px; }
+  .season-ep-status-sel.not-started     { color:rgba(255,255,255,0.3); background-color:rgba(255,255,255,0.04); }
+  .season-ep-status-sel.planning        { color:var(--teal);  background-color:rgba(59,184,201,0.12); }
+  .season-ep-status-sel.ready-to-record { color:var(--gold);  background-color:rgba(245,208,58,0.12); }
+  .season-ep-status-sel.recorded        { color:#FF8B3D;      background-color:rgba(255,139,61,0.12); }
+  .season-ep-status-sel.edited          { color:#a78bfa;      background-color:rgba(167,139,250,0.12); }
+  .season-ep-status-sel.published       { color:var(--green); background-color:rgba(74,222,128,0.12); }
+  .season-ep-chevron { color:rgba(255,255,255,0.25); font-size:14px; flex-shrink:0; cursor:pointer; padding:0 2px; transition:color 0.12s; }
+  .season-ep-chevron:hover { color:var(--white); }
+  .season-ep-delete { color:rgba(255,255,255,0.1); font-size:18px; cursor:pointer; flex-shrink:0; line-height:1; padding:0 2px; transition:color 0.12s; font-weight:300; }
+  .season-ep-delete:hover { color:#ff6b6b; }
+  .sv-add-ep-btn { display:flex; align-items:center; justify-content:center; gap:7px; padding:11px 14px; border:1px dashed rgba(255,255,255,0.12); border-radius:7px; background:transparent; color:rgba(255,255,255,0.28); font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.1em; cursor:pointer; width:100%; margin-top:4px; transition:all 0.15s; text-transform:uppercase; }
+  .sv-add-ep-btn:hover { border-color:var(--teal); color:var(--teal); }
+  .sv-brief-section { margin-top:28px; padding-top:22px; border-top:1px solid var(--border); }
+  .sv-brief-label { font-family:'DM Mono',monospace; font-size:11px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+  .sv-brief-gen-btn { font-family:'DM Mono',monospace; font-size:9px; color:var(--teal); background:rgba(59,184,201,0.1); border:1px solid rgba(59,184,201,0.25); border-radius:3px; padding:3px 10px; cursor:pointer; letter-spacing:0.05em; transition:background 0.12s; }
+  .sv-brief-gen-btn:hover { background:rgba(59,184,201,0.22); }
+  .sv-brief-content { font-family:'DM Sans',sans-serif; font-size:13px; color:rgba(255,255,255,0.65); line-height:1.68; white-space:pre-wrap; }
+  .sv-brief-empty { color:rgba(255,255,255,0.2); font-style:italic; font-size:13px; font-family:'DM Sans',sans-serif; }
   .season-nav-btn { display:flex; flex-direction:column; gap:1px; width:100%; text-align:left; background:transparent; border:none; border-radius:6px; padding:7px 10px; cursor:pointer; transition:background 0.12s; }
   .season-nav-btn:hover { background:rgba(255,255,255,0.06); }
   .season-nav-btn.active { background:rgba(59,184,201,0.1); }
@@ -2297,10 +2319,19 @@
           <div class="arc-beat rising">RISING ACTION<br><span style="opacity:0.6;font-weight:400;">Eps 5–6</span></div>
           <div class="arc-beat climax">CLIMAX<br><span style="opacity:0.6;font-weight:400;">Ep 7</span></div>
           <div class="arc-beat resolution">RESOLUTION<br><span style="opacity:0.6;font-weight:400;">Ep 8</span></div>
+          <div class="arc-beat denouement">DENOUEMENT<br><span style="opacity:0.6;font-weight:400;">Ep 9+</span></div>
         </div>
       </div>
       <div class="season-ep-label">EPISODES</div>
       <div id="sv-episode-list"></div>
+      <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ ADD EPISODE</button>
+      <div class="sv-brief-section">
+        <div class="sv-brief-label">
+          SEASON CONTEXT BRIEF
+          <button class="sv-brief-gen-btn" onclick="generateSeasonBrief()">Generate</button>
+        </div>
+        <div id="sv-season-brief" class="sv-brief-empty">No brief yet — click Generate to have Boo write one.</div>
+      </div>
     </div>
   </div>
 
@@ -3692,18 +3723,24 @@ function selectSeason(num) {
   setView('season');
 }
 
+var EP_STATUS_PCT = { 'not-started': 0, 'planning': 20, 'ready-to-record': 40, 'recorded': 60, 'edited': 80, 'published': 100 };
+var EP_STATUS_LABELS = { 'not-started': 'Not Started', 'planning': 'Planning', 'ready-to-record': 'Ready to Record', 'recorded': 'Recorded', 'edited': 'Edited', 'published': 'Published' };
+var EP_STATUS_COLORS = { 'not-started': 'rgba(255,255,255,0.2)', 'planning': '#3BB8C9', 'ready-to-record': '#F5D03A', 'recorded': '#FF8B3D', 'edited': '#a78bfa', 'published': '#4ADE80' };
+
 function getEpArcBeat(n) {
   if (n <= 2) return { label: 'Exposition', cls: 'exposition' };
   if (n <= 4) return { label: 'Conflict',   cls: 'conflict'   };
-  if (n <= 6) return { label: 'Rising',      cls: 'rising'     };
-  if (n === 7) return { label: 'Climax',     cls: 'climax'     };
-  return              { label: 'Resolution', cls: 'resolution' };
+  if (n <= 6) return { label: 'Rising',     cls: 'rising'     };
+  if (n === 7) return { label: 'Climax',    cls: 'climax'     };
+  if (n === 8) return { label: 'Resolution',cls: 'resolution' };
+  return              { label: 'Denouement',cls: 'denouement' };
 }
 
 function getEpStatus(epNum) {
   var store = episodeStore[epNum] || {};
+  if (store.statusOverride) return store.statusOverride;
   var epData = ((state.seasons[0] || {}).episodes || []).find(function(e) { return e.number === epNum; }) || {};
-  if (store.script) return 'scripted';
+  if (store.script) return 'ready-to-record';
   if (store.guest || epData.guest) return 'planning';
   if (store.conversationLog && store.conversationLog.length > 1) return 'planning';
   if (epData.title && epData.title !== 'TBD' && !epData.title.startsWith('TBD')) return 'planning';
@@ -3718,6 +3755,94 @@ function getEpTitle(epNum) {
   return '';
 }
 
+var _svDragFrom = null;
+
+function svDragStart(e, epNum) {
+  _svDragFrom = epNum;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(function() {
+    var row = document.querySelector('.season-ep-row[data-ep="' + epNum + '"]');
+    if (row) row.classList.add('dragging');
+  }, 0);
+}
+
+function svDragEnd(epNum) {
+  _svDragFrom = null;
+  document.querySelectorAll('.season-ep-row').forEach(function(r) { r.classList.remove('dragging', 'drag-over'); });
+}
+
+function svDragOver(e, epNum) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.season-ep-row').forEach(function(r) { r.classList.remove('drag-over'); });
+  var row = document.querySelector('.season-ep-row[data-ep="' + epNum + '"]');
+  if (row) row.classList.add('drag-over');
+}
+
+function svDrop(e, toEpNum) {
+  e.preventDefault();
+  document.querySelectorAll('.season-ep-row').forEach(function(r) { r.classList.remove('drag-over', 'dragging'); });
+  if (_svDragFrom === null || _svDragFrom === toEpNum) { _svDragFrom = null; return; }
+  var season = state.seasons[0] || {};
+  var count = season.episodeCount || 8;
+  var order = (season.episodeOrder || []).slice();
+  if (!order.length) { for (var i = 1; i <= count; i++) order.push(i); }
+  var fromIdx = order.indexOf(_svDragFrom);
+  var toIdx = order.indexOf(toEpNum);
+  if (fromIdx === -1 || toIdx === -1) { _svDragFrom = null; return; }
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, _svDragFrom);
+  season.episodeOrder = order;
+  _svDragFrom = null;
+  renderSeasonView();
+  autoSave('ep-reorder');
+}
+
+function setEpStatus(epNum, status) {
+  if (!episodeStore[epNum]) episodeStore[epNum] = {};
+  episodeStore[epNum].statusOverride = status;
+  renderSeasonView();
+  autoSave('ep-status');
+}
+
+function setEpTitle(epNum, title) {
+  var season = state.seasons[0] || (state.seasons[0] = {});
+  var eps = season.episodes || (season.episodes = []);
+  var ep = eps.find(function(e) { return e.number === epNum; });
+  if (!ep) { ep = { number: epNum, title: '', guest: '' }; eps.push(ep); }
+  ep.title = title;
+  autoSave('ep-title');
+}
+
+function addEpisodeToSeason() {
+  var season = state.seasons[0] || (state.seasons[0] = {});
+  var count = (season.episodeCount || 8) + 1;
+  season.episodeCount = count;
+  var eps = season.episodes || (season.episodes = []);
+  eps.push({ number: count, title: '', guest: '' });
+  if (!episodeStore[count]) episodeStore[count] = {};
+  var order = season.episodeOrder || [];
+  if (order.length) order.push(count);
+  renderSeasonView();
+  autoSave('add-episode');
+}
+
+function deleteEpisodeFromSeason(epNum) {
+  var season = state.seasons[0] || {};
+  var count = season.episodeCount || 8;
+  if (count <= 1) return;
+  if (!confirm('Delete Episode ' + epNum + ' from Season ' + (season.number || 1) + '?')) return;
+  season.episodeCount = count - 1;
+  if (season.episodes) {
+    season.episodes = season.episodes.filter(function(e) { return e.number !== epNum; });
+  }
+  if (season.episodeOrder) {
+    season.episodeOrder = season.episodeOrder.filter(function(n) { return n !== epNum; });
+  }
+  renderSeasonView();
+  autoSave('delete-episode');
+}
+
 function renderSeasonView() {
   var season = state.currentSeason || (state.seasons && state.seasons[0]) || {};
   var num = season.number || 1;
@@ -3725,36 +3850,116 @@ function renderSeasonView() {
   var count = season.episodeCount || 8;
   var launch = season.launchTarget || '';
 
+  // Build episode display order
+  var order = (season.episodeOrder || []).slice();
+  if (order.length !== count) { order = []; for (var i = 1; i <= count; i++) order.push(i); }
+
   // Header
   document.getElementById('sv-title').textContent = 'SEASON ' + num;
   document.getElementById('sv-sub').textContent = (theme ? theme.toUpperCase() : '') + ' · ' + count + ' EPISODES' + (launch ? ' · ' + launch.toUpperCase() : '');
 
-  // Progress
+  // Season progress (anything beyond not-started counts)
   var started = 0;
-  for (var i = 1; i <= count; i++) {
-    if (getEpStatus(i) !== 'not-started') started++;
+  for (var j = 0; j < order.length; j++) {
+    if (getEpStatus(order[j]) !== 'not-started') started++;
   }
   var pct = count > 0 ? Math.round((started / count) * 100) : 0;
   document.getElementById('sv-progress-fill').style.width = pct + '%';
   document.getElementById('sv-progress-text').textContent = started + ' of ' + count + ' episode' + (count !== 1 ? 's' : '') + ' started';
 
-  // Episode list
+  // Episode rows
+  var STATUS_OPTS = ['not-started', 'planning', 'ready-to-record', 'recorded', 'edited', 'published'];
   var activeEpNum = state.currentEpisode ? state.currentEpisode.number : 1;
   var rows = '';
-  for (var e = 1; e <= count; e++) {
+  for (var k = 0; k < order.length; k++) {
+    var e = order[k];
     var beat = getEpArcBeat(e);
     var status = getEpStatus(e);
     var title = getEpTitle(e);
-    var isActive = e === activeEpNum;
-    rows += '<div class="season-ep-row' + (isActive ? ' active-ep' : '') + '" onclick="goToEpisodeFromSeason(' + e + ')">'
+    var isActive = (e === activeEpNum);
+    var epPct = EP_STATUS_PCT[status] || 0;
+    var epColor = EP_STATUS_COLORS[status] || 'rgba(255,255,255,0.2)';
+    var opts = STATUS_OPTS.map(function(s) {
+      return '<option value="' + s + '"' + (s === status ? ' selected' : '') + '>' + EP_STATUS_LABELS[s] + '</option>';
+    }).join('');
+    rows += '<div class="season-ep-row' + (isActive ? ' active-ep' : '') + '" data-ep="' + e + '"'
+      + ' draggable="true"'
+      + ' ondragstart="svDragStart(event,' + e + ')"'
+      + ' ondragend="svDragEnd(' + e + ')"'
+      + ' ondragover="svDragOver(event,' + e + ')"'
+      + ' ondrop="svDrop(event,' + e + ')"'
+      + ' onclick="goToEpisodeFromSeason(' + e + ')">'
+      + '<div class="season-ep-drag" onclick="event.stopPropagation()" title="Drag to reorder">⠿</div>'
       + '<div class="season-ep-ref">S' + num + '-E' + e + '</div>'
       + '<div class="season-ep-arc"><span class="arc-beat ' + beat.cls + '" style="padding:2px 6px;font-size:9px;">' + beat.label + '</span></div>'
-      + '<div class="season-ep-title' + (!title ? ' empty' : '') + '">' + (title || 'Not started') + '</div>'
-      + '<div class="season-ep-status ' + status + '">' + (status === 'not-started' ? 'Not started' : status) + '</div>'
-      + '<div class="season-ep-chevron">›</div>'
+      + '<div class="season-ep-title' + (!title ? ' empty' : '') + '" contenteditable="true"'
+        + ' onclick="event.stopPropagation()"'
+        + ' onfocus="if(this.classList.contains(\'empty\')){this.textContent=\'\';this.classList.remove(\'empty\');}"'
+        + ' onblur="var t=this.textContent.trim();if(!t){this.textContent=\'Click to add title\';this.classList.add(\'empty\');}else{this.classList.remove(\'empty\');}setEpTitle(' + e + ',t);"'
+        + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">'
+        + (title || 'Click to add title')
+        + '</div>'
+      + '<div class="season-ep-mini-bar"><div class="season-ep-mini-fill" style="width:' + epPct + '%;background:' + epColor + ';"></div></div>'
+      + '<select class="season-ep-status-sel ' + status + '" onclick="event.stopPropagation()" onchange="event.stopPropagation();setEpStatus(' + e + ',this.value)">' + opts + '</select>'
+      + '<div class="season-ep-chevron" onclick="event.stopPropagation();goToEpisodeFromSeason(' + e + ')">›</div>'
+      + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
       + '</div>';
   }
   document.getElementById('sv-episode-list').innerHTML = rows;
+
+  // Season brief
+  var briefEl = document.getElementById('sv-season-brief');
+  if (briefEl) {
+    var brief = (state.seasons[0] || {}).seasonBrief;
+    if (brief) {
+      briefEl.className = 'sv-brief-content';
+      briefEl.textContent = brief;
+    } else {
+      briefEl.className = 'sv-brief-empty';
+      briefEl.textContent = 'No brief yet — click Generate to have Boo write one.';
+    }
+  }
+}
+
+async function generateSeasonBrief() {
+  var season = state.seasons[0] || {};
+  var briefEl = document.getElementById('sv-season-brief');
+  if (!briefEl) return;
+  var genBtn = document.querySelector('.sv-brief-gen-btn');
+  if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Writing…'; }
+  briefEl.className = 'sv-brief-empty';
+  briefEl.textContent = 'Boo is writing the season brief…';
+
+  var sysP = 'You are Boo, the production assistant for ' + SHOW_CONFIG.showName + '. Write concise, confident prose. No bullet lists. No preamble. Start directly with the first paragraph.';
+  var userP = 'Write a Season Context Brief for Season ' + (season.number || 1) + ' of ' + SHOW_CONFIG.showName + '.\n'
+    + 'Theme: "' + (season.theme || 'not set') + '".\n'
+    + (season.launchTarget ? 'Launches: ' + season.launchTarget + '.\n' : '')
+    + (season.episodeCount ? season.episodeCount + ' episodes.\n' : '')
+    + '\nThe Season Context Brief is a compact reference that every episode plan should stay consistent with. Cover: '
+    + 'the season theme and what the show is trying to prove this season, the arc shape (Exposition → Conflict → Rising Action → Climax → Resolution → Denouement), '
+    + 'the emotional journey for the audience, and any key recurring threads. '
+    + '3–4 paragraphs, confident prose. No title or heading before the first paragraph.';
+
+  try {
+    const res = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_ANON}`, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: MODEL, max_tokens: 900, system: sysP, messages: [{ role: 'user', content: userP }] }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || 'API error');
+    const text = data.content && data.content[0] && data.content[0].text;
+    if (text) {
+      (state.seasons[0] || (state.seasons[0] = {})).seasonBrief = text;
+      autoSave('season-brief');
+      briefEl.className = 'sv-brief-content';
+      briefEl.textContent = text;
+    }
+  } catch(err) {
+    briefEl.className = 'sv-brief-empty';
+    briefEl.textContent = 'Couldn\'t generate: ' + err.message;
+  }
+  if (genBtn) { genBtn.disabled = false; genBtn.textContent = 'Regenerate'; }
 }
 
 function goToEpisodeFromSeason(epNum) {
