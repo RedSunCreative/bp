@@ -128,9 +128,10 @@
 
   .sidebar-label {
     font-family: 'DM Mono', monospace;
-    font-size: 11px;
-    letter-spacing: 0.09em;
-    color: var(--text-dim);
+    font-size: 0.62rem;
+    font-weight: 400;
+    letter-spacing: 0.18em;
+    color: #8A8A9A;
     text-transform: uppercase;
     margin-bottom: 10px;
     padding-left: 2px;
@@ -196,11 +197,13 @@
     border-radius: var(--radius-sm);
     background: transparent;
     border: 1px dashed var(--border);
-    color: var(--text-muted);
-    font-size: 12px;
+    color: #8A8A9A;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
     cursor: pointer;
     transition: all 0.15s;
-    font-family: 'DM Sans', sans-serif;
   }
 
   .add-btn:hover { border-color: var(--teal); color: var(--teal); }
@@ -1628,10 +1631,10 @@
   .season-nav-btn { display:flex; flex-direction:column; gap:4px; width:100%; text-align:left; background:transparent; border:none; border-radius:var(--radius-sm); padding:10px 10px; cursor:pointer; transition:all 0.15s; }
   .season-nav-btn:hover { background:var(--surface2); }
   .season-nav-btn.active { background:var(--surface3); }
-  .season-nav-btn-name { font-family:'DM Sans',sans-serif; font-size:18px; font-weight:400; color:var(--text); transition:color 0.15s; }
-  .season-nav-btn:hover .season-nav-btn-name { color:var(--text); }
-  .season-nav-btn.active .season-nav-btn-name { color:var(--gold); }
-  .season-nav-btn-theme { font-family:'DM Mono',monospace; font-size:10px; color:var(--text-muted); letter-spacing:0.06em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; opacity:0.75; }
+  .season-nav-btn-name { font-family:'Syne',sans-serif; font-size:0.88rem; font-weight:700; color:#F5A623; letter-spacing:0.05em; transition:color 0.15s; }
+  .season-nav-btn:hover .season-nav-btn-name { color:#F5A623; }
+  .season-nav-btn.active .season-nav-btn-name { color:#F5A623; }
+  .season-nav-btn-theme { font-family:'DM Mono',monospace; font-size:0.62rem; font-weight:400; color:#8A8A9A; letter-spacing:0.12em; text-transform:uppercase; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
 
   .brief-header {
     padding: 14px 20px;
