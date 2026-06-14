@@ -2321,7 +2321,7 @@
         <div class="season-progress-bar"><div class="season-progress-fill" id="sv-progress-fill" style="width:0%"></div></div>
       </div>
       <div class="season-arc-wrap">
-        <div class="season-arc-label">SEASON ARC — PLOT MOUNTAIN</div>
+        <div class="season-arc-label">SEASON ARC — PLOT MOUNTAIN <span class="tip-q" data-tip="Plot Mountain maps your season like a story. Exposition opens the world, Conflict names the tension, Rising Action escalates it, Climax breaks something open, Resolution answers it, Denouement is the emotional echo that stays with the audience." onclick="event.stopPropagation()">?</span></div>
         <div class="season-arc-beats">
           <div class="arc-beat exposition">EXPOSITION<br><span style="opacity:0.6;font-weight:400;">Eps 1–2</span></div>
           <div class="arc-beat conflict">CONFLICT<br><span style="opacity:0.6;font-weight:400;">Eps 3–4</span></div>
@@ -3924,7 +3924,7 @@ function renderSeasonView() {
         + ' onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}">'
         + (title || 'Click to add title')
         + '</div>'
-      + '<div class="season-ep-mini-bar"><div class="season-ep-mini-fill" style="width:' + epPct + '%;background:' + epColor + ';"></div></div>'
+      + '<div class="season-ep-mini-bar" onclick="event.stopPropagation()"><div class="season-ep-mini-fill" style="width:' + epPct + '%;background:' + epColor + ';"></div></div>'
       + '<select class="season-ep-status-sel ' + status + '" onclick="event.stopPropagation()" onchange="event.stopPropagation();setEpStatus(' + e + ',this.value)">' + opts + '</select>'
       + '<div class="season-ep-chevron" onclick="event.stopPropagation();goToEpisodeFromSeason(' + e + ')">›</div>'
       + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
