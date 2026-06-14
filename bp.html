@@ -6091,11 +6091,15 @@ function closeShowInfo(e) {
 function switchEpisode(num) {
   if (state.currentEpisode && state.currentEpisode.number === num) return;
 
-  const episodes = (state.seasons[0] && state.seasons[0].episodes) || [];
-  const ep = episodes.find(function(e) { return e.number === num; });
-  if (!ep) return;
+  const season = state.seasons[0] || {};
+  const episodes = season.episodes || (season.episodes = []);
+  let ep = episodes.find(function(e) { return e.number === num; });
+  if (!ep) {
+    ep = { number: num, title: '', status: 'not-started' };
+    episodes.push(ep);
+  }
 
-  state.currentEpisode = { number: ep.number, title: ep.title, status: ep.status };
+  state.currentEpisode = { number: ep.number, title: ep.title || '', status: ep.status || 'not-started' };
 
   // Re-render chat for this episode
   const msgs = document.getElementById('messages');
