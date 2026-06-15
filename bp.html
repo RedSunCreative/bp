@@ -2664,14 +2664,14 @@ const state = {
     { id: 'st-2',  name: 'Introductions',                  note: 'Host intro + guest intro',                         default: true  },
     { id: 'st-5',  name: 'Guest Interview',                note: '20-25 min — closes with Fear / Opportunity / Wish', default: true  },
     { id: 'st-12', name: 'Close / Outro',                  note: 'Sign-off + where to find guest + subscribe CTA',   default: true  },
-    { id: 'st-3',  name: 'Anno Community Workshop Update', note: '',                                                  default: false },
-    { id: 'st-4',  name: "What's for Lunch?",              note: '60-90 sec community UGC clip',                     default: false },
-    { id: 'st-6',  name: 'MoH Bridge',                    note: 'Guest introduces A Moment of Hope (2 sentences)',   default: false },
-    { id: 'st-7',  name: 'A Moment of Hope',               note: '2-min doc micro-feature, shot separately',         default: false },
-    { id: 'st-8',  name: 'Question of the Week',           note: '',                                                  default: false },
-    { id: 'st-9',  name: 'AI News Minute',                 note: '',                                                  default: false },
-    { id: 'st-10', name: 'Am I Human?',                    note: '',                                                  default: false },
-    { id: 'st-11', name: 'Does It Matter?',                note: '',                                                  default: false },
+    { id: 'st-3',  name: 'Anno Community Workshop Update', note: 'Brief update from the Slack community — experiments, listener submissions, what people are trying in their classrooms', default: false },
+    { id: 'st-4',  name: "What's for Lunch?",              note: '60-90 sec community UGC clip — a listener shares what\'s actually happening in their school right now',           default: false },
+    { id: 'st-6',  name: 'MoH Bridge',                    note: 'Guest introduces A Moment of Hope in 2 sentences — their words, their voice, their hand-off',                    default: false },
+    { id: 'st-7',  name: 'A Moment of Hope',               note: '2-min documentary micro-feature shot separately — a student, graduate, teacher, or program in action. The emotional landing of the episode', default: false },
+    { id: 'st-8',  name: 'Question of the Week',           note: 'One question posed to the audience — answered in the Slack community and featured on the next episode',         default: false },
+    { id: 'st-9',  name: 'AI News Minute',                 note: 'One AI development from the past week that every CS educator needs to know about — 60 seconds, no hype',       default: false },
+    { id: 'st-10', name: 'Am I Human?',                    note: 'A piece of student or AI-generated work — the hosts and guest try to tell which is which. No verdict required', default: false },
+    { id: 'st-11', name: 'Does It Matter?',                note: 'Rapid-fire: the hosts name an AI capability — guest says whether it changes what we teach. Yes, no, or it depends', default: false },
   ],
 };
 
@@ -5015,8 +5015,8 @@ function renderCueList() {
     var cname = (c.name || '').replace(/"/g, '&quot;');
     var cdur = (c.duration || '').replace(/"/g, '&quot;');
     var cnote = (c.note || '').replace(/"/g, '&quot;');
-    return '<div class="seg-row" data-seg-id="' + cid + '" draggable="true">'
-      + '<span class="seg-row-handle"' + (cnote ? ' data-tip="' + cnote + '"' : '') + '>⠿</span>'
+    return '<div class="seg-row" data-seg-id="' + cid + '" draggable="true"' + (cnote ? ' data-tip="' + cnote + '"' : '') + '>'
+      + '<span class="seg-row-handle">⠿</span>'
       + '<input class="seg-row-name" value="' + cname + '" onchange="saveCueName(\'' + cid + '\',this.value)" placeholder="Segment name">'
       + '<input class="seg-row-dur" value="' + cdur + '" onchange="saveCueDuration(\'' + cid + '\',this.value)" placeholder="dur">'
       + '<button class="seg-row-del" onclick="deleteCue(\'' + cid + '\')" title="Remove from episode">−</button>'
