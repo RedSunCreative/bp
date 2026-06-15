@@ -2392,6 +2392,13 @@
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">EPISODE SUMMARY</div><textarea id="d-ep-summary" class="ep-summary-input" onchange="onSummaryEdit(this.value)" placeholder="Boo fills this in as you plan..."></textarea></div>
             <div class="ep-field"><div class="ep-label">TARGET TIME</div><div class="ep-val" id="d-eplen" style="color:var(--muted);">60 min</div></div>
             <div class="ep-field" style="grid-column:1/-1">
+              <div class="ep-label">RECORD DATE &amp; TIME</div>
+              <div class="release-inputs">
+                <input type="date" id="d-record-date" onchange="setRecordDate(this.value)" title="Record date">
+                <input type="time" id="d-record-time" onchange="setRecordTime(this.value)" title="Record time">
+              </div>
+            </div>
+            <div class="ep-field" style="grid-column:1/-1">
               <div class="ep-label">RELEASE DATE &amp; TIME</div>
               <div class="release-inputs">
                 <input type="date" id="d-release-date" onchange="setReleaseDate(this.value)" title="Release date">
@@ -3105,7 +3112,7 @@ const episodeStore = {};
 function activeEp() {
   const key = state.currentEpisode ? state.currentEpisode.number : 1;
   if (!episodeStore[key]) {
-    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], releaseDate: '', releaseTime: '', cues: [], summary: '' };
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], recordDate: '', recordTime: '', releaseDate: '', releaseTime: '', cues: [], summary: '' };
   }
   return episodeStore[key];
 }
@@ -4023,6 +4030,10 @@ function updateRightPanel() {
   updateEpisodeStatusCard();
   updateCountdown();
   updateEpSwitchBtn();
+  var rcEl = document.getElementById('d-record-date');
+  var rctEl = document.getElementById('d-record-time');
+  if (rcEl) rcEl.value = activeEp().recordDate || '';
+  if (rctEl) rctEl.value = activeEp().recordTime || '';
   var rdEl = document.getElementById('d-release-date');
   var rtEl = document.getElementById('d-release-time');
   if (rdEl) rdEl.value = activeEp().releaseDate || '';
@@ -4921,6 +4932,16 @@ function updateCountdown() {
   timeEl.className = 'show-countdown-time' + (d === 0 ? ' urgent' : '');
 }
 
+function setRecordDate(val) {
+  activeEp().recordDate = val;
+  autoSave('record date set');
+}
+
+function setRecordTime(val) {
+  activeEp().recordTime = val;
+  autoSave('record time set');
+}
+
 function setReleaseDate(val) {
   activeEp().releaseDate = val;
   updateCountdown();
@@ -5243,6 +5264,10 @@ setInterval(updateCountdown, 60000);
   renderConsiderations();
   updateEpSwitchBtn();
   updateCountdown();
+  var rcEl = document.getElementById('d-record-date');
+  var rctEl = document.getElementById('d-record-time');
+  if (rcEl) rcEl.value = activeEp().recordDate || '';
+  if (rctEl) rctEl.value = activeEp().recordTime || '';
   var rdEl = document.getElementById('d-release-date');
   var rtEl = document.getElementById('d-release-time');
   if (rdEl) rdEl.value = activeEp().releaseDate || '';
