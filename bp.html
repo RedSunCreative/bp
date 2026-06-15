@@ -920,19 +920,20 @@
   .seg-row-name:focus{background:rgba(255,255,255,0.05);}
   .seg-row-dur{width:48px;background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:'DM Mono',monospace;font-size:0.7rem;text-align:center;outline:none;padding:2px 3px;flex-shrink:0;}
   .seg-row-dur::placeholder{color:var(--border);}
-  .seg-row-del{background:none;border:none;color:var(--border);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0;line-height:1;}
+  .seg-row-del{background:none;border:none;color:rgba(255,255,255,0.28);cursor:pointer;font-size:13px;padding:0 2px;flex-shrink:0;line-height:1;}
   .seg-row-del:hover{color:#ff6b6b;}
   .seg-row.drag-over-top{border-top:2px solid var(--teal);}
   .seg-note{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);padding:0 4px 5px 26px;opacity:0.65;line-height:1.4;}
   .seg-add-row{display:flex;justify-content:center;margin-top:8px;}
   .seg-add-row button{background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:6px;padding:5px 14px;font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;cursor:pointer;transition:border-color 0.15s,color 0.15s;}
   .seg-add-row button:hover{border-color:var(--teal);color:var(--teal);}
-  .seg-available-label{font-family:'DM Mono',monospace;font-size:0.6rem;font-weight:400;color:rgba(255,255,255,0.2);letter-spacing:0.12em;text-transform:uppercase;padding:8px 0 4px;border-top:1px solid rgba(255,255,255,0.05);margin-top:8px;}
-  .seg-row-avail{display:flex;align-items:center;gap:7px;padding:4px 4px;border-radius:4px;cursor:pointer;margin-bottom:1px;transition:background 0.12s,opacity 0.12s;opacity:0.38;}
-  .seg-row-avail:hover{background:rgba(255,255,255,0.05);opacity:0.75;}
-  .seg-row-avail-plus{color:var(--teal);font-size:13px;font-weight:700;flex-shrink:0;line-height:1;}
-  .seg-row-avail-name{flex:1;font-family:'DM Sans',sans-serif;font-size:0.8rem;font-weight:500;color:var(--text-muted);min-width:0;}
-  .seg-row-avail-note{font-family:'DM Mono',monospace;font-size:0.6rem;color:rgba(255,255,255,0.18);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
+  .seg-available-label{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:rgba(255,255,255,0.45);letter-spacing:0.12em;text-transform:uppercase;padding:8px 0 4px;border-top:1px solid rgba(255,255,255,0.08);margin-top:8px;}
+  .seg-row-avail{display:flex;align-items:center;gap:7px;padding:5px 4px;border-radius:4px;cursor:pointer;margin-bottom:2px;transition:background 0.12s,opacity 0.12s;opacity:0.72;}
+  .seg-row-avail:hover{background:rgba(255,255,255,0.07);opacity:1;}
+  .seg-row-avail-plus{color:var(--teal);font-size:14px;font-weight:700;flex-shrink:0;line-height:1;}
+  .seg-row-avail-name{flex:1;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:500;color:var(--text);min-width:0;}
+  .seg-row-avail-note{font-family:'DM Mono',monospace;font-size:0.62rem;color:rgba(255,255,255,0.38);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:80px;}
+  .seg-row-avail.host-special .seg-row-avail-name{color:#a78bfa;}
   .ep-summary-input{background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:400;width:100%;resize:none;min-height:52px;padding:4px 0;outline:none;line-height:1.5;}
   .ep-summary-input::placeholder{color:var(--border);font-style:italic;}
 
@@ -5082,9 +5083,18 @@ function renderCueList() {
   var activeTplIds = {};
   cues.forEach(function(c) { if (c.templateId) activeTplIds[c.templateId] = true; });
   var available = (state.showTemplate || []).filter(function(s) { return !activeTplIds[s.id]; });
+  var hasHostAsGuest = cues.some(function(c) { return (c.name || '').toLowerCase() === 'host as guest'; });
   var availHtml = '';
-  if (available.length > 0) {
+  var hasAvail = available.length > 0 || !hasHostAsGuest;
+  if (hasAvail) {
+    var hostEntry = hasHostAsGuest ? '' :
+      '<div class="seg-row-avail host-special" onclick="addHostAsGuestCue()" title="Add hosts as guests for this episode">'
+      + '<span class="seg-row-avail-plus">+</span>'
+      + '<span class="seg-row-avail-name">Host as Guest</span>'
+      + '<span class="seg-row-avail-note">Matt &amp; Kartik only</span>'
+      + '</div>';
     availHtml = '<div class="seg-available-label">Add to this episode</div>'
+      + hostEntry
       + available.map(function(s) {
           var sid = (s.id || '').replace(/'/g,'').replace(/"/g,'&quot;');
           var noteSnip = s.note ? s.note.substring(0, 28) + (s.note.length > 28 ? '…' : '') : '';
@@ -5117,6 +5127,13 @@ function addCueFromTemplate(templateId) {
   activeEp().cues.unshift({ id: 'cue-' + Date.now(), templateId: tpl.id, name: tpl.name, duration: '', note: tpl.note || '' });
   renderCueList();
   autoSave('cue added from template');
+}
+
+function addHostAsGuestCue() {
+  if (!activeEp().cues) activeEp().cues = [];
+  activeEp().cues.unshift({ id: 'cue-' + Date.now(), name: 'Host as Guest', duration: '', note: 'Matt & Kartik only' });
+  renderCueList();
+  autoSave('host as guest cue added');
 }
 
 function addCue() {
