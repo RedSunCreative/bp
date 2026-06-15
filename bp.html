@@ -5879,7 +5879,7 @@ buildSessionSnapshot = function() {
   snap.actionItems = actionItems.slice();
   snap.episodeStore = JSON.parse(JSON.stringify(episodeStore));
   snap.aiIdCounter = aiIdCounter;
-  snap.showTemplate = JSON.parse(JSON.stringify(state.showTemplate || []));
+  // showTemplate is a hardcoded catalog — not persisted to session
   snap.masterBriefContent = state.masterBriefContent || '';
   snap.masterBriefItems = JSON.parse(JSON.stringify(state.masterBriefItems || []));
   snap.masterBriefFlags = JSON.parse(JSON.stringify(state.masterBriefFlags || []));
@@ -5916,9 +5916,7 @@ applySession = function(data) {
     updateAiCounts();
     renderActionItems();
   }
-  if (data.showTemplate && Array.isArray(data.showTemplate)) {
-    state.showTemplate = data.showTemplate;
-  }
+  // showTemplate is a hardcoded catalog — never restored from session data
   if (data.masterBriefContent) state.masterBriefContent = data.masterBriefContent;
   if (data.masterBriefItems) state.masterBriefItems = data.masterBriefItems;
   if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
