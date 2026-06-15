@@ -2441,18 +2441,6 @@
         </div>
       </div>
 
-      <div class="data-section" data-sec="template">
-        <div class="data-section-header" onclick="toggleSection('template-body')">
-          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
-          <div class="data-section-title">Show Template <span class="tip-q" data-tip="Default segment order for every episode. Drag to reorder. Cue List loads from this." onclick="event.stopPropagation()">?</span></div>
-          <div class="data-section-count" id="template-count">7 segs</div>
-        </div>
-        <div class="data-section-body" id="template-body" style="display:none;">
-          <div id="template-list"></div>
-          <div class="seg-add-row"><button onclick="addTemplateSegment()">+ ADD SEGMENT</button></div>
-        </div>
-      </div>
-
       <div class="data-section" data-sec="cues">
         <div class="data-section-header" onclick="toggleSection('cues-body')">
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
@@ -4045,7 +4033,6 @@ function updateRightPanel() {
   updateRuntime();
   var sumEl3 = document.getElementById('d-ep-summary');
   if (sumEl3) sumEl3.value = activeEp().summary || '';
-  renderShowTemplate();
   renderCueList();
   renderEpisodeBrief();
   var content = document.getElementById('panelContent');
@@ -4999,53 +4986,8 @@ function initSegDrag(container, arr, onChange) {
   container.addEventListener('drop', function(e) { e.preventDefault(); });
 }
 
-function renderShowTemplate() {
-  var el = document.getElementById('template-list');
-  if (!el) return;
-  var segs = state.showTemplate || [];
-  var countEl = document.getElementById('template-count');
-  if (countEl) countEl.textContent = segs.length + ' seg' + (segs.length !== 1 ? 's' : '');
-  if (segs.length === 0) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:4px 0;">No segments yet.</div>';
-    return;
-  }
-  el.innerHTML = segs.map(function(s) {
-    var sid = s.id.replace(/'/g, '');
-    var sname = (s.name || '').replace(/"/g, '&quot;');
-    var noteHtml = s.note ? '<div class="seg-note">' + s.note + '</div>' : '';
-    return '<div class="seg-row" data-seg-id="' + sid + '" draggable="true">'
-      + '<span class="seg-row-handle">⠿</span>'
-      + '<input class="seg-row-name" value="' + sname + '" onchange="saveTemplateName(\'' + sid + '\',this.value)" placeholder="Segment name">'
-      + '<button class="seg-row-del" onclick="deleteTemplateSegment(\'' + sid + '\')" title="Remove">✕</button>'
-      + '</div>' + noteHtml;
-  }).join('');
-  initSegDrag(el, state.showTemplate, function() { autoSave('template reordered'); });
-}
-
-function addTemplateSegment() {
-  if (!state.showTemplate) state.showTemplate = [];
-  state.showTemplate.push({ id: 'st-' + Date.now(), name: '', note: '' });
-  renderShowTemplate();
-  autoSave('template segment added');
-  setTimeout(function() {
-    var inputs = document.querySelectorAll('#template-list .seg-row-name');
-    if (inputs.length) inputs[inputs.length - 1].focus();
-  }, 50);
-}
-
-function deleteTemplateSegment(id) {
-  state.showTemplate = (state.showTemplate || []).filter(function(s) { return s.id !== id; });
-  renderShowTemplate();
-  autoSave('template segment removed');
-}
-
-function saveTemplateName(id, val) {
-  var seg = (state.showTemplate || []).find(function(s) { return s.id === id; });
-  if (seg) { seg.name = val; }
-  var countEl = document.getElementById('template-count');
-  if (countEl) countEl.textContent = (state.showTemplate || []).length + ' segs';
-  autoSave('template renamed');
-}
+// state.showTemplate is a read-only catalog — segment names and notes
+// feed Episode Elements available list and cue row tooltips.
 
 // ── CUE LIST ────────────────────────────────────────────────────────────────
 
@@ -5072,8 +5014,9 @@ function renderCueList() {
     var cid = c.id.replace(/'/g, '');
     var cname = (c.name || '').replace(/"/g, '&quot;');
     var cdur = (c.duration || '').replace(/"/g, '&quot;');
+    var cnote = (c.note || '').replace(/"/g, '&quot;');
     return '<div class="seg-row" data-seg-id="' + cid + '" draggable="true">'
-      + '<span class="seg-row-handle">⠿</span>'
+      + '<span class="seg-row-handle"' + (cnote ? ' data-tip="' + cnote + '"' : '') + '>⠿</span>'
       + '<input class="seg-row-name" value="' + cname + '" onchange="saveCueName(\'' + cid + '\',this.value)" placeholder="Segment name">'
       + '<input class="seg-row-dur" value="' + cdur + '" onchange="saveCueDuration(\'' + cid + '\',this.value)" placeholder="dur">'
       + '<button class="seg-row-del" onclick="deleteCue(\'' + cid + '\')" title="Remove from episode">−</button>'
@@ -5099,7 +5042,9 @@ function renderCueList() {
       + available.map(function(s) {
           var sid = (s.id || '').replace(/'/g,'').replace(/"/g,'&quot;');
           var noteSnip = s.note ? s.note.substring(0, 28) + (s.note.length > 28 ? '…' : '') : '';
-          return '<div class="seg-row-avail" onclick="addCueFromTemplate(\'' + sid + '\')" title="Add to episode">'
+          var stip = (s.note || '').replace(/"/g, '&quot;');
+          return '<div class="seg-row-avail" onclick="addCueFromTemplate(\'' + sid + '\')"'
+            + (stip ? ' data-tip="' + stip + '"' : '') + '>'
             + '<span class="seg-row-avail-plus">+</span>'
             + '<span class="seg-row-avail-name">' + (s.name || '') + '</span>'
             + (noteSnip ? '<span class="seg-row-avail-note">' + noteSnip + '</span>' : '')
@@ -5365,7 +5310,6 @@ setInterval(updateCountdown, 60000);
   updateRuntime();
   var sumEl = document.getElementById('d-ep-summary');
   if (sumEl) sumEl.value = activeEp().summary || '';
-  renderShowTemplate();
   renderCueList();
   renderEpisodeBrief();
 })();
