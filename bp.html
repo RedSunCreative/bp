@@ -5014,7 +5014,9 @@ function renderCueList() {
     var cid = c.id.replace(/'/g, '');
     var cname = (c.name || '').replace(/"/g, '&quot;');
     var cdur = (c.duration || '').replace(/"/g, '&quot;');
-    var cnote = (c.note || '').replace(/"/g, '&quot;');
+    // Fall back to live template catalog in case cue was seeded before notes existed
+    var tplNote = c.templateId ? ((state.showTemplate || []).find(function(t) { return t.id === c.templateId; }) || {}).note || '' : '';
+    var cnote = (c.note || tplNote).replace(/"/g, '&quot;');
     return '<div class="seg-row" data-seg-id="' + cid + '" draggable="true"' + (cnote ? ' data-tip="' + cnote + '"' : '') + '>'
       + '<span class="seg-row-handle">⠿</span>'
       + '<input class="seg-row-name" value="' + cname + '" onchange="saveCueName(\'' + cid + '\',this.value)" placeholder="Segment name">'
