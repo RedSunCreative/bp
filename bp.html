@@ -3757,12 +3757,12 @@ var EP_STATUS_LABELS = { 'not-started': 'Not Started', 'planning': 'Planning', '
 var EP_STATUS_COLORS = { 'not-started': 'rgba(255,255,255,0.2)', 'planning': '#3BB8C9', 'ready-to-record': '#F5D03A', 'recorded': '#FF8B3D', 'edited': '#a78bfa', 'published': '#4ADE80' };
 
 function getEpArcBeat(n) {
-  if (n <= 2) return { label: 'Exposition', cls: 'exposition' };
-  if (n <= 4) return { label: 'Conflict',   cls: 'conflict'   };
-  if (n <= 6) return { label: 'Rising',     cls: 'rising'     };
-  if (n === 7) return { label: 'Climax',    cls: 'climax'     };
-  if (n === 8) return { label: 'Resolution',cls: 'resolution' };
-  return              { label: 'Denouement',cls: 'denouement' };
+  if (n <= 2) return { label: 'Exposition', cls: 'exposition', tip: 'Opens the world and establishes the central tension. The audience learns what\'s at stake and why this show exists.' };
+  if (n <= 4) return { label: 'Conflict',   cls: 'conflict',   tip: 'The problem comes into focus. Guests push back, ideas clash, and the tension that drives the season becomes undeniable.' };
+  if (n <= 6) return { label: 'Rising',     cls: 'rising',     tip: 'Stakes escalate. Each episode builds on the last — the audience feels the pressure mounting toward something that must break.' };
+  if (n === 7) return { label: 'Climax',   cls: 'climax',     tip: 'The turning point. Everything collides here — the episode that changes the frame and makes what follows feel earned.' };
+  if (n === 8) return { label: 'Resolution',cls: 'resolution', tip: 'The season\'s answer. Not a tidy bow — a hard-won landing that honors the tension established in Episode 1.' };
+  return               { label: 'Denouement',cls: 'denouement', tip: 'The emotional echo. What stays with the audience after the season ends — the human moment that makes it all real.' };
 }
 
 function getEpStatus(epNum) {
@@ -3920,7 +3920,7 @@ function renderSeasonView() {
       + ' onclick="goToEpisodeFromSeason(' + e + ')">'
       + '<div class="season-ep-drag" onclick="event.stopPropagation()" title="Drag to reorder">⠿</div>'
       + '<div class="season-ep-ref">S' + num + '-E' + e + '</div>'
-      + '<div class="season-ep-arc"><span class="arc-beat ' + beat.cls + '" style="padding:2px 6px;font-size:9px;">' + beat.label + '</span></div>'
+      + '<div class="season-ep-arc"><span class="arc-beat ' + beat.cls + '" style="padding:2px 6px;font-size:9px;" data-tip="' + beat.tip + '">' + beat.label + '</span></div>'
       + '<div class="season-ep-title' + (!title ? ' empty' : '') + '" contenteditable="true"'
         + ' onclick="event.stopPropagation()"'
         + ' onfocus="if(this.classList.contains(\'empty\')){this.textContent=\'\';this.classList.remove(\'empty\');}"'
