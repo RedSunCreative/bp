@@ -225,14 +225,19 @@
 
   /* Context bar */
   .context-bar {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 20px;
+    padding: 8px 20px;
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
-    flex-wrap: wrap;
+  }
+
+  .ep-header-text {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .ctx-badge {
@@ -2181,10 +2186,7 @@
   <div class="chat-area" id="chatView">
     <!-- Context bar -->
     <div class="context-bar" id="contextBar">
-      <span class="ctx-badge" id="ctxShow">📻 Anno Coding</span>
-      <span class="ctx-badge" id="ctxSeason">Season —</span>
-      <span class="ctx-badge" id="ctxEpisode">Episode —</span>
-      <span class="ctx-badge" id="ctxGuest" onclick="goToGuestsPanel()" style="cursor:pointer;" title="Go to Guests">Guest —</span>
+      <span class="ep-header-text" id="ctxEpisode">Episode —</span>
     </div>
 
     <!-- Messages -->
@@ -4104,17 +4106,12 @@ function goToGuestsPanel() {
 }
 
 function updateContextBar() {
-  if (state.currentSeason) {
-    document.getElementById('ctxSeason').textContent = 'S' + (state.currentSeason.number || '1');
-    document.getElementById('ctxSeason').classList.add('teal');
-  }
-  if (state.currentEpisode) {
-    document.getElementById('ctxEpisode').textContent = 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?');
-  }
-  if (activeEp().guest) {
-    document.getElementById('ctxGuest').textContent = '👤 ' + activeEp().guest.name;
-    document.getElementById('ctxGuest').classList.add('highlight');
-  }
+  var el = document.getElementById('ctxEpisode');
+  if (!el) return;
+  var sNum = state.currentSeason ? state.currentSeason.number : 1;
+  var eNum = state.currentEpisode ? state.currentEpisode.number : '—';
+  var title = (state.currentEpisode && state.currentEpisode.title) ? state.currentEpisode.title : '';
+  el.textContent = 'S' + sNum + '-E' + eNum + (title ? ' · ' + title : '');
 }
 
 // ── RIGHT PANEL ──
