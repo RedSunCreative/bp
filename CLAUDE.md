@@ -55,7 +55,17 @@ Boo returns pipe-delimited lines: `NAME | Title, Org | 2–3 sentence bio + uniq
 
 Tiers: Spotlight (T1 — high platform), Rising (T2 — building momentum), Discovery (T3 — diamond in the rough, the one no one else is booking).
 
+## Auth — current state and roadmap
+Current: show-code login (`lbv` / `anno`) at `submitShowCode()`. Per-user identity is a `userPrefs` object (`{name, gmail}`) stored in `localStorage` under `boo_user_prefs`. A nudge toast fires on login if Gmail is not set. localStorage is fragile (wiped by browser clear-data).
+
+**Next auth milestone (when commercializing):** Supabase Auth with Google OAuth.
+- One "Sign in with Google" button replaces or supplements the show-code flow
+- Supabase gets name + email automatically — no form
+- JWT persists properly; user preferences stored server-side keyed by user ID
+- Access can be restricted by email domain or allow-list
+- Directly solves Gmail `authuser` (you already know which Google account they used)
+- SHOW_REGISTRY mapping would shift from show-code → Google user ID / email domain
+
 ## Important
 - `Claude Console API Key.rtf` is in the project folder — never commit it
-- Do not change the Anno Coding `SHOW_CONFIG` content until after the demo
 - Fixes to the guest card format or system prompt: always check how `formatGuestSuggestions()` parses the result before changing the prompt
