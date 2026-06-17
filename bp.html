@@ -2156,7 +2156,7 @@
       <span class="ctx-badge" id="ctxShow">📻 Anno Coding</span>
       <span class="ctx-badge" id="ctxSeason">Season —</span>
       <span class="ctx-badge" id="ctxEpisode">Episode —</span>
-      <span class="ctx-badge" id="ctxGuest">Guest —</span>
+      <span class="ctx-badge" id="ctxGuest" onclick="goToGuestsPanel()" style="cursor:pointer;" title="Go to Guests">Guest —</span>
     </div>
 
     <!-- Messages -->
@@ -2435,8 +2435,9 @@
         </div>
         <div class="data-section-body" id="guests-body">
           <div id="guest-list"><div style="font-size:12px;color:var(--muted)">Tell Boo about your guests...</div></div>
-          <div style="margin-top:12px;">
+          <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
             <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ FIND A GUEST</button>
+            <button onclick="openInviteNewModal()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">✉ INVITE SOMEONE NEW</button>
           </div>
         </div>
       </div>
@@ -2929,24 +2930,6 @@ Which episode slot do you want to fill first?`);
 }
 
 function findGuest(context) {
-  // ── TESTING GUARD (remove this block before beta release) ──────────────────
-  // During testing, if Boo has already responded in this episode, intercept and
-  // ask before wiping the existing hypothesis. In beta, Find a Guest always runs fresh.
-  if (!context) {
-    const log = activeEp().conversationLog || [];
-    if (log.some(function(e) { return e.role === 'boo'; })) {
-      setView('chat');
-      addMsg('boo',
-        'I already have a take on this episode. Pick up where we left off, or start fresh with a new angle?' +
-        '<div class="msg-actions" style="margin-top:10px;">' +
-        '<button class="action-btn teal" onclick="document.getElementById(\'messages\').scrollTop=0">↑ Continue from here</button>' +
-        '<button class="action-btn" onclick="findGuest(\'fresh\')">↺ Start Fresh</button>' +
-        '</div>'
-      );
-      return;
-    }
-  }
-  // ── END TESTING GUARD ──────────────────────────────────────────────────────
 
   const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
   const seasonNum = state.currentSeason ? state.currentSeason.number : 1;
@@ -4066,6 +4049,13 @@ function goToEpisodeFromSeason(epNum) {
 }
 
 // ── CONTEXT BAR ──
+function goToGuestsPanel() {
+  var body = document.getElementById('guests-body');
+  if (body && body.style.display === 'none') toggleSection('guests-body');
+  var section = document.querySelector('[data-sec="guests"]');
+  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 function updateContextBar() {
   if (state.currentSeason) {
     document.getElementById('ctxSeason').textContent = 'S' + (state.currentSeason.number || '1');
