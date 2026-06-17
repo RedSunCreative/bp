@@ -6285,7 +6285,7 @@ sendMessage = async function() {
 // ── SHOW LOGIN ──
 function showLogin() {
   const el = document.getElementById('show-login-overlay');
-  if (el) { el.style.display = 'flex'; setTimeout(() => document.getElementById('show-code-input')?.focus(), 50); }
+  if (el) { el.style.display = 'flex'; requestAnimationFrame(() => { setTimeout(() => { const inp = document.getElementById('show-code-input'); if (inp) { inp.focus(); inp.select(); } }, 80); }); }
 }
 function submitShowCode() {
   const input = document.getElementById('show-code-input');
