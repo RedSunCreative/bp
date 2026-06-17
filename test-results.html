@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boo Producer — Test Results</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --gold:#F5D03A;--orange:#E8431A;--teal:#3BB8C9;
+    --dark:#1e2330;--card:#2a3040;--panel:#353d50;--border:#404858;
+    --muted:#8a96a8;--white:#f0f2f5;--green:#4ade80;--red:#ff6b6b;
+    --surface:#232838;
+  }
+  body{background:var(--dark);min-height:100vh;font-family:'DM Sans',sans-serif;color:var(--white);line-height:1.6;padding-bottom:60px;}
+
+  /* --- LOGIN GATE --- */
+  #gate{position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+  .gate-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:var(--gold);letter-spacing:0.05em;margin-bottom:4px;}
+  .gate-sub{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase;margin-bottom:24px;}
+  .gate-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:300px;}
+  .gate-input{width:100%;background:transparent;border:none;outline:none;color:var(--white);font-family:'DM Mono',monospace;font-size:15px;letter-spacing:0.1em;text-transform:lowercase;padding:6px 0;border-bottom:1px solid var(--border);}
+  .gate-err{font-family:'DM Mono',monospace;font-size:11px;color:var(--red);min-height:16px;margin:10px 0;}
+  .gate-btn{width:100%;background:var(--teal);color:#003a40;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:8px;padding:11px;cursor:pointer;}
+  .gate-btn:hover{opacity:0.88;}
+
+  /* --- HEADER --- */
+  .header{background:var(--card);border-bottom:2px solid var(--border);padding:20px 24px;position:sticky;top:0;z-index:50;}
+  .header-inner{max-width:900px;margin:0 auto;display:flex;align-items:baseline;justify-content:space-between;gap:16px;}
+  .header-eyebrow{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--teal);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:4px;}
+  .header-title{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:700;color:var(--gold);}
+  .header-meta{font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);white-space:nowrap;}
+  .reload-btn{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--teal);letter-spacing:0.08em;text-transform:uppercase;background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;cursor:pointer;}
+  .reload-btn:hover{border-color:var(--teal);}
+
+  /* --- CONTAINER --- */
+  .container{max-width:900px;margin:0 auto;padding:28px 24px;}
+
+  /* --- SUMMARY STATS --- */
+  .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:32px;}
+  .stat-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;text-align:center;}
+  .stat-val{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;color:var(--gold);line-height:1;}
+  .stat-label{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-top:6px;}
+
+  /* --- SIGNAL CARDS --- */
+  .signals-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;color:var(--white);margin-bottom:12px;letter-spacing:0.02em;}
+  .signal-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px;}
+  .signal-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 16px;}
+  .signal-question{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;}
+  .signal-bar-wrap{display:flex;flex-direction:column;gap:5px;}
+  .signal-bar-row{display:flex;align-items:center;gap:8px;}
+  .signal-bar-label{font-family:'DM Mono',monospace;font-size:0.68rem;color:var(--white);width:70px;flex-shrink:0;}
+  .signal-bar-track{flex:1;height:8px;background:var(--dark);border-radius:4px;overflow:hidden;}
+  .signal-bar-fill{height:100%;border-radius:4px;background:var(--teal);transition:width 0.4s;}
+  .signal-bar-fill.gold{background:var(--gold);}
+  .signal-bar-fill.green{background:var(--green);}
+  .signal-bar-fill.red{background:var(--red);}
+  .signal-bar-n{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);width:20px;text-align:right;}
+
+  /* --- RESPONSE LIST --- */
+  .responses-title{font-family:'Syne',sans-serif;font-size:0.95rem;font-weight:700;color:var(--white);margin-bottom:12px;letter-spacing:0.02em;}
+  .response-card{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+  .response-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;cursor:pointer;user-select:none;}
+  .response-header:hover{background:rgba(255,255,255,0.03);}
+  .response-name{font-family:'Syne',sans-serif;font-size:0.9rem;font-weight:700;color:var(--white);}
+  .response-meta{font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--muted);margin-top:2px;}
+  .response-chevron{font-size:0.8rem;color:var(--muted);transition:transform 0.2s;}
+  .response-card.open .response-chevron{transform:rotate(90deg);}
+  .response-body{display:none;padding:0 18px 18px;border-top:1px solid var(--border);}
+  .response-card.open .response-body{display:block;}
+
+  .q-section{margin-top:16px;}
+  .q-section-title{font-family:'Syne',sans-serif;font-size:0.72rem;font-weight:700;color:var(--teal);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+  .q-row{display:flex;gap:10px;margin-bottom:10px;align-items:flex-start;}
+  .q-label{font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;flex-shrink:0;width:160px;padding-top:2px;line-height:1.4;}
+  .q-val{font-size:0.82rem;color:var(--white);flex:1;line-height:1.5;}
+  .q-val.empty{color:var(--muted);font-style:italic;}
+  .q-val.checked{color:var(--green);}
+  .q-val.unchecked{color:var(--muted);}
+  .pill{display:inline-block;padding:2px 10px;border-radius:20px;font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:500;}
+  .pill.yes{background:rgba(74,222,128,0.15);color:var(--green);border:1px solid rgba(74,222,128,0.3);}
+  .pill.somewhat{background:rgba(245,208,58,0.12);color:var(--gold);border:1px solid rgba(245,208,58,0.3);}
+  .pill.no{background:rgba(255,107,107,0.15);color:var(--red);border:1px solid rgba(255,107,107,0.3);}
+  .pill.na{background:rgba(138,150,168,0.15);color:var(--muted);border:1px solid var(--border);}
+  .pill.default{background:rgba(59,184,201,0.12);color:var(--teal);border:1px solid rgba(59,184,201,0.3);}
+  .scale-dots{display:flex;gap:6px;align-items:center;}
+  .scale-dot{width:22px;height:22px;border-radius:50%;border:1px solid var(--border);background:var(--dark);font-family:'DM Mono',monospace;font-size:0.72rem;display:flex;align-items:center;justify-content:center;color:var(--muted);}
+  .scale-dot.active{background:rgba(245,208,58,0.2);border-color:var(--gold);color:var(--gold);font-weight:700;}
+
+  /* --- EMPTY / LOADING --- */
+  .state-msg{text-align:center;padding:60px 24px;font-family:'DM Mono',monospace;font-size:0.78rem;color:var(--muted);letter-spacing:0.08em;}
+
+  @media(max-width:680px){
+    .stats-grid{grid-template-columns:repeat(2,1fr);}
+    .signal-grid{grid-template-columns:1fr;}
+    .q-row{flex-direction:column;gap:4px;}
+    .q-label{width:auto;}
+  }
+</style>
+</head>
+<body>
+
+<!-- GATE -->
+<div id="gate">
+  <div class="gate-title">BOO PRODUCER</div>
+  <div class="gate-sub">Test Results · Red Sun Creative Studio</div>
+  <div class="gate-card">
+    <input id="gateInput" class="gate-input" type="password" placeholder="Show code"
+      onkeydown="if(event.key==='Enter') gateSubmit()">
+    <div class="gate-err" id="gateErr"></div>
+    <button class="gate-btn" onclick="gateSubmit()">View Results</button>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-inner">
+    <div>
+      <div class="header-eyebrow">Boo Producer · User Test</div>
+      <div class="header-title">Results Dashboard</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="header-meta" id="lastFetched"></div>
+      <button class="reload-btn" onclick="loadResults()">↺ Refresh</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <div id="statsWrap" class="stats-grid" style="display:none"></div>
+  <div id="signalsWrap" style="display:none">
+    <div class="signals-title">Key Signals</div>
+    <div class="signal-grid" id="signalGrid"></div>
+  </div>
+  <div id="responsesWrap" style="display:none">
+    <div class="responses-title">Individual Responses</div>
+    <div id="responseList"></div>
+  </div>
+  <div class="state-msg" id="stateMsg">Loading…</div>
+</div>
+
+<script>
+const SB_URL = 'https://gogudwpuhmidngsbqfjg.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvZ3Vkd3B1aG1pZG5nc2JxZmpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTQ2NTMsImV4cCI6MjA5NDI5MDY1M30.O6n_tRQsMU29wFV_RArcN9n6gP8KSDWJQqM4P6cTq3s';
+const VALID_CODES = ['lbv', 'anno'];
+
+const SECTIONS = [
+  {
+    title: 'First Impression',
+    fields: [
+      {key:'first-impression', label:'What do you think this tool does?', type:'text'},
+      {key:'first-impression-confidence', label:'Confidence in guess (1–5)', type:'scale'},
+    ]
+  },
+  {
+    title: 'Boo Chat',
+    fields: [
+      {key:'boo-chat-helpful', label:'Boo response helpful?', type:'radio'},
+      {key:'boo-chat-notes', label:'Confusing anything?', type:'text'},
+      {key:'voice-obvious', label:'Voice input obvious?', type:'radio'},
+    ]
+  },
+  {
+    title: 'Episode Navigation',
+    fields: [
+      {key:'ep-dropdown-findable', label:'Dropdown easy to find?', type:'radio'},
+      {key:'add-episode-works', label:'Add episode worked?', type:'radio'},
+      {key:'add-episode-notes', label:'What was unexpected?', type:'text'},
+    ]
+  },
+  {
+    title: 'Episode Info',
+    fields: [
+      {key:'ep-info-ease', label:'Obvious how to edit? (1–5)', type:'scale'},
+      {key:'ep-info-saves', label:'Changes saved visibly?', type:'radio'},
+    ]
+  },
+  {
+    title: 'Guests',
+    fields: [
+      {key:'find-guest-expected', label:'Find Guest met expectations?', type:'radio'},
+      {key:'find-guest-notes', label:'Expected vs. what happened', type:'text'},
+      {key:'invite-flow-clear', label:'Invite flow clear?', type:'radio'},
+    ]
+  },
+  {
+    title: 'Runtime Panel',
+    fields: [
+      {key:'runtime-understood', label:'Segments/Total/Target/Delta clear?', type:'radio'},
+    ]
+  },
+  {
+    title: 'Show Scripts',
+    fields: [
+      {key:'scene-list-confidence', label:'Confident sending to guest? (1–5)', type:'scale'},
+      {key:'edit-script-smooth', label:'Edit mode smooth?', type:'radio'},
+    ]
+  },
+  {
+    title: 'Season View',
+    fields: [
+      {key:'arc-makes-sense', label:'Arc concept makes sense?', type:'radio'},
+    ]
+  },
+  {
+    title: 'Functional Check',
+    fields: [
+      {key:'fn-load', label:'Page loaded cleanly', type:'check'},
+      {key:'fn-nav', label:'All nav items worked', type:'check'},
+      {key:'fn-dropdown', label:'Episode dropdown fine', type:'check'},
+      {key:'fn-panels', label:'Right panels expand/collapse', type:'check'},
+      {key:'fn-save', label:'Changes persisted', type:'check'},
+      {key:'fn-mobile', label:'Mobile layout held', type:'check'},
+      {key:'fn-bugs', label:'Bugs / errors noted', type:'text'},
+    ]
+  },
+  {
+    title: 'Overall',
+    fields: [
+      {key:'overall-purpose', label:'Tool is for…', type:'text'},
+      {key:'overall-ease', label:'Overall ease (1–5)', type:'scale'},
+      {key:'overall-improvement', label:'Biggest improvement needed', type:'text'},
+      {key:'overall-trust', label:'Trust for real session?', type:'radio'},
+    ]
+  },
+];
+
+const SIGNAL_KEYS = [
+  {key:'boo-chat-helpful', label:'Boo Chat Helpful', type:'radio'},
+  {key:'find-guest-expected', label:'Find Guest Met Expectations', type:'radio'},
+  {key:'invite-flow-clear', label:'Invite Flow Clear', type:'radio'},
+  {key:'overall-ease', label:'Overall Ease (avg)', type:'scale-avg'},
+  {key:'overall-trust', label:'Trust for Real Session', type:'radio'},
+  {key:'first-impression-confidence', label:'First Impression Confidence (avg)', type:'scale-avg'},
+];
+
+function gateSubmit(){
+  const code = document.getElementById('gateInput').value.trim().toLowerCase();
+  if(!VALID_CODES.includes(code)){
+    document.getElementById('gateErr').textContent = 'Invalid code.';
+    return;
+  }
+  document.getElementById('gate').style.display = 'none';
+  loadResults();
+}
+
+function pillClass(v){
+  if(v==='yes'||v==='makes-sense') return 'yes';
+  if(v==='somewhat'||v==='partially'||v==='not-yet'||v==='needs-explainer') return 'somewhat';
+  if(v==='no') return 'no';
+  if(v==='na') return 'na';
+  return 'default';
+}
+
+function renderVal(type, val){
+  if(val===undefined||val===null||val==='') return '<span class="q-val empty">—</span>';
+  if(type==='text') return `<span class="q-val">${escHtml(String(val))}</span>`;
+  if(type==='scale'){
+    const n = parseInt(val,10);
+    return `<span class="scale-dots">${[1,2,3,4,5].map(i=>`<span class="scale-dot${i===n?' active':''}">${i}</span>`).join('')}</span>`;
+  }
+  if(type==='radio') return `<span class="pill ${pillClass(val)}">${escHtml(String(val))}</span>`;
+  if(type==='check') return val===true||val==='true'
+    ? '<span class="q-val checked">✓ checked</span>'
+    : '<span class="q-val unchecked">— not checked</span>';
+  return `<span class="q-val">${escHtml(String(val))}</span>`;
+}
+
+function escHtml(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderResponseCard(row, idx){
+  const r = row.responses || {};
+  const ts = row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '—';
+  const sections = SECTIONS.map(sec=>{
+    const rows = sec.fields.map(f=>`
+      <div class="q-row">
+        <div class="q-label">${escHtml(f.label)}</div>
+        ${renderVal(f.type, r[f.key])}
+      </div>`).join('');
+    return `<div class="q-section">
+      <div class="q-section-title">${escHtml(sec.title)}</div>
+      ${rows}
+    </div>`;
+  }).join('');
+
+  return `<div class="response-card" id="rc-${idx}">
+    <div class="response-header" onclick="toggleCard(${idx})">
+      <div>
+        <div class="response-name">${escHtml(row.tester_name||'Anonymous')}</div>
+        <div class="response-meta">Submitted ${ts}${row.test_date?' · Test date '+row.test_date:''}</div>
+      </div>
+      <span class="response-chevron">›</span>
+    </div>
+    <div class="response-body">${sections}</div>
+  </div>`;
+}
+
+function toggleCard(idx){
+  document.getElementById(`rc-${idx}`).classList.toggle('open');
+}
+
+function renderStats(rows){
+  const n = rows.length;
+  const easeVals = rows.map(r=>(r.responses||{})['overall-ease']).filter(v=>v&&!isNaN(v)).map(Number);
+  const avgEase = easeVals.length ? (easeVals.reduce((a,b)=>a+b,0)/easeVals.length).toFixed(1) : '—';
+  const trustYes = rows.filter(r=>((r.responses||{})['overall-trust'])==='yes').length;
+  const hasBugs = rows.filter(r=>{const v=(r.responses||{})['fn-bugs'];return v&&v.trim();}).length;
+
+  document.getElementById('statsWrap').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${n}</div><div class="stat-label">Testers</div></div>
+    <div class="stat-card"><div class="stat-val">${avgEase}</div><div class="stat-label">Avg Ease (1–5)</div></div>
+    <div class="stat-card"><div class="stat-val">${trustYes}/${n}</div><div class="stat-label">Would Trust Live</div></div>
+    <div class="stat-card"><div class="stat-val">${hasBugs}</div><div class="stat-label">Reported Bugs</div></div>
+  `;
+  document.getElementById('statsWrap').style.display = 'grid';
+}
+
+function renderSignals(rows){
+  if(!rows.length) return;
+  const grid = SIGNAL_KEYS.map(sig=>{
+    if(sig.type==='scale-avg'){
+      const vals = rows.map(r=>((r.responses||{})[sig.key])).filter(v=>v&&!isNaN(v)).map(Number);
+      const avg = vals.length ? (vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+      const bars = [1,2,3,4,5].map(i=>{
+        const count = vals.filter(v=>Math.round(v)===i).length;
+        const pct = rows.length ? Math.round((count/rows.length)*100) : 0;
+        return `<div class="signal-bar-row">
+          <div class="signal-bar-label">${i} star${i!==1?'s':''}</div>
+          <div class="signal-bar-track"><div class="signal-bar-fill gold" style="width:${pct}%"></div></div>
+          <div class="signal-bar-n">${count}</div>
+        </div>`;
+      }).join('');
+      return `<div class="signal-card">
+        <div class="signal-question">${escHtml(sig.label)} · avg ${avg.toFixed(1)}</div>
+        <div class="signal-bar-wrap">${bars}</div>
+      </div>`;
+    }
+
+    const counts = {};
+    rows.forEach(r=>{
+      const v = (r.responses||{})[sig.key]||'no answer';
+      counts[v] = (counts[v]||0)+1;
+    });
+    const bars = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([label,count])=>{
+      const pct = Math.round((count/rows.length)*100);
+      const cl = pillClass(label);
+      const fillCl = cl==='yes'?'green':cl==='no'?'red':'';
+      return `<div class="signal-bar-row">
+        <div class="signal-bar-label">${escHtml(label)}</div>
+        <div class="signal-bar-track"><div class="signal-bar-fill ${fillCl}" style="width:${pct}%"></div></div>
+        <div class="signal-bar-n">${count}</div>
+      </div>`;
+    }).join('');
+    return `<div class="signal-card">
+      <div class="signal-question">${escHtml(sig.label)}</div>
+      <div class="signal-bar-wrap">${bars}</div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('signalGrid').innerHTML = grid;
+  document.getElementById('signalsWrap').style.display = 'block';
+}
+
+async function loadResults(){
+  document.getElementById('stateMsg').textContent = 'Loading…';
+  document.getElementById('stateMsg').style.display = 'block';
+  document.getElementById('statsWrap').style.display = 'none';
+  document.getElementById('signalsWrap').style.display = 'none';
+  document.getElementById('responsesWrap').style.display = 'none';
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/user_test_responses?select=*&order=submitted_at.asc`, {
+      headers:{'apikey':SB_KEY,'Authorization':`Bearer ${SB_KEY}`}
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const rows = await res.json();
+
+    if(!rows.length){
+      document.getElementById('stateMsg').textContent = 'No responses yet.';
+      return;
+    }
+
+    renderStats(rows);
+    renderSignals(rows);
+
+    document.getElementById('responseList').innerHTML = rows.map((r,i)=>renderResponseCard(r,i)).join('');
+    document.getElementById('responsesWrap').style.display = 'block';
+    document.getElementById('stateMsg').style.display = 'none';
+
+    const now = new Date().toLocaleTimeString();
+    document.getElementById('lastFetched').textContent = `Last fetched ${now}`;
+  } catch(e) {
+    document.getElementById('stateMsg').textContent = `Error loading results: ${e.message}`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  setTimeout(()=>document.getElementById('gateInput').focus(), 80);
+});
+</script>
+</body>
+</html>
