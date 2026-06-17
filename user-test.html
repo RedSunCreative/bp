@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Boo Producer — User Test</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0;}
+  :root{
+    --gold:#F5D03A;--orange:#E8431A;--teal:#3BB8C9;
+    --dark:#1e2330;--card:#2a3040;--panel:#353d50;--border:#404858;
+    --muted:#8a96a8;--white:#f0f2f5;--green:#4ade80;--red:#ff6b6b;
+  }
+  body{
+    background:var(--dark);
+    min-height:100vh;
+    font-family:'DM Sans',sans-serif;
+    color:var(--white);
+    line-height:1.6;
+    padding-bottom:80px;
+  }
+
+  .header{
+    background:var(--card);
+    border-bottom:2px solid var(--border);
+    padding:28px 24px;
+    position:sticky;top:0;z-index:50;
+  }
+  .header-inner{max-width:760px;margin:0 auto;}
+  .header-eyebrow{
+    font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:400;
+    color:var(--teal);letter-spacing:0.18em;text-transform:uppercase;margin-bottom:6px;
+  }
+  .header-title{
+    font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:700;
+    color:var(--gold);letter-spacing:0.02em;
+  }
+  .header-sub{
+    font-family:'DM Sans',sans-serif;font-size:0.85rem;color:var(--muted);margin-top:8px;max-width:600px;
+  }
+
+  .progress-wrap{
+    max-width:760px;margin:18px auto 0;display:flex;align-items:center;gap:12px;
+  }
+  .progress-track{
+    flex:1;height:6px;background:var(--border);border-radius:4px;overflow:hidden;
+  }
+  .progress-fill{
+    height:100%;background:var(--teal);width:0%;transition:width 0.3s;
+  }
+  .progress-label{
+    font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--muted);white-space:nowrap;
+  }
+
+  .container{max-width:760px;margin:0 auto;padding:32px 24px;}
+
+  .intro-box{
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:18px 20px;margin-bottom:32px;
+  }
+  .intro-box p{font-size:0.88rem;color:var(--white);margin-bottom:8px;}
+  .intro-box p:last-child{margin-bottom:0;}
+  .intro-box strong{color:var(--gold);}
+
+  .section{
+    margin-bottom:36px;
+  }
+  .section-header{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:14px;
+    border-bottom:1px solid var(--border);padding-bottom:10px;
+  }
+  .section-num{
+    font-family:'Syne',sans-serif;font-size:0.78rem;font-weight:700;
+    color:var(--gold);letter-spacing:0.05em;
+  }
+  .section-title{
+    font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:var(--white);
+  }
+
+  .task{
+    background:var(--card);border:1px solid var(--border);border-radius:10px;
+    padding:18px 20px;margin-bottom:14px;
+  }
+  .task-instruction{
+    font-family:'DM Sans',sans-serif;font-size:0.92rem;color:var(--white);margin-bottom:14px;font-weight:500;
+  }
+  .task-instruction .step-num{
+    font-family:'DM Mono',monospace;color:var(--teal);margin-right:6px;
+  }
+
+  .field-label{
+    font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;
+    color:var(--muted);letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;display:block;
+  }
+
+  .radio-row{
+    display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;
+  }
+  .radio-option{
+    flex:1;min-width:90px;
+  }
+  .radio-option input{display:none;}
+  .radio-option label{
+    display:block;text-align:center;padding:10px 8px;border-radius:8px;
+    border:1px solid var(--border);background:var(--dark);cursor:pointer;
+    font-family:'DM Sans',sans-serif;font-size:0.78rem;font-weight:500;color:var(--muted);
+    transition:all 0.15s;
+  }
+  .radio-option input:checked + label{
+    border-color:var(--teal);color:var(--teal);background:rgba(59,184,201,0.1);
+  }
+  .radio-option label:hover{border-color:var(--muted);}
+
+  .scale-row{
+    display:flex;gap:6px;margin-bottom:6px;
+  }
+  .scale-option{flex:1;}
+  .scale-option input{display:none;}
+  .scale-option label{
+    display:block;text-align:center;padding:10px 4px;border-radius:6px;
+    border:1px solid var(--border);background:var(--dark);cursor:pointer;
+    font-family:'DM Mono',monospace;font-size:0.82rem;font-weight:500;color:var(--muted);
+    transition:all 0.15s;
+  }
+  .scale-option input:checked + label{
+    border-color:var(--gold);color:var(--gold);background:rgba(245,208,58,0.1);
+  }
+  .scale-caption{
+    display:flex;justify-content:space-between;font-family:'DM Mono',monospace;
+    font-size:0.62rem;color:var(--muted);letter-spacing:0.04em;margin-bottom:14px;
+  }
+
+  textarea, input[type="text"]{
+    width:100%;background:var(--dark);border:1px solid var(--border);
+    color:var(--white);border-radius:8px;padding:10px 12px;font-size:0.85rem;
+    font-family:'DM Sans',sans-serif;resize:vertical;outline:none;transition:border-color 0.2s;
+  }
+  textarea{min-height:70px;line-height:1.5;}
+  textarea:focus, input[type="text"]:focus{border-color:var(--teal);}
+  textarea::placeholder, input::placeholder{color:#5a6478;}
+
+  .check-row{
+    display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;cursor:pointer;
+  }
+  .check-row input{
+    margin-top:3px;width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;
+  }
+  .check-row span{font-size:0.85rem;color:var(--white);}
+
+  .hesitation-flag{
+    margin-top:12px;padding-top:12px;border-top:1px dashed var(--border);
+  }
+
+  .summary-section{
+    background:var(--card);border:2px solid var(--gold);border-radius:12px;
+    padding:24px;margin-top:40px;
+  }
+  .summary-title{
+    font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--gold);
+    margin-bottom:16px;letter-spacing:0.02em;
+  }
+
+  .export-bar{
+    position:fixed;bottom:0;left:0;right:0;background:var(--card);
+    border-top:2px solid var(--border);padding:14px 24px;
+    display:flex;justify-content:center;gap:12px;z-index:60;
+  }
+  .btn{
+    font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:700;
+    letter-spacing:0.06em;text-transform:uppercase;padding:11px 22px;
+    border-radius:8px;cursor:pointer;border:none;transition:opacity 0.15s;
+  }
+  .btn:hover{opacity:0.85;}
+  .btn-primary{background:var(--teal);color:#003a40;}
+  .btn-secondary{background:transparent;border:1px solid var(--border);color:var(--muted);}
+
+  .meta-row{
+    display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;
+  }
+  .meta-field label{
+    font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);
+    letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;display:block;
+  }
+
+  @media(max-width:600px){
+    .meta-row{grid-template-columns:1fr;}
+    .radio-row{flex-direction:column;}
+  }
+
+  .toast{
+    position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:var(--teal);color:#003a40;padding:10px 20px;border-radius:8px;
+    font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:700;
+    opacity:0;transition:all 0.3s;pointer-events:none;z-index:100;
+  }
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="header-eyebrow">User Test · Boo Producer</div>
+    <div class="header-title">UI, Usability &amp; Functionality Test</div>
+    <div class="header-sub">Work through each task in order with Boo Producer open in another window. Try each step before reading what "should" happen — your honest first reaction is the most valuable data point.</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">0% complete</div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="intro-box">
+    <p><strong>Before you start:</strong> Open <span style="font-family:'DM Mono',monospace;color:var(--teal);">redsuncreative.github.io/bp/bp.html</span> in a separate window or second monitor so you can work through this side by side.</p>
+    <p>For every task: read the instruction, try it without overthinking, then answer honestly. If you hesitate or get confused at any point, that's useful information — note it in the hesitation field.</p>
+    <p>This form saves nothing automatically. Use <strong>Export Responses</strong> at the bottom when you're done.</p>
+  </div>
+
+  <div class="meta-row">
+    <div class="meta-field">
+      <label>Tester Name</label>
+      <input type="text" id="testerName" placeholder="Your name">
+    </div>
+    <div class="meta-field">
+      <label>Date</label>
+      <input type="text" id="testDate" placeholder="2026-06-17">
+    </div>
+  </div>
+
+  <!-- SECTION 1: FIRST IMPRESSION -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <span class="section-title">First Impression</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">→</span>Open the tool. Before clicking anything, look at the screen for 10 seconds.</div>
+      <label class="field-label">In your own words — what do you think this tool does?</label>
+      <textarea data-q="first-impression"></textarea>
+      <div class="hesitation-flag">
+        <label class="field-label">How confident are you in that guess?</label>
+        <div class="scale-row" data-scale="first-impression-confidence">
+          <div class="scale-option"><input type="radio" name="s1" value="1"><label>1</label></div>
+          <div class="scale-option"><input type="radio" name="s1" value="2"><label>2</label></div>
+          <div class="scale-option"><input type="radio" name="s1" value="3"><label>3</label></div>
+          <div class="scale-option"><input type="radio" name="s1" value="4"><label>4</label></div>
+          <div class="scale-option"><input type="radio" name="s1" value="5"><label>5</label></div>
+        </div>
+        <div class="scale-caption"><span>Not at all confident</span><span>Very confident</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: BOO CHAT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <span class="section-title">Boo Chat</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Click "Boo Chat." Type: "Help me plan episode 2." Send it.</div>
+      <label class="field-label">Did Boo's response feel helpful and relevant?</label>
+      <div class="radio-row" data-q="boo-chat-helpful">
+        <div class="radio-option"><input type="radio" name="r1" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r1" value="somewhat"><label>Somewhat</label></div>
+        <div class="radio-option"><input type="radio" name="r1" value="no"><label>No</label></div>
+      </div>
+      <label class="field-label">Anything confusing about the response or the chat interface?</label>
+      <textarea data-q="boo-chat-notes" placeholder="Open feedback..."></textarea>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">2.</span>Try the microphone / voice input if available.</div>
+      <label class="field-label">Was it obvious how to use it?</label>
+      <div class="radio-row" data-q="voice-obvious">
+        <div class="radio-option"><input type="radio" name="r2" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r2" value="no"><label>No</label></div>
+        <div class="radio-option"><input type="radio" name="r2" value="na"><label>N/A</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: EPISODE NAVIGATION -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <span class="section-title">Episode Navigation</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Find the episode dropdown (top right, shows current episode). Click it.</div>
+      <label class="field-label">Was it easy to find?</label>
+      <div class="radio-row" data-q="ep-dropdown-findable">
+        <div class="radio-option"><input type="radio" name="r3" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r3" value="no"><label>No</label></div>
+      </div>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">2.</span>Add a new episode using the dropdown.</div>
+      <label class="field-label">Did it work as expected?</label>
+      <div class="radio-row" data-q="add-episode-works">
+        <div class="radio-option"><input type="radio" name="r4" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r4" value="no"><label>No</label></div>
+      </div>
+      <label class="field-label">What happened that you didn't expect, if anything?</label>
+      <textarea data-q="add-episode-notes"></textarea>
+    </div>
+  </div>
+
+  <!-- SECTION 4: EPISODE INFO -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <span class="section-title">Episode Info Panel</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Open the Episode Info panel. Try entering a title and a target runtime.</div>
+      <label class="field-label">Was it obvious how to edit these fields?</label>
+      <div class="scale-row" data-scale="ep-info-ease">
+        <div class="scale-option"><input type="radio" name="r5" value="1"><label>1</label></div>
+        <div class="scale-option"><input type="radio" name="r5" value="2"><label>2</label></div>
+        <div class="scale-option"><input type="radio" name="r5" value="3"><label>3</label></div>
+        <div class="scale-option"><input type="radio" name="r5" value="4"><label>4</label></div>
+        <div class="scale-option"><input type="radio" name="r5" value="5"><label>5</label></div>
+      </div>
+      <div class="scale-caption"><span>Very confusing</span><span>Completely obvious</span></div>
+      <label class="field-label">Did your changes save / persist visibly?</label>
+      <div class="radio-row" data-q="ep-info-saves">
+        <div class="radio-option"><input type="radio" name="r6" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r6" value="no"><label>No</label></div>
+        <div class="radio-option"><input type="radio" name="r6" value="unsure"><label>Unsure</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 5: GUESTS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <span class="section-title">Guests</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Go to the Guests panel. Click "+ Find a Guest."</div>
+      <label class="field-label">Did this do what you expected from the button label?</label>
+      <div class="radio-row" data-q="find-guest-expected">
+        <div class="radio-option"><input type="radio" name="r7" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r7" value="no"><label>No</label></div>
+      </div>
+      <label class="field-label">What did you expect vs. what happened?</label>
+      <textarea data-q="find-guest-notes"></textarea>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">2.</span>Try "+ Invite Someone New" and fill in a fake guest's info.</div>
+      <label class="field-label">Was the flow clear from start to finish?</label>
+      <div class="radio-row" data-q="invite-flow-clear">
+        <div class="radio-option"><input type="radio" name="r8" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r8" value="somewhat"><label>Somewhat</label></div>
+        <div class="radio-option"><input type="radio" name="r8" value="no"><label>No</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 6: RUNTIME -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <span class="section-title">Runtime Panel</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Look at the Runtime panel without clicking anything.</div>
+      <label class="field-label">Without being told, do you understand what Segments / Total / Target / Delta mean?</label>
+      <div class="radio-row" data-q="runtime-understood">
+        <div class="radio-option"><input type="radio" name="r9" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r9" value="partially"><label>Partially</label></div>
+        <div class="radio-option"><input type="radio" name="r9" value="no"><label>No</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 7: SHOW SCRIPTS / OUTPUT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <span class="section-title">Show Scripts &amp; Output</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Click "Show Scripts" → "Print Static Scene List." Open the result.</div>
+      <label class="field-label">Would you feel confident sending this to a guest before a recording?</label>
+      <div class="scale-row" data-scale="scene-list-confidence">
+        <div class="scale-option"><input type="radio" name="r10" value="1"><label>1</label></div>
+        <div class="scale-option"><input type="radio" name="r10" value="2"><label>2</label></div>
+        <div class="scale-option"><input type="radio" name="r10" value="3"><label>3</label></div>
+        <div class="scale-option"><input type="radio" name="r10" value="4"><label>4</label></div>
+        <div class="scale-option"><input type="radio" name="r10" value="5"><label>5</label></div>
+      </div>
+      <div class="scale-caption"><span>Not confident</span><span>Very confident</span></div>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">2.</span>Try "Edit Show Script."</div>
+      <label class="field-label">Was navigating in and out of edit mode smooth?</label>
+      <div class="radio-row" data-q="edit-script-smooth">
+        <div class="radio-option"><input type="radio" name="r11" value="yes"><label>Yes</label></div>
+        <div class="radio-option"><input type="radio" name="r11" value="no"><label>No</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 8: SEASON VIEW -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <span class="section-title">Season View</span>
+    </div>
+
+    <div class="task">
+      <div class="task-instruction"><span class="step-num">1.</span>Go to the Season dashboard. Look at the Plot Mountain / arc structure.</div>
+      <label class="field-label">Does the arc concept make sense visually, or would you need it explained?</label>
+      <div class="radio-row" data-q="arc-makes-sense">
+        <div class="radio-option"><input type="radio" name="r12" value="makes-sense"><label>Makes sense</label></div>
+        <div class="radio-option"><input type="radio" name="r12" value="needs-explainer"><label>Needs explainer</label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 9: FUNCTIONAL / BUG CHECK -->
+  <div class="section">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <span class="section-title">Functional Check — Things That Should Just Work</span>
+    </div>
+
+    <div class="task">
+      <label class="field-label" style="margin-bottom:12px;">Check off each one only if it worked correctly. Leave unchecked if broken, slow, or confusing — and explain below.</label>
+      <div class="check-row"><input type="checkbox" data-q="fn-load"><span>Page loaded fully with no visual glitches or cut-off content</span></div>
+      <div class="check-row"><input type="checkbox" data-q="fn-nav"><span>All left sidebar items (Boo Chat, Teleprompter, Action Items, Master Brief) switched views correctly</span></div>
+      <div class="check-row"><input type="checkbox" data-q="fn-dropdown"><span>Episode dropdown opened and closed without glitching</span></div>
+      <div class="check-row"><input type="checkbox" data-q="fn-panels"><span>All right panel sections (Episode Info, Runtime, Guests, Cue List, Boo's Memory) expand/collapse correctly</span></div>
+      <div class="check-row"><input type="checkbox" data-q="fn-save"><span>Changes you made were still there after switching views and coming back</span></div>
+      <div class="check-row"><input type="checkbox" data-q="fn-mobile"><span>If tested on phone/tablet — layout held up without breaking</span></div>
+      <label class="field-label" style="margin-top:14px;">Describe any bug, error message, or broken behavior in detail (what you clicked, what happened, what you expected):</label>
+      <textarea data-q="fn-bugs" style="min-height:100px;"></textarea>
+    </div>
+  </div>
+
+  <!-- SECTION 10: OVERALL -->
+  <div class="summary-section">
+    <div class="summary-title">Overall Verdict</div>
+
+    <label class="field-label">In one sentence — what is this tool for?</label>
+    <textarea data-q="overall-purpose" style="margin-bottom:18px;"></textarea>
+
+    <label class="field-label">Overall, how easy was this tool to use with no prior explanation?</label>
+    <div class="scale-row" data-scale="overall-ease">
+      <div class="scale-option"><input type="radio" name="r13" value="1"><label>1</label></div>
+      <div class="scale-option"><input type="radio" name="r13" value="2"><label>2</label></div>
+      <div class="scale-option"><input type="radio" name="r13" value="3"><label>3</label></div>
+      <div class="scale-option"><input type="radio" name="r13" value="4"><label>4</label></div>
+      <div class="scale-option"><input type="radio" name="r13" value="5"><label>5</label></div>
+    </div>
+    <div class="scale-caption"><span>Very difficult</span><span>Effortless</span></div>
+
+    <label class="field-label" style="margin-top:18px;">What's the single biggest thing that would improve this tool?</label>
+    <textarea data-q="overall-improvement" style="margin-bottom:18px;"></textarea>
+
+    <label class="field-label">Would you trust this tool to run a real recording session?</label>
+    <div class="radio-row" data-q="overall-trust">
+      <div class="radio-option"><input type="radio" name="r14" value="yes"><label>Yes</label></div>
+      <div class="radio-option"><input type="radio" name="r14" value="not-yet"><label>Not yet</label></div>
+      <div class="radio-option"><input type="radio" name="r14" value="no"><label>No</label></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="export-bar">
+  <button class="btn btn-secondary" id="clearBtn">Clear All</button>
+  <button class="btn btn-primary" id="submitBtn">Submit Responses</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SB_URL = 'https://gogudwpuhmidngsbqfjg.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvZ3Vkd3B1aG1pZG5nc2JxZmpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTQ2NTMsImV4cCI6MjA5NDI5MDY1M30.O6n_tRQsMU29wFV_RArcN9n6gP8KSDWJQqM4P6cTq3s';
+
+function updateProgress(){
+  const groups = new Set();
+  let filled = 0, total = 0;
+
+  document.querySelectorAll('textarea[data-q]').forEach(t=>{
+    total++; if(t.value.trim()) filled++;
+  });
+  document.querySelectorAll('[data-q] input[type="radio"], [data-scale] input[type="radio"]').forEach(r=>{
+    groups.add(r.name);
+  });
+  groups.forEach(name=>{
+    total++;
+    if(document.querySelector(`input[name="${name}"]:checked`)) filled++;
+  });
+  document.querySelectorAll('input[type="checkbox"][data-q]').forEach(c=>{
+    total++; if(c.checked) filled++;
+  });
+
+  const pct = total ? Math.round((filled/total)*100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = pct + '% complete';
+}
+
+document.body.addEventListener('input', updateProgress);
+document.body.addEventListener('change', updateProgress);
+
+function gatherResponses(){
+  const data = {
+    tester: document.getElementById('testerName').value,
+    date: document.getElementById('testDate').value,
+    responses: {}
+  };
+
+  document.querySelectorAll('textarea[data-q]').forEach(t=>{
+    data.responses[t.dataset.q] = t.value;
+  });
+  document.querySelectorAll('input[type="checkbox"][data-q]').forEach(c=>{
+    data.responses[c.dataset.q] = c.checked;
+  });
+
+  const radioGroups = {};
+  document.querySelectorAll('[data-q] input[type="radio"], [data-scale] input[type="radio"]').forEach(r=>{
+    const wrapper = r.closest('[data-q], [data-scale]');
+    const key = wrapper.dataset.q || wrapper.dataset.scale;
+    radioGroups[r.name] = key;
+  });
+  document.querySelectorAll('input[type="radio"]:checked').forEach(r=>{
+    const key = radioGroups[r.name];
+    if(key) data.responses[key] = r.value;
+  });
+
+  return data;
+}
+
+function showToast(msg, color){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || 'var(--teal)';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+document.getElementById('submitBtn').addEventListener('click', async ()=>{
+  const data = gatherResponses();
+  if(!data.tester.trim()){
+    showToast('Please enter your name before submitting.', '#e8431a');
+    document.getElementById('testerName').focus();
+    return;
+  }
+  const btn = document.getElementById('submitBtn');
+  btn.textContent = 'Submitting…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/user_test_responses`, {
+      method: 'POST',
+      headers: {
+        'apikey': SB_KEY,
+        'Authorization': `Bearer ${SB_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify({
+        tester_name: data.tester,
+        test_date: data.date,
+        responses: data.responses
+      })
+    });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    btn.textContent = 'Submitted ✓';
+    showToast('Responses submitted — thank you!');
+  } catch(e) {
+    btn.textContent = 'Submit Responses';
+    btn.disabled = false;
+    showToast('Submission failed — please try again.', '#e8431a');
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  if(!confirm('Clear all responses? This cannot be undone.')) return;
+  document.querySelectorAll('textarea').forEach(t=>t.value='');
+  document.querySelectorAll('input[type="text"]').forEach(t=>t.value='');
+  document.querySelectorAll('input[type="radio"]').forEach(r=>r.checked=false);
+  document.querySelectorAll('input[type="checkbox"]').forEach(c=>c.checked=false);
+  const btn = document.getElementById('submitBtn');
+  btn.textContent = 'Submit Responses';
+  btn.disabled = false;
+  updateProgress();
+  showToast('Cleared');
+});
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const d = new Date();
+  document.getElementById('testDate').value = d.toISOString().slice(0,10);
+});
+
+updateProgress();
+</script>
+
+</body>
+</html>
