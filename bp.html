@@ -1993,6 +1993,26 @@
 
   .save-toast.show { opacity: 1; }
 
+  .nudge-toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface3);
+    border: 1px solid var(--teal);
+    color: var(--teal);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    z-index: 201;
+    cursor: pointer;
+    user-select: none;
+  }
+  .nudge-toast.show { opacity: 1; pointer-events: auto; }
+
   /* Load session modal */
   .load-modal {
     position: fixed;
@@ -2125,6 +2145,7 @@
     <input type="file" id="loadFileInput" accept=".json" style="display:none" onchange="loadSessionFromFile(event)">
   </div>
   <div class="save-toast" id="saveToast">✓ Session saved</div>
+  <div class="nudge-toast" id="nudgeToast"></div>
 </header>
 
 <!-- Main -->
@@ -2808,6 +2829,9 @@ async function initApp() {
   await loadFromSupabase();
   renderSeasonsList();
   booGreet();
+  if (!userPrefs.gmail) {
+    setTimeout(function() { showNudge('Set your Gmail for invites →', openUserProfile); }, 2500);
+  }
 }
 
 function booGreet() {
@@ -6240,6 +6264,14 @@ function showToast(msg) {
   toast.textContent = msg;
   toast.classList.add('show');
   setTimeout(() => toast.classList.remove('show'), 2800);
+}
+
+function showNudge(msg, fn) {
+  var nudge = document.getElementById('nudgeToast');
+  nudge.textContent = msg;
+  nudge.onclick = function() { nudge.classList.remove('show'); if (fn) fn(); };
+  nudge.classList.add('show');
+  setTimeout(function() { nudge.classList.remove('show'); }, 6000);
 }
 
 // ── LOAD SESSION ──
