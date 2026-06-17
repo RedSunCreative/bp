@@ -4248,17 +4248,18 @@ function loadLastScript() {
     return;
   }
 
-  // 2. Scan chat bubbles — any long Boo message likely contains the script
-  // Use loose matching: script keywords OR just length > 400 chars
-  const bubbles = document.querySelectorAll('.msg.boo .msg-bubble');
-  let found = null;
+  // 2. Scan conversationLog using rawText — avoids DOM scraping which pulls in
+  //    button label text ("Push to Teleprompter") without spacing, garbling the output
+  const log = activeEp().conversationLog || [];
   const scriptKeywords = ['OPENING', 'INTRO', 'OUTRO', 'QUESTION', 'GUEST', 'WELCOME', 'HOST'];
+  let found = null;
 
-  for (let i = bubbles.length - 1; i >= 0; i--) {
-    const text = bubbles[i].innerText || bubbles[i].textContent || '';
+  for (let i = log.length - 1; i >= 0; i--) {
+    const entry = log[i];
+    if (entry.role !== 'boo') continue;
+    const text = entry.rawText || entry.text || '';
     const upper = text.toUpperCase();
     const hasKeyword = scriptKeywords.some(kw => upper.includes(kw));
-    // Accept if it has a script keyword and is substantial, OR just very long
     if ((hasKeyword && text.length > 150) || text.length > 600) {
       found = text.trim();
       break;
@@ -4272,9 +4273,7 @@ function loadLastScript() {
     if (empty) empty.style.display = 'none';
     showToast('Script loaded into Teleprompter');
   } else {
-    // 3. Nothing found — give clear instruction
     showToast('Generate a script in Boo Chat first, then use Push to Teleprompter');
-    // Switch back to chat so they can do that
     setTimeout(() => setView('chat'), 1800);
   }
 }
