@@ -374,10 +374,10 @@ if (scriptEnd === -1) { console.log('FAIL: no </script> found after <script>'); 
 // Everything the browser actually parses as JS
 const scriptBody = src.slice(scriptStart + '<script>'.length, scriptEnd);
 
-// The real closing line is: document.addEventListener('DOMContentLoaded', initApp);
-// If a spurious </script> cuts the block early, this line will be missing.
-if (!scriptBody.includes("addEventListener('DOMContentLoaded', initApp)")) {
-  console.log('FAIL: script block cut short — initApp DOMContentLoaded sentinel not found. A </script> literal likely appears inside a comment before the real closing tag.');
+// The login handler is the last thing in the script block — if a spurious </script>
+// cuts the block early, submitShowCode will be missing from the parsed JS.
+if (!scriptBody.includes('submitShowCode')) {
+  console.log('FAIL: script block cut short — submitShowCode sentinel not found. A </script> literal likely appears inside a comment before the real closing tag.');
   process.exit(0);
 }
 console.log('PASS');
