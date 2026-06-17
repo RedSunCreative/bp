@@ -2550,6 +2550,40 @@
   </div>
 </div>
 
+<!-- Invite Someone New Modal -->
+<div class="modal-overlay" id="inviteNewModal" style="display:none;">
+  <div class="modal" style="width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;">
+    <h2>✉ Invite Someone New</h2>
+    <p>Someone you already have in mind — not a Boo suggestion. Fill in their details, edit the email, then open in Gmail.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <div class="sidebar-label" style="padding-left:0;margin-bottom:6px;">Name</div>
+        <input type="text" id="invite-name" placeholder="Full name" style="margin-bottom:0;">
+      </div>
+      <div>
+        <div class="sidebar-label" style="padding-left:0;margin-bottom:6px;">Email</div>
+        <input type="email" id="invite-email" placeholder="email@example.com" style="margin-bottom:0;">
+      </div>
+    </div>
+    <div style="margin-top:12px;">
+      <div class="sidebar-label" style="padding-left:0;margin-bottom:6px;">Phone <span style="opacity:0.5;text-transform:none;letter-spacing:0;">(optional — for text follow-up)</span></div>
+      <input type="tel" id="invite-phone" placeholder="+1 (555) 000-0000" style="margin-bottom:0;">
+    </div>
+    <div style="margin-top:16px;">
+      <div class="sidebar-label" style="padding-left:0;margin-bottom:6px;">Subject</div>
+      <input type="text" id="invite-subject" placeholder="Email subject" style="margin-bottom:0;">
+    </div>
+    <div style="margin-top:12px;margin-bottom:16px;">
+      <div class="sidebar-label" style="padding-left:0;margin-bottom:6px;">Email Body <span style="opacity:0.5;text-transform:none;letter-spacing:0;">(editable)</span></div>
+      <textarea id="invite-body" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;outline:none;resize:vertical;min-height:240px;box-sizing:border-box;transition:border-color 0.15s;" onfocus="this.style.borderColor='var(--teal)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="modal-btn" onclick="sendInviteNew()" style="flex:1;">Open in Gmail</button>
+      <button onclick="closeInviteNewModal()" style="padding:11px 20px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Load Session Modal -->
 <div class="load-modal" id="loadModal" style="display:none;">
   <div class="load-modal-box">
@@ -4151,10 +4185,12 @@ function renderGuestPanel(content) {
     html += '<div style="display:flex;flex-direction:column;gap:6px;margin-top:10px;">'
       + '<button class="action-btn primary" style="width:100%;text-align:center;" onclick="draftEmailCurrentGuest()">✉ Draft Outreach Email</button>'
       + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="researchCurrentGuest()">🔍 Research Guest</button>'
+      + '<button class="action-btn" style="width:100%;text-align:center;" onclick="openInviteNewModal()">✉ Invite Someone New</button>'
       + '</div>';
   } else {
     html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0 10px;">No guest selected yet.</div>'
-      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="findGuestChat()">+ Find a Guest</button>';
+      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="findGuestChat()">+ Find a Guest</button>'
+      + '<button class="action-btn" style="width:100%;text-align:center;margin-top:8px;" onclick="openInviteNewModal()">✉ Invite Someone New</button>';
   }
   html += '</div></div>';
   content.innerHTML = html;
@@ -4451,6 +4487,103 @@ function getAvailableSlots() {
 }
 
 // ── DATE PICKER MODAL ──
+
+function openInviteNewModal() {
+  // Clear fields
+  document.getElementById('invite-name').value = '';
+  document.getElementById('invite-email').value = '';
+  document.getElementById('invite-phone').value = '';
+
+  // Build subject
+  document.getElementById('invite-subject').value = 'Invitation to be a guest on ' + SHOW_CONFIG.showName;
+
+  // Build email body template
+  const show     = SHOW_CONFIG.showName;
+  const tagline  = SHOW_CONFIG.showTagline;
+  const producer = SHOW_CONFIG.producerName;
+  const prodEmail= SHOW_CONFIG.producerEmail;
+  const company  = SHOW_CONFIG.producerCompany;
+  const host1    = SHOW_CONFIG.host1;
+  const host2    = SHOW_CONFIG.host2;
+  const platform = SHOW_CONFIG.recordingPlatform || 'Riverside.fm';
+  const duration = activeEp().targetTime || 60;
+
+  const epTitle   = (state.currentEpisode && state.currentEpisode.title && state.currentEpisode.title.indexOf('TBD') !== 0)
+    ? state.currentEpisode.title : '';
+  const epSummary = activeEp().summary || '';
+
+  const slots = getAvailableSlots();
+  var dateBlock = '';
+  if (slots.length > 0) {
+    dateBlock = '\n\nWe have the following recording slots available (all Central Time):\n'
+      + slots.slice(0, 3).map(function(s){ return '  • ' + s.display; }).join('\n')
+      + '\n\nJust reply with your preference and we\'ll send a calendar invite right away.';
+  }
+
+  const epLine = epTitle
+    ? '\n\nWe\'re currently working on an episode on "' + epTitle + '"' + (epSummary ? ' — ' + epSummary : '') + '.'
+    : '';
+
+  const body = 'Hi there,\n\n'
+    + 'My name is ' + producer + ', producer of ' + show + ' — ' + tagline + '. '
+    + (host1 && host2 ? 'Our hosts are ' + host1 + ' and ' + host2 + '.' : host1 ? 'Our host is ' + host1 + '.' : '')
+    + epLine + '\n\n'
+    + 'We think you’d be a great fit for an upcoming episode. '
+    + 'The conversation would be a chance to share your perspective with an audience of educators and tech professionals navigating these questions.\n\n'
+    + 'The show records on ' + platform + ' (remote video, audio-first distribution), usually runs about ' + duration + ' minutes, and we handle all the technical setup.'
+    + dateBlock + '\n\n'
+    + 'Looking forward to connecting!\n\n'
+    + 'Best,\n' + producer + '\n' + company + '\n' + prodEmail
+    + '\n\n---\n' + show + ': ' + tagline;
+
+  document.getElementById('invite-body').value = body;
+
+  document.getElementById('inviteNewModal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('invite-name').focus(); }, 50);
+}
+
+function closeInviteNewModal() {
+  document.getElementById('inviteNewModal').style.display = 'none';
+}
+
+function sendInviteNew() {
+  var name    = (document.getElementById('invite-name').value || '').trim();
+  var email   = (document.getElementById('invite-email').value || '').trim();
+  var phone   = (document.getElementById('invite-phone').value || '').trim();
+  var subject = (document.getElementById('invite-subject').value || '').trim();
+  var body    = (document.getElementById('invite-body').value || '').trim();
+
+  if (!name) { showToast('Enter a name first.'); document.getElementById('invite-name').focus(); return; }
+
+  // Add to considerations shortlist if not already there
+  activeEp().considerations = activeEp().considerations || [];
+  var already = activeEp().considerations.find(function(g){ return g.name === name; });
+  if (!already) {
+    activeEp().considerations.push({ name: name, title: '', email: email, phone: phone, status: 'invited', source: 'manual' });
+    renderConsiderations();
+  }
+
+  // Open Gmail with pre-filled fields
+  var gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1'
+    + (email ? '&to=' + encodeURIComponent(email) : '')
+    + '&su=' + encodeURIComponent(subject)
+    + '&body=' + encodeURIComponent(body);
+  window.open(gmailUrl, '_blank');
+
+  // Log action item
+  addActionItem({
+    text: 'Sent invite to ' + name + (email ? ' (' + email + ')' : '') + ' — follow up if no reply in 5 days',
+    owner: 'Mark',
+    source: 'boo',
+    episodeRef: state.currentEpisode
+      ? 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?')
+      : 'S1-E1',
+  });
+
+  closeInviteNewModal();
+  showToast('Gmail invite opened for ' + name.split(' ')[0]);
+  autoSave('guest invited');
+}
 
 function openDatepicker(guestName, guestTitle) {
   dpPendingGuest = { name: guestName, title: guestTitle };
