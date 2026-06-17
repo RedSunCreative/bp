@@ -2975,28 +2975,52 @@ function findGuest(context) {
   const epRef = 'S' + seasonNum + '-E' + epNum;
   const epData = state.seasons[0] && state.seasons[0].episodes
     ? state.seasons[0].episodes.find(function(e) { return e.number === epNum; }) : null;
+  const ep = activeEp();
+
   const seasonTheme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
-  const arcRole = (epData && epData.arcRole) || '';
-  const tension = (epData && epData.centralTension) || '';
+  const epTitle    = (epData && epData.title && epData.title !== 'TBD' && !epData.title.startsWith('TBD')) ? epData.title : '';
+  const arcRole    = (epData && epData.arcRole) || '';
+  const tension    = (epData && epData.centralTension) || '';
+  const thinkAfter = (epData && epData.thinkAfter) || '';
+  const feelAfter  = (epData && epData.feelAfter) || '';
+  const rememberDo = (epData && epData.rememberDo) || '';
+  const epSummary  = ep.summary || '';
+  const epBrief    = ep.briefContent || '';
+  const masterBrief = state.masterBriefContent || '';
+  const cueNames   = (ep.cues || []).map(function(c) { return c.name; }).filter(Boolean);
+  const shortlist  = (ep.considerations || []).map(function(g) { return g.name; }).filter(Boolean);
+  const bakedCtx   = (ep.bakedContext || []).map(function(b) { return b.text || b; }).filter(Boolean).join('\n');
+
+  // Build context block shared by both prompt paths
+  var ctxLines = [];
+  if (epTitle)     ctxLines.push('Episode title: "' + epTitle + '"');
+  if (seasonTheme) ctxLines.push('Season theme: "' + seasonTheme + '"');
+  if (arcRole)     ctxLines.push('Arc role: ' + arcRole);
+  if (tension)     ctxLines.push('Central tension: ' + tension);
+  if (thinkAfter)  ctxLines.push('Audience should think after: ' + thinkAfter);
+  if (feelAfter)   ctxLines.push('Audience should feel after: ' + feelAfter);
+  if (rememberDo)  ctxLines.push('Audience should remember/do: ' + rememberDo);
+  if (epSummary)   ctxLines.push('Episode summary: ' + epSummary);
+  if (cueNames.length) ctxLines.push('Planned cues: ' + cueNames.join(', '));
+  if (shortlist.length) ctxLines.push('Already on shortlist: ' + shortlist.join(', '));
+  var ctxBlock = ctxLines.length ? '\n\nEPISODE CONTEXT:\n' + ctxLines.join('\n') : '';
+  if (epBrief)    ctxBlock += '\n\nEPISODE BRIEF:\n' + epBrief;
+  if (masterBrief) ctxBlock += '\n\nMASTER SHOW BRIEF:\n' + masterBrief;
+  if (bakedCtx)   ctxBlock += '\n\nBAKED CONTEXT:\n' + bakedCtx;
 
   let prompt;
   if (context === 'more') {
     // Already returned cards — find more, go straight to results
-    prompt = 'Bring 3-5 more guest candidates for ' + epRef + '.';
-    if (seasonTheme) prompt += ' Season theme: "' + seasonTheme + '".';
-    if (tension) prompt += ' Central tension: ' + tension + '.';
-    prompt += ' Use different angles or backgrounds from the previous suggestions. Return formatted guest profile cards now.';
+    prompt = 'Bring 3-5 more guest candidates for ' + epRef + '.' + ctxBlock;
+    prompt += '\n\nUse different angles or backgrounds from the previous suggestions. Return formatted guest profile cards now.';
   } else {
     // BOO DIALOGUE PHILOSOPHY — do not simplify this prompt (see CLAUDE.md).
     // Hypothesis first (2 sentences, confident, no hedging) + exactly ONE deepening question.
     // Names come only AFTER the human has shaped the search. This is what makes Boo a
     // thinking partner instead of a search box. "Do not return names yet" is load-bearing.
-    prompt = 'Find a guest for ' + epRef + '.';
-    if (seasonTheme) prompt += ' Season theme: "' + seasonTheme + '".';
-    if (arcRole) prompt += ' Arc role: ' + arcRole + '.';
-    if (tension) prompt += ' Central tension: ' + tension + '.';
-    if (context && context !== 'more' && context !== 'fresh') prompt += ' Additional context: ' + context + '.';
-    prompt += ' Before pulling names: in 2 sentences, share your hypothesis for the ideal guest type (who they are professionally and the specific angle they bring to this episode). Then ask me ONE specific question — something that would meaningfully change who you look for. Do not return candidate names yet. When you do return names, always include at least one T3 Discovery guest — someone under the radar who may only have a LinkedIn or a blog, but has something remarkable to say.';
+    prompt = 'Find a guest for ' + epRef + '.' + ctxBlock;
+    if (context && context !== 'more' && context !== 'fresh') prompt += '\n\nAdditional context: ' + context;
+    prompt += '\n\nRead everything above before responding. In 2 sentences, share your hypothesis for the ideal guest type (who they are professionally and the specific angle they bring to this specific episode). Then ask me ONE question — something that would meaningfully change who you look for, that you genuinely cannot answer from the context above. Do not return candidate names yet. When you do return names, always include at least one T3 Discovery guest — someone under the radar who may only have a LinkedIn or a blog, but has something remarkable to say.';
   }
 
   const displayText = context === 'more' ? 'Find more guests for ' + epRef : 'Find a guest for ' + epRef;
