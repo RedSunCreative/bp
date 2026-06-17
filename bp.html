@@ -3955,6 +3955,11 @@ function setEpTitle(epNum, title) {
   var ep = eps.find(function(e) { return e.number === epNum; });
   if (!ep) { ep = { number: epNum, title: '', guest: '' }; eps.push(ep); }
   ep.title = title;
+  if (state.currentEpisode && state.currentEpisode.number === epNum) {
+    state.currentEpisode.title = title;
+    updateContextBar();
+    updateEpSwitchBtn();
+  }
   autoSave('ep-title');
 }
 
@@ -4928,6 +4933,8 @@ function epEditTitle(el) {
     var epData = state.seasons[0] && state.seasons[0].episodes.find(function(e){ return e.number === (state.currentEpisode ? state.currentEpisode.number : 1); });
     if (epData) epData.title = val;
     updateEpisodeStatusCard();
+    updateContextBar();
+    updateEpSwitchBtn();
     autoSave('title edit');
   }
 
