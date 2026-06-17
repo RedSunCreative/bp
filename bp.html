@@ -99,6 +99,13 @@
 
 
 
+  @keyframes sectionFlash {
+    0%   { box-shadow: 0 0 0 0 rgba(245,208,58,0); border-color: var(--border); }
+    25%  { box-shadow: 0 0 0 6px rgba(245,208,58,0.35); border-color: var(--gold); }
+    100% { box-shadow: 0 0 0 0 rgba(245,208,58,0); border-color: var(--border); }
+  }
+  .section-flash { animation: sectionFlash 0.9s ease-out forwards; }
+
   @keyframes pulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.4; }
@@ -2374,6 +2381,7 @@
             <button class="ep-switch-btn" id="ep-switch-btn" onclick="toggleRpEpList()">S1-E1 ▾</button>
             <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
           </div>
+          <button class="settings-gear" onclick="openUserProfile()" title="Your profile" style="font-size:16px;">👤</button>
           <button class="settings-gear" onclick="openShowInfo()" title="Show info">⚙</button>
           <button class="save-badge" id="save-badge" onclick="autoSave('manual')" title="Click to save now">● READY</button>
         </div>
@@ -2647,6 +2655,7 @@ const SHOW_REGISTRY = {
       host2: 'Matthew Callison',
       recordingPlatform: 'Riverside.fm',
       showWebsite: '',
+      youtubeUrl: '',
       slackCommunity: '',
     }
   },
@@ -2662,6 +2671,7 @@ const SHOW_REGISTRY = {
       host2: '',
       recordingPlatform: 'StreamYard',
       showWebsite: '',
+      youtubeUrl: '',
       slackCommunity: '',
     }
   },
@@ -2681,6 +2691,7 @@ const SHOW_CONFIG = {
   host2: 'Matthew Callison',
   recordingPlatform: 'Riverside.fm',
   showWebsite: '',
+  youtubeUrl: '',
   slackCommunity: '',
 };
 
@@ -2793,6 +2804,7 @@ let rosCurrentSegIdx = 0;
 
 // ── INIT ──
 async function initApp() {
+  loadUserPrefs();
   await loadFromSupabase();
   renderSeasonsList();
   booGreet();
@@ -4049,11 +4061,22 @@ function goToEpisodeFromSeason(epNum) {
 }
 
 // ── CONTEXT BAR ──
+function flashSection(el) {
+  if (!el) return;
+  el.classList.remove('section-flash');
+  void el.offsetWidth;
+  el.classList.add('section-flash');
+  setTimeout(function(){ el.classList.remove('section-flash'); }, 950);
+}
+
 function goToGuestsPanel() {
   var body = document.getElementById('guests-body');
   if (body && body.style.display === 'none') toggleSection('guests-body');
   var section = document.querySelector('[data-sec="guests"]');
-  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (section) {
+    section.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    flashSection(section);
+  }
 }
 
 function updateContextBar() {
@@ -4513,14 +4536,23 @@ function openInviteNewModal() {
     ? '\n\nWe\'re currently working on an episode on "' + epTitle + '"' + (epSummary ? ' — ' + epSummary : '') + '.'
     : '';
 
+  const youtubeUrl = SHOW_CONFIG.youtubeUrl || '';
+  const websiteUrl = SHOW_CONFIG.showWebsite || '';
+  var linksBlock = '';
+  if (websiteUrl || youtubeUrl) {
+    linksBlock = '\n\nLearn more about the show:';
+    if (websiteUrl) linksBlock += '\n  Website: ' + websiteUrl;
+    if (youtubeUrl) linksBlock += '\n  YouTube: ' + youtubeUrl;
+  }
+
   const body = 'Hi there,\n\n'
     + 'My name is ' + producer + ', producer of ' + show + ' — ' + tagline + '. '
     + (host1 && host2 ? 'Our hosts are ' + host1 + ' and ' + host2 + '.' : host1 ? 'Our host is ' + host1 + '.' : '')
     + epLine + '\n\n'
-    + 'We think you’d be a great fit for an upcoming episode. '
+    + 'We think you\'d be a great fit for an upcoming episode. '
     + 'The conversation would be a chance to share your perspective with an audience of educators and tech professionals navigating these questions.\n\n'
     + 'The show records on ' + platform + ' (remote video, audio-first distribution), usually runs about ' + duration + ' minutes, and we handle all the technical setup.'
-    + dateBlock + '\n\n'
+    + dateBlock + linksBlock + '\n\n'
     + 'Looking forward to connecting!\n\n'
     + 'Best,\n' + producer + '\n' + company + '\n' + prodEmail
     + '\n\n---\n' + show + ': ' + tagline;
@@ -4552,9 +4584,11 @@ function sendInviteNew() {
     renderConsiderations();
   }
 
-  // Open Gmail with pre-filled fields
+  // Open Gmail — use user's saved Gmail address for account targeting
+  var senderEmail = (userPrefs && userPrefs.gmail) || SHOW_CONFIG.producerEmail || '';
   var gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1'
     + (email ? '&to=' + encodeURIComponent(email) : '')
+    + (senderEmail ? '&authuser=' + encodeURIComponent(senderEmail) : '')
     + '&su=' + encodeURIComponent(subject)
     + '&body=' + encodeURIComponent(body);
   window.open(gmailUrl, '_blank');
@@ -6349,6 +6383,36 @@ function applySession(data) {
 
 // ── EPISODE SWITCHER ──
 
+// ── USER PROFILE — per-browser, stored in localStorage ──
+var userPrefs = { name: '', gmail: '' };
+
+function loadUserPrefs() {
+  try {
+    var stored = localStorage.getItem('boo_user_prefs');
+    if (stored) userPrefs = JSON.parse(stored);
+  } catch(e) {}
+}
+
+function openUserProfile() {
+  document.getElementById('up-name').value = userPrefs.name || '';
+  document.getElementById('up-gmail').value = userPrefs.gmail || '';
+  document.getElementById('userProfileOverlay').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('up-name').focus(); }, 50);
+}
+
+function closeUserProfile(e) {
+  if (e && e.target !== document.getElementById('userProfileOverlay')) return;
+  document.getElementById('userProfileOverlay').style.display = 'none';
+}
+
+function saveUserProfile() {
+  userPrefs.name  = (document.getElementById('up-name').value  || '').trim();
+  userPrefs.gmail = (document.getElementById('up-gmail').value || '').trim();
+  localStorage.setItem('boo_user_prefs', JSON.stringify(userPrefs));
+  document.getElementById('userProfileOverlay').style.display = 'none';
+  showToast('Profile saved');
+}
+
 function openShowInfo() {
   document.getElementById('si-show').textContent = SHOW_CONFIG.showName;
   document.getElementById('si-host1').textContent = SHOW_CONFIG.host1;
@@ -6472,6 +6536,24 @@ document.addEventListener('DOMContentLoaded', function() {
     <div class="info-row"><div class="info-label">PRODUCER</div><div class="info-value" id="si-producer"></div></div>
     <button class="hdr-btn" style="margin-top:16px;width:100%;text-align:center;" onclick="closeShowInfo()">Close</button>
     <button class="hdr-btn" style="margin-top:8px;width:100%;text-align:center;opacity:0.6;" onclick="switchShow()">Switch Show</button>
+  </div>
+</div>
+
+<!-- User Profile Modal -->
+<div id="userProfileOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;align-items:center;justify-content:center;" onclick="closeUserProfile(event)">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:300px;max-width:380px;" onclick="event.stopPropagation()">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:6px;">👤 YOUR PROFILE</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5;">Stored in this browser only. Used to open Gmail in the right account when you send invites.</div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Your Name</div>
+    <input id="up-name" type="text" placeholder="e.g. Karttikeya Mangalam"
+      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:14px;outline:none;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter') document.getElementById('up-gmail').focus()">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Your Gmail Address</div>
+    <input id="up-gmail" type="email" placeholder="you@gmail.com"
+      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:18px;outline:none;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter') saveUserProfile()">
+    <button onclick="saveUserProfile()" style="width:100%;background:var(--teal);color:#003a40;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:8px;padding:10px;cursor:pointer;">Save Profile</button>
+    <button onclick="closeUserProfile()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;">Cancel</button>
   </div>
 </div>
 
