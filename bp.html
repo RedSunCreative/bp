@@ -2405,6 +2405,7 @@
             <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
           </div>
           <button class="settings-gear" onclick="openUserProfile()" title="Your profile" style="font-size:16px;">👤</button>
+          <button class="settings-gear" onclick="openSessionHistory()" title="Restore from history" style="font-size:14px;">&#x21BA;</button>
           <button class="settings-gear" onclick="openShowInfo()" title="Show info">⚙</button>
           <button class="save-badge" id="save-badge" onclick="autoSave('manual')" title="Click to save now">● READY</button>
         </div>
@@ -6170,6 +6171,8 @@ applySession = function(data) {
 let pendingSessionData = null;
 var autoSaveTimeout = null;
 var _seasonBriefAutoGen = false;
+var sessionHistory = [];
+var _lastSavedSnap = null;
 
 function buildSessionSnapshot() {
   return {
@@ -6223,6 +6226,11 @@ function autoSave(reason) {
       sessionStorage.setItem('boo_autosave', JSON.stringify(snapshot));
     } catch(e) {}
     try {
+      // Archive what was last in Supabase before overwriting it
+      if (_lastSavedSnap) {
+        sessionHistory.unshift({ savedAt: _lastSavedSnap.savedAt || new Date().toISOString(), snap: _lastSavedSnap });
+        if (sessionHistory.length > 10) sessionHistory.pop();
+      }
       await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}`, {
         method: 'PATCH',
         headers: {
@@ -6231,8 +6239,9 @@ function autoSave(reason) {
           'Authorization': `Bearer ${SB_ANON}`,
           'Prefer': 'return=minimal',
         },
-        body: JSON.stringify({ data: snapshot }),
+        body: JSON.stringify({ data: snapshot, history: sessionHistory }),
       });
+      _lastSavedSnap = snapshot;
       setSaveBadge('● SAVED', '#4FC3F7');
       showToast('✓ Auto-saved (' + reason + ')');
     } catch(e) {
@@ -6244,11 +6253,13 @@ function autoSave(reason) {
 
 async function loadFromSupabase() {
   try {
-    const res = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}&select=data`, {
+    const res = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}&select=data,history`, {
       headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` },
     });
     const rows = await res.json();
     if (rows?.[0]?.data && Object.keys(rows[0].data).length > 0) {
+      sessionHistory = rows[0].history || [];
+      _lastSavedSnap = rows[0].data;
       applySession(rows[0].data);
       setSaveBadge('● LOADED', '#4ade80');
       showToast('✓ Session restored');
@@ -6269,6 +6280,53 @@ function showNudge(msg, fn) {
   nudge.onclick = function() { nudge.classList.remove('show'); if (fn) fn(); };
   nudge.classList.add('show');
   setTimeout(function() { nudge.classList.remove('show'); }, 6000);
+}
+
+// ── SESSION HISTORY ──
+
+function openSessionHistory() {
+  renderHistoryList();
+  document.getElementById('historyOverlay').style.display = 'flex';
+}
+
+function closeSessionHistory(event) {
+  if (event && event.target !== document.getElementById('historyOverlay')) return;
+  document.getElementById('historyOverlay').style.display = 'none';
+}
+
+function renderHistoryList() {
+  var list = document.getElementById('historyList');
+  if (!list) return;
+  if (!sessionHistory.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:16px 0;">No history yet — builds automatically as you work.</div>';
+    return;
+  }
+  list.innerHTML = sessionHistory.map(function(entry, idx) {
+    var d = new Date(entry.savedAt);
+    var timeStr = d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+    var snap = entry.snap || {};
+    var epCount = snap.meta ? (snap.meta.episodeCount || 0) : 0;
+    var epStore = snap.episodeStore || {};
+    var totalCues = Object.values(epStore).reduce(function(n, ep) { return n + ((ep.cues || []).length); }, 0);
+    return '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text);">' + timeStr + '</div>'
+      + '<div style="font-size:10px;color:var(--muted);margin-top:2px;">' + epCount + ' ep' + (epCount !== 1 ? 's' : '') + ' &middot; ' + totalCues + ' cue' + (totalCues !== 1 ? 's' : '') + '</div>'
+      + '</div>'
+      + '<button onclick="restoreFromHistory(' + idx + ')" style="background:transparent;border:1px solid var(--teal);color:var(--teal);font-family:\'DM Mono\',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;border-radius:6px;padding:5px 10px;cursor:pointer;flex-shrink:0;">Restore</button>'
+      + '</div>';
+  }).join('');
+}
+
+function restoreFromHistory(idx) {
+  var entry = sessionHistory[idx];
+  if (!entry || !entry.snap) return;
+  applySession(entry.snap);
+  document.getElementById('historyOverlay').style.display = 'none';
+  autoSave('history restore');
+  var d = new Date(entry.savedAt);
+  var timeStr = d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
+  showToast('Restored to ' + timeStr);
 }
 
 // ── LOAD SESSION ──
@@ -6583,6 +6641,16 @@ document.addEventListener('DOMContentLoaded', function() {
       onkeydown="if(event.key==='Enter') saveUserProfile()">
     <button onclick="saveUserProfile()" style="width:100%;background:var(--teal);color:#003a40;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:8px;padding:10px;cursor:pointer;">Save Profile</button>
     <button onclick="closeUserProfile()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;">Cancel</button>
+  </div>
+</div>
+
+<!-- Session History Overlay -->
+<div id="historyOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:600;align-items:center;justify-content:center;" onclick="closeSessionHistory(event)">
+  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:340px;max-width:420px;max-height:70vh;display:flex;flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.12em;color:var(--text-muted);margin-bottom:6px;">&#x21BA; RESTORE POINT</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;line-height:1.5;">Up to 10 previous saves. Restoring overwrites your current state and saves immediately.</div>
+    <div id="historyList" style="overflow-y:auto;flex:1;"></div>
+    <button onclick="document.getElementById('historyOverlay').style.display='none'" style="width:100%;margin-top:14px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;">Close</button>
   </div>
 </div>
 
