@@ -6296,7 +6296,6 @@ function submitShowCode() {
     if (input) input.focus();
     return;
   }
-  localStorage.setItem('boo_show_code', code);
   currentShowCode = code;
   Object.assign(SHOW_CONFIG, SHOW_REGISTRY[code].config);
   const overlay = document.getElementById('show-login-overlay');
@@ -6309,14 +6308,7 @@ function switchShow() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  const stored = localStorage.getItem('boo_show_code');
-  if (stored && SHOW_REGISTRY[stored]) {
-    currentShowCode = stored;
-    Object.assign(SHOW_CONFIG, SHOW_REGISTRY[stored].config);
-    initApp();
-  } else {
-    showLogin();
-  }
+  showLogin();
 });
 </script>
 
