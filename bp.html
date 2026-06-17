@@ -5633,6 +5633,10 @@ async function generateEpisodeBrief() {
     activeEp().briefContent = data.content[0].text;
     renderEpisodeBrief();
     autoSave('episode brief generated');
+    // Auto-expand so content is immediately visible — collapsed state looks broken otherwise
+    var briefBody = document.getElementById('ep-brief-body');
+    if (briefBody && briefBody.style.display === 'none') briefBody.style.display = 'block';
+    if (briefBody) briefBody.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   } catch (err) {
     clearTimeout(timer);
     const msg = err.name === 'AbortError' ? 'Timed out — click Regenerate to try again.' : 'Error: ' + err.message;
