@@ -5675,6 +5675,24 @@ function bakeMasterFlag(idx) {
   showToast('Baked into Master Brief');
 }
 
+function renderMemoryPanel() {
+  var items = activeEp().bakedContext || [];
+  var listEl = document.getElementById('memory-list');
+  var countEl = document.getElementById('memory-count');
+  if (!listEl) return;
+  if (countEl) countEl.textContent = items.length;
+  if (items.length === 0) {
+    listEl.innerHTML = '<div style="font-size:12px;color:var(--muted)">No memories yet — bake decisions from the brief to lock them into Boo\'s context.</div>';
+    return;
+  }
+  listEl.innerHTML = items.map(function(item) {
+    return '<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">'
+      + '<span style="font-family:\'DM Mono\',monospace;font-size:10px;color:var(--teal);flex-shrink:0;padding-top:2px;">✓</span>'
+      + '<span style="font-size:12px;color:var(--text);line-height:1.5;">' + (item || '') + '</span>'
+      + '</div>';
+  }).join('');
+}
+
 function bakeFlag(idx) {
   const flag = activeEp().briefFlags[idx];
   if (!flag) return;
@@ -5682,6 +5700,7 @@ function bakeFlag(idx) {
   activeEp().bakedContext.push(flag.text);
 
   renderFlagsPanel();
+  renderMemoryPanel();
   showToast('✓ Baked into Boo\'s permanent context');
   autoSave('context baked');
 }
@@ -5959,6 +5978,7 @@ applySession = function(data) {
   if (data.masterBriefItems) state.masterBriefItems = data.masterBriefItems;
   if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
   renderSeasonsList();
+  renderMemoryPanel();
 };
 
 // ── UPDATE SYSTEM PROMPT AWARENESS ──
@@ -6256,6 +6276,7 @@ function switchEpisode(num) {
 
   updateContextBar();
   updateRightPanel();
+  renderMemoryPanel();
   autoSave('episode switch');
 
   // Greet if this episode has no conversation yet
