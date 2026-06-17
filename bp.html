@@ -6338,19 +6338,21 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- Show Login Overlay -->
 <div id="show-login-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.96);z-index:9999;align-items:center;justify-content:center;flex-direction:column;">
-  <div style="text-align:center;margin-bottom:32px;">
-    <div style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--teal);letter-spacing:0.14em;text-transform:uppercase;">BOO PRODUCER</div>
-    <div style="font-family:'DM Mono',monospace;font-size:0.7rem;color:var(--text-muted);letter-spacing:0.14em;margin-top:6px;text-transform:uppercase;">Red Sun Creative Studio</div>
+  <div style="text-align:center;margin-bottom:28px;">
+    <div style="font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--gold);letter-spacing:0.05em;">BOO PRODUCER</div>
+    <div class="sidebar-label" style="margin-top:4px;margin-bottom:0;padding-left:0;text-align:center;">Red Sun Creative Studio</div>
   </div>
-  <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:32px 36px;min-width:300px;max-width:340px;text-align:center;">
-    <div style="font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.14em;color:var(--text-muted);margin-bottom:20px;text-transform:uppercase;">Enter Show Code</div>
-    <input id="show-code-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
-      style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:12px 14px;font-family:'DM Mono',monospace;font-size:1rem;color:var(--text);letter-spacing:0.12em;text-align:center;text-transform:lowercase;box-sizing:border-box;margin-bottom:10px;outline:none;"
-      placeholder="show code"
-      onkeydown="if(event.key==='Enter') submitShowCode()">
-    <div id="show-code-error" style="font-family:'DM Mono',monospace;font-size:0.62rem;color:#f87171;letter-spacing:0.08em;min-height:16px;margin-bottom:12px;"></div>
-    <button onclick="submitShowCode()" style="width:100%;background:var(--teal);border:none;border-radius:6px;padding:12px;font-family:'DM Mono',monospace;font-size:0.78rem;font-weight:700;letter-spacing:0.14em;color:#000;text-transform:uppercase;cursor:pointer;">Enter</button>
-    <div style="font-family:'DM Mono',monospace;font-size:0.6rem;color:var(--text-muted);letter-spacing:0.08em;margin-top:20px;line-height:1.5;">Contact your producer if you don't have a code.</div>
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px 28px;min-width:300px;max-width:360px;">
+    <div class="sidebar-label" style="margin-bottom:14px;padding-left:0;">Enter Show Code</div>
+    <div class="input-row" style="margin-bottom:8px;">
+      <input id="show-code-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false"
+        style="flex:1;background:transparent;border:none;outline:none;color:var(--text);font-family:'DM Mono',monospace;font-size:15px;letter-spacing:0.1em;text-transform:lowercase;min-height:24px;"
+        placeholder="show code"
+        onkeydown="if(event.key==='Enter') submitShowCode()">
+    </div>
+    <div id="show-code-error" class="sidebar-label" style="padding-left:0;color:#f87171;min-height:14px;margin-bottom:10px;text-transform:none;letter-spacing:0.06em;"></div>
+    <button onclick="submitShowCode()" class="action-btn teal" style="width:100%;text-align:center;border-radius:8px;padding:10px 16px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;">Enter</button>
+    <div class="sidebar-label" style="margin-top:14px;padding-left:0;text-align:center;margin-bottom:0;">Contact your producer if you don't have a code.</div>
   </div>
 </div>
 
