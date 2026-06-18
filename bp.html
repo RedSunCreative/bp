@@ -936,6 +936,7 @@
   .seg-row-del{background:none;border:none;color:rgba(255,255,255,0.28);cursor:pointer;font-size:18px;padding:0 2px;flex-shrink:0;line-height:1;}
   .seg-row-del:hover{color:#ff6b6b;}
   .seg-row.drag-over-top{border-top:2px solid var(--teal);}
+  #script-edit-rows .seg-row{display:block !important;}
   .seg-note{font-family:'DM Mono',monospace;font-size:0.62rem;color:var(--muted);padding:0 4px 5px 26px;opacity:0.65;line-height:1.4;}
   .seg-add-row{display:flex;justify-content:center;margin-top:8px;}
   .seg-add-row button{background:transparent;border:1px dashed var(--border);color:var(--muted);border-radius:6px;padding:5px 14px;font-family:'DM Mono',monospace;font-size:0.68rem;letter-spacing:0.08em;cursor:pointer;transition:border-color 0.15s,color 0.15s;}
@@ -961,7 +962,11 @@
   .data-section-header{background:var(--panel);padding:10px 16px;display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;}
   .data-section-title{font-family:'Syne',sans-serif;font-size:0.8rem;font-weight:700;color:#F5A623;letter-spacing:0.1em;text-transform:uppercase;flex:1;}
   .data-section-count{font-family:'DM Mono',monospace;font-size:0.82rem;font-weight:500;color:#FFFFFF;letter-spacing:0.02em;}
+  .data-section-chevron{font-size:10px;color:var(--border);transition:transform 0.18s,color 0.18s;flex-shrink:0;margin-left:2px;}
+  .data-section.open .data-section-chevron{transform:rotate(90deg);color:var(--teal);}
   .data-section-body{padding:14px 16px;}
+  .script-field-hdr{font-family:'Syne',sans-serif;font-size:0.75rem;font-weight:700;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(245,166,35,0.25);}
+  .script-field-hdr.teal{color:var(--teal);border-bottom-color:rgba(59,184,201,0.25);}
   .ep-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
   .ep-field{background:var(--dark);border-radius:6px;padding:8px 10px;}
   .ep-label{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:4px;}
@@ -2427,8 +2432,9 @@
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Episode Info <span class="tip-q" data-tip="Episode basics — number, title, date, runtime. Boo fills these in as you talk." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="ep-complete">—</div>
+          <span class="data-section-chevron">›</span>
         </div>
-        <div class="data-section-body" id="ep-body">
+        <div class="data-section-body" id="ep-body" style="display:none;">
           <div class="ep-grid">
             <div class="ep-field"><div class="ep-label">SEASON / EP</div><div class="ep-val" id="d-epnum" style="color:var(--gold);">S1-E1</div></div>
             <div class="ep-field"><div class="ep-label">STATUS</div><div class="ep-val" id="d-epstatus" style="color:var(--teal);">PLANNING</div></div>
@@ -2436,6 +2442,10 @@
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">ARC ROLE</div><div class="ep-val" id="d-arcrole" style="font-size:12px;color:var(--muted);"></div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">EPISODE SUMMARY</div><textarea id="d-ep-summary" class="ep-summary-input" onchange="onSummaryEdit(this.value)" placeholder="Boo fills this in as you plan..."></textarea></div>
             <div class="ep-field"><div class="ep-label">TARGET TIME</div><div class="ep-val ep-editable" id="d-eplen" style="color:var(--teal);" onclick="epEditTargetTime(this)" title="Click to edit target runtime in minutes">60 min</div></div>
+            <div class="ep-field" style="grid-column:1/-1">
+              <div class="ep-label">LOCATION</div>
+              <input type="text" id="d-location" onchange="setLocation(this.value)" placeholder="Riverside.fm" style="width:100%;background:var(--dark);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:12px;box-sizing:border-box;">
+            </div>
             <div class="ep-field" style="grid-column:1/-1">
               <div class="ep-label">RECORD DATE &amp; TIME</div>
               <div class="release-inputs">
@@ -2459,8 +2469,9 @@
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Runtime <span class="tip-q" data-tip="Segments against your target runtime. Updated as you build the show." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="runtime-status">0 min</div>
+          <span class="data-section-chevron">›</span>
         </div>
-        <div class="data-section-body" id="runtime-body">
+        <div class="data-section-body" id="runtime-body" style="display:none;">
           <div class="runtime-bar">
             <div><div class="ep-label">SEGMENTS</div><div class="runtime-val" id="rt-cues" style="color:var(--teal)">0</div></div>
             <div><div class="ep-label">TOTAL</div><div class="runtime-val" id="rt-total" style="color:var(--gold)">0m</div></div>
@@ -2475,15 +2486,16 @@
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Guests <span class="tip-q" data-tip="Everyone on the show this episode. Tell Boo who's coming — he logs the details." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="guest-count">0</div>
+          <span class="data-section-chevron">›</span>
         </div>
-        <div class="data-section-body" id="guests-body">
+        <div class="data-section-body" id="guests-body" style="display:none;">
           <div id="guest-list"><div style="font-size:12px;color:var(--muted)">Tell Boo about your guests...</div></div>
           <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
             <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ FIND A GUEST</button>
             <button onclick="openInviteNewModal()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">✉ INVITE SOMEONE NEW</button>
           </div>
           <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
-            <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">GUEST INTRO</div>
+            <div class="script-field-hdr teal">Guest Intro</div>
             <div id="guest-intro-field"></div>
           </div>
         </div>
@@ -2494,8 +2506,9 @@
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Cue List <span class="tip-q" data-tip="This episode's run of show. Load from template to start, then edit per episode." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="cue-count-badge">0 cues</div>
+          <span class="data-section-chevron">›</span>
         </div>
-        <div class="data-section-body" id="cues-body">
+        <div class="data-section-body" id="cues-body" style="display:none;">
           <div id="cue-list-display"></div>
         </div>
       </div>
@@ -2505,21 +2518,11 @@
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Episode Brief <span class="tip-q" data-tip="Boo-generated brief for this episode. Switches with the episode dropdown." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="ep-brief-badge">—</div>
+          <span class="data-section-chevron">›</span>
         </div>
         <div class="data-section-body" id="ep-brief-body" style="display:none;">
           <div id="ep-brief-prose" style="font-size:11.5px;line-height:1.6;color:var(--muted);"></div>
           <button id="ep-brief-generate-btn" onclick="generateEpisodeBrief()" style="margin-top:10px;width:100%;background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">↺ GENERATE EPISODE BRIEF</button>
-        </div>
-      </div>
-
-      <div class="data-section" data-sec="memory">
-        <div class="data-section-header" onclick="toggleSection('memory-body')">
-          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
-          <div class="data-section-title">Boo's Memory <span class="tip-q" data-tip="How you like things done. Boo keeps notes so you don't have to say it twice." onclick="event.stopPropagation()">?</span></div>
-          <div class="data-section-count" id="memory-count">0</div>
-        </div>
-        <div class="data-section-body" id="memory-body" style="display:none;">
-          <div id="memory-list"><div style="font-size:12px;color:var(--muted)">No memories yet...</div></div>
         </div>
       </div>
 
@@ -2528,8 +2531,21 @@
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Show Scripts <span class="tip-q" data-tip="Guest intro, interview questions, host intro/outro — assembled into a printable show script and teleprompter." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="scripts-badge">—</div>
+          <span class="data-section-chevron">›</span>
         </div>
         <div class="data-section-body" id="scripts-body" style="display:none;"></div>
+      </div>
+
+      <div class="data-section" data-sec="memory">
+        <div class="data-section-header" onclick="toggleSection('memory-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Boo's Memory <span class="tip-q" data-tip="How you like things done. Boo keeps notes so you don't have to say it twice." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="memory-count">0</div>
+          <span class="data-section-chevron">›</span>
+        </div>
+        <div class="data-section-body" id="memory-body" style="display:none;">
+          <div id="memory-list"><div style="font-size:12px;color:var(--muted)">No memories yet...</div></div>
+        </div>
       </div>
 
     </div>
@@ -2737,10 +2753,13 @@ const SHOW_CONFIG = {
   showTagline: 'K-12 CS Education in a Post-Coding Era',
   producerName: 'Mark Caddell',
   producerEmail: 'mark@redsuncreative.com',
+  producerPhone: '',
   producerCompany: 'Red Sun Creative Studio',
   host1: 'Karttikeya Mangalam',
+  host1Email: '',
   host2: 'Matthew Callison',
-  recordingPlatform: 'Riverside.fm',
+  host2Email: '',
+  defaultLocation: 'Riverside.fm',
   showWebsite: '',
   youtubeUrl: '',
   slackCommunity: '',
@@ -3250,7 +3269,7 @@ const episodeStore = {};
 function activeEp() {
   const key = state.currentEpisode ? state.currentEpisode.number : 1;
   if (!episodeStore[key]) {
-    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], targetTime: 60, recordDate: '', recordTime: '', releaseDate: '', releaseTime: '', cues: [], summary: '', guestIntro: '', interviewQuestions: '' };
+    episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], targetTime: 60, recordDate: '', recordTime: '', releaseDate: '', releaseTime: '', cues: [], summary: '', guestIntro: '', interviewQuestions: '', location: '' };
   }
   return episodeStore[key];
 }
@@ -3791,10 +3810,17 @@ function renderConsiderations() {
 
 function inviteConsideration(name, title) {
   var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
-  if (g) g.status = 'invited';
+  if (g) {
+    g.status = 'invited';
+    // Pre-populate guest on activeEp so booGenerateGuestIntro has context
+    if (!activeEp().guest) {
+      activeEp().guest = { name: g.name, title: g.title || title || '', org: g.org || '', bio: g.bio || '', topics: g.topics || '' };
+    }
+  }
   renderConsiderations();
   autoSave('guest invited');
   draftEmail(name, title);
+  if (!activeEp().guestIntro) booGenerateGuestIntro();
 }
 
 function removeConsideration(name) {
@@ -4196,6 +4222,8 @@ function updateRightPanel() {
   var rtEl = document.getElementById('d-release-time');
   if (rdEl) rdEl.value = activeEp().releaseDate || '';
   if (rtEl) rtEl.value = activeEp().releaseTime || '';
+  var locEl = document.getElementById('d-location');
+  if (locEl) locEl.value = activeEp().location || '';
   updateRuntime();
   var sumEl3 = document.getElementById('d-ep-summary');
   if (sumEl3) sumEl3.value = activeEp().summary || '';
@@ -4942,7 +4970,10 @@ setInterval(updateEpisodeStatusCard, 60000); // Live countdown tick
 function toggleSection(id) {
   var el = document.getElementById(id);
   if (!el) return;
-  el.style.display = (el.style.display === 'none') ? '' : 'none';
+  var isOpen = el.style.display === 'none';
+  el.style.display = isOpen ? '' : 'none';
+  var section = el.parentElement;
+  if (section) section.classList.toggle('open', isOpen);
 }
 
 // Inline title edit
@@ -5029,7 +5060,6 @@ function renderScriptFields() {
   var questions = ep.interviewQuestions || '';
   var btnBase = 'width:100%;background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;';
   var secSep = 'margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);';
-  var lbl = 'font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text-muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;';
 
   function showBlock(content, placeholder) {
     return content
@@ -5039,7 +5069,7 @@ function renderScriptFields() {
 
   var questionsHtml = !questions
     ? '<div style="font-size:11.5px;color:var(--text-muted);font-style:italic;margin-bottom:8px;">Not generated yet.</div>'
-      + '<button style="' + btnBase + '" onclick="booGenerateQuestions()">↺ BOO: WRITE QUESTIONS</button>'
+      + '<button style="' + btnBase + '" onclick="booGenerateQuestions()">↺ BOO: SUGGEST QUESTIONS</button>'
     : '<textarea style="width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.6;resize:vertical;min-height:120px;box-sizing:border-box;" onchange="saveInterviewQuestions(this.value)">' + esc(questions) + '</textarea>'
       + '<button style="' + btnBase + 'margin-top:6px;" onclick="booGenerateQuestions()">↺ REGENERATE</button>';
 
@@ -5047,15 +5077,17 @@ function renderScriptFields() {
   var badge = document.getElementById('scripts-badge');
   if (badge) badge.textContent = filled ? filled + '/2' : '—';
 
-  el.innerHTML = '<div style="' + secSep + '"><div style="' + lbl + '">HOST INTRO</div>'
+  el.innerHTML = '<div style="' + secSep + '">'
+    + '<button style="' + btnBase + 'margin-bottom:0;" onclick="showScriptEditPanel()">📋 SHOW SCRIPT — EDIT CUES</button>'
+    + '</div>'
+    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Intro</div>'
     + showBlock(SHOW_CONFIG.hostIntro, 'Not set — add to SHOW_CONFIG.hostIntro in code.') + '</div>'
-    + '<div style="' + secSep + '"><div style="' + lbl + '">INTERVIEW QUESTIONS</div>' + questionsHtml + '</div>'
-    + '<div style="' + secSep + '"><div style="' + lbl + '">HOST OUTRO</div>'
+    + '<div style="' + secSep + '"><div class="script-field-hdr teal">Boo\'s Suggested Questions</div>' + questionsHtml + '</div>'
+    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Outro</div>'
     + showBlock(SHOW_CONFIG.hostOutro, 'Not set — add to SHOW_CONFIG.hostOutro in code.') + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:6px;">'
-    + '<button style="' + btnBase + '" onclick="openShowScript()">📄 OPEN SHOW SCRIPT</button>'
+    + '<button style="' + btnBase + '" onclick="openShowScript()">📄 SHARE SHOW SCRIPT</button>'
     + '<button style="' + btnBase.replace('var(--teal)', 'rgba(59,184,201,0.55)') + '" onclick="pushScriptToTeleprompter()">🎯 PUSH TO TELEPROMPTER</button>'
-    + '<button style="background:transparent;border:1px solid rgba(255,255,255,0.12);color:var(--text-muted);border-radius:6px;padding:7px 12px;font-family:\'DM Mono\',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;" onclick="showScriptEditPanel()">✏️ EDIT CUE LIST</button>'
     + '</div>';
 }
 
@@ -5159,15 +5191,25 @@ function buildShowScript() {
 }
 
 function pushScriptToTeleprompter() {
-  var text = buildShowScript();
-  if (!text || text.length < 20) {
-    showToast('Generate guest intro and questions first, or add host intro/outro to SHOW_CONFIG.');
-    return;
-  }
+  var ep = activeEp();
+  var guestName = (ep.guest || {}).name || '';
+  var sep = '\n\n─────────────────────────────────────────\n\n';
+  var parts = [];
+
+  parts.push('HOST INTRO\n\n' + (SHOW_CONFIG.hostIntro || '[ Not set — add SHOW_CONFIG.hostIntro to the code ]'));
+
+  var guestLabel = 'GUEST INTRO' + (guestName ? ' — ' + guestName : '');
+  parts.push(guestLabel + '\n\n' + (ep.guestIntro || '[ Not generated yet — open the Guests panel and click "Boo: Write Guest Intro" ]'));
+
+  parts.push('INTERVIEW QUESTIONS\n\n' + (ep.interviewQuestions || '[ Not generated yet — open Show Scripts and click "Boo\'s Suggested Questions" ]'));
+
+  parts.push('HOST OUTRO\n\n' + (SHOW_CONFIG.hostOutro || '[ Not set — add SHOW_CONFIG.hostOutro to the code ]'));
+
+  var text = parts.join(sep);
   updateTeleprompter(text);
   var empty = document.getElementById('tpEmptyState');
   if (empty) empty.style.display = 'none';
-  showToast('Show script loaded into Teleprompter.');
+  showToast('Script loaded — placeholders shown for any missing sections.');
   var navTp = document.getElementById('navTp');
   if (navTp) { navTp.style.color = 'var(--gold)'; setTimeout(function() { navTp.style.color = ''; }, 1400); }
   setTimeout(function() { setView('teleprompter'); }, 400);
@@ -5180,6 +5222,11 @@ function openShowScript() {
   var guest = ep.guest || {};
   var guestName = guest.name || '';
   var cues = ep.cues || [];
+  var location = ep.location || SHOW_CONFIG.defaultLocation || '';
+  var recordDate = ep.recordDate || '';
+  var recordTime = ep.recordTime || '';
+  var releaseDate = ep.releaseDate || '';
+  var theme = season.theme || season.name || '';
 
   function he(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function nl(s) { return he(s).replace(/\n/g,'<br>'); }
@@ -5204,17 +5251,68 @@ function openShowScript() {
       + '<td style="padding:7px 12px;color:#666;font-size:10pt;">' + he(c.note||'') + '</td></tr>';
   }).join('');
 
-  var sub = [ep.recordDate, ep.targetTime ? ep.targetTime + ' MIN' : '', guestName].filter(Boolean).join(' · ');
+  function contactRow(label, val) {
+    if (!val) return '';
+    return '<div style="margin-bottom:4px;"><span style="font-family:\'DM Mono\',monospace;font-size:8pt;color:#888;letter-spacing:.08em;text-transform:uppercase;margin-right:8px;">' + label + '</span><span style="font-size:10pt;color:#111;">' + he(val) + '</span></div>';
+  }
+
+  var guestBlock = (guestName || guest.title || guest.org || guest.bio)
+    ? '<div style="background:#fffbf0;border:1px solid #e8c84a;border-radius:8px;padding:16px 20px;margin-bottom:24px;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:#B8960A;margin-bottom:10px;">Guest</div>'
+      + (guestName ? '<div style="font-family:\'Syne\',sans-serif;font-size:16pt;font-weight:700;color:#111;margin-bottom:4px;">' + he(guestName) + '</div>' : '')
+      + (guest.title ? '<div style="font-size:10pt;color:#444;margin-bottom:2px;">' + he(guest.title) + (guest.org ? ' — ' + he(guest.org) : '') + '</div>' : '')
+      + (guest.email ? contactRow('Email', guest.email) : '')
+      + (guest.bio ? '<div style="font-size:10pt;color:#555;margin-top:8px;line-height:1.6;">' + he(guest.bio) + '</div>' : '')
+      + '</div>'
+    : '';
+
+  var crewBlock = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">'
+    + '<div style="background:#f5f9fa;border:1px solid #cce3e7;border-radius:8px;padding:14px 18px;">'
+    + '<div style="font-family:\'DM Mono\',monospace;font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:#1a7a8a;margin-bottom:10px;">Hosts</div>'
+    + contactRow('Host 1', SHOW_CONFIG.host1 + (SHOW_CONFIG.host1Email ? ' · ' + SHOW_CONFIG.host1Email : ''))
+    + contactRow('Host 2', SHOW_CONFIG.host2 ? SHOW_CONFIG.host2 + (SHOW_CONFIG.host2Email ? ' · ' + SHOW_CONFIG.host2Email : '') : '')
+    + '</div>'
+    + '<div style="background:#f5f9fa;border:1px solid #cce3e7;border-radius:8px;padding:14px 18px;">'
+    + '<div style="font-family:\'DM Mono\',monospace;font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:#1a7a8a;margin-bottom:10px;">Producer</div>'
+    + contactRow('Name', SHOW_CONFIG.producerName)
+    + contactRow('Email', SHOW_CONFIG.producerEmail)
+    + contactRow('Phone', SHOW_CONFIG.producerPhone)
+    + contactRow('Studio', SHOW_CONFIG.producerCompany)
+    + '</div>'
+    + '</div>';
+
+  var logisticsBlock = (location || recordDate || theme)
+    ? '<div style="background:#f5f9fa;border:1px solid #cce3e7;border-radius:8px;padding:14px 18px;margin-bottom:24px;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:#1a7a8a;margin-bottom:10px;">Episode Details</div>'
+      + contactRow('Location', location)
+      + contactRow('Record', [recordDate, recordTime].filter(Boolean).join(' '))
+      + contactRow('Release', releaseDate)
+      + contactRow('Duration', ep.targetTime ? ep.targetTime + ' min' : '')
+      + contactRow('Season Theme', theme)
+      + '</div>'
+    : '';
+
+  var sub = [recordDate, ep.targetTime ? ep.targetTime + ' min' : '', guestName].filter(Boolean).join(' · ');
+
+  var emailSubject = encodeURIComponent(he(SHOW_CONFIG.showName) + ' E' + epNum + ' — Show Script');
+  var emailBody = encodeURIComponent('Show Script for ' + (SHOW_CONFIG.showName || 'our show') + ' Episode ' + epNum + (ep.title ? ': ' + ep.title : '') + '.\n\nRecord: ' + (recordDate || 'TBD') + (location ? '\nLocation: ' + location : '') + (guestName ? '\nGuest: ' + guestName : ''));
+  var mailtoLink = 'mailto:?subject=' + emailSubject + '&body=' + emailBody;
+
   var html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<title>' + he(SHOW_CONFIG.showName) + ' E' + epNum + ' — Show Script</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&family=DM+Mono:wght@400;500&family=Syne:wght@700;900&display=swap" rel="stylesheet">'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{background:#fff;color:#111;font-family:"DM Sans",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.page{max-width:820px;margin:0 auto;padding:24px 28px 80px;}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #B8960A;margin-bottom:32px;}.hdr-show{font-family:"DM Mono",monospace;font-size:8.5pt;color:#1a7a8a;letter-spacing:5px;text-transform:uppercase;margin-bottom:4px;}.hdr-epnum{font-family:"Syne",sans-serif;font-size:54pt;font-weight:900;color:#B8960A;line-height:.88;letter-spacing:-2px;}.hdr-title{font-family:"Syne",sans-serif;font-size:14pt;font-weight:700;letter-spacing:2px;margin-top:6px;text-transform:uppercase;}.hdr-sub{font-family:"DM Mono",monospace;font-size:8.5pt;color:#666;letter-spacing:2px;margin-top:4px;}.print-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #B8960A;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;z-index:999;}.print-label{font-family:"DM Mono",monospace;font-size:9pt;color:#666;letter-spacing:1px;}.print-btn{background:#1a7a8a;color:#fff;border:none;padding:10px 24px;border-radius:6px;font-size:11pt;font-weight:700;cursor:pointer;letter-spacing:2px;font-family:"DM Mono",monospace;}.cue-table{width:100%;border-collapse:collapse;font-size:11pt;}.cue-table th{font-family:"DM Mono",monospace;font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:#B8960A;border-bottom:2px solid #B8960A;padding:6px 12px;text-align:left;}.cue-table td{border-bottom:1px solid #ddd;vertical-align:top;}.cue-table tr:last-child td{border-bottom:none;}@media print{.print-bar{display:none;}@page{size:letter portrait;margin:.5in;}}</style>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0;}body{background:#fff;color:#111;font-family:"DM Sans",sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;}.page{max-width:820px;margin:0 auto;padding:24px 28px 80px;}.hdr{display:flex;justify-content:space-between;align-items:flex-start;padding-bottom:14px;border-bottom:3px solid #B8960A;margin-bottom:28px;}.hdr-show{font-family:"DM Mono",monospace;font-size:8.5pt;color:#1a7a8a;letter-spacing:5px;text-transform:uppercase;margin-bottom:4px;}.hdr-epnum{font-family:"Syne",sans-serif;font-size:54pt;font-weight:900;color:#B8960A;line-height:.88;letter-spacing:-2px;}.hdr-title{font-family:"Syne",sans-serif;font-size:14pt;font-weight:700;letter-spacing:2px;margin-top:6px;text-transform:uppercase;}.hdr-sub{font-family:"DM Mono",monospace;font-size:8.5pt;color:#666;letter-spacing:2px;margin-top:4px;}.print-bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:2px solid #B8960A;padding:10px 24px;display:flex;align-items:center;gap:10px;z-index:999;}.print-label{font-family:"DM Mono",monospace;font-size:9pt;color:#666;letter-spacing:1px;flex:1;}.print-btn{background:#1a7a8a;color:#fff;border:none;padding:8px 20px;border-radius:6px;font-size:10pt;font-weight:700;cursor:pointer;letter-spacing:2px;font-family:"DM Mono",monospace;}.email-btn{background:transparent;color:#1a7a8a;border:2px solid #1a7a8a;padding:8px 18px;border-radius:6px;font-size:10pt;font-weight:700;cursor:pointer;letter-spacing:1px;font-family:"DM Mono",monospace;text-decoration:none;display:inline-block;}.cue-table{width:100%;border-collapse:collapse;font-size:11pt;}.cue-table th{font-family:"DM Mono",monospace;font-size:8pt;letter-spacing:.1em;text-transform:uppercase;color:#B8960A;border-bottom:2px solid #B8960A;padding:6px 12px;text-align:left;}.cue-table td{border-bottom:1px solid #ddd;vertical-align:top;}.cue-table tr:last-child td{border-bottom:none;}@media print{.print-bar{display:none;}@page{size:letter portrait;margin:.5in;}}</style>'
     + '</head><body>'
-    + '<div class="print-bar"><span class="print-label">' + he(SHOW_CONFIG.showName) + ' · E' + epNum + ' SHOW SCRIPT</span><button class="print-btn" onclick="window.print()">🖨️ PRINT / SAVE PDF</button></div>'
+    + '<div class="print-bar"><span class="print-label">' + he(SHOW_CONFIG.showName) + ' · E' + epNum + ' SHOW SCRIPT</span>'
+    + '<a class="email-btn" href="' + mailtoLink + '">✉ EMAIL</a>'
+    + '<button class="print-btn" onclick="window.print()">🖨️ PRINT / PDF</button></div>'
     + '<div class="page"><div class="hdr"><div><div class="hdr-show">' + he(SHOW_CONFIG.showName) + '</div>'
     + '<div class="hdr-epnum">E' + epNum + '</div>'
     + '<div class="hdr-title">' + he(ep.title || 'Episode ' + epNum) + '</div>'
     + (sub ? '<div class="hdr-sub">' + he(sub) + '</div>' : '') + '</div></div>'
+    + guestBlock
+    + crewBlock
+    + logisticsBlock
     + sectHtml
     + (cues.length ? '<div style="margin-top:32px;"><div style="font-family:\'DM Mono\',monospace;font-size:8.5pt;letter-spacing:.12em;text-transform:uppercase;color:#1a7a8a;border-bottom:2px solid #1a7a8a;padding-bottom:6px;margin-bottom:14px;">RUN OF SHOW</div>'
       + '<table class="cue-table"><thead><tr><th>#</th><th>SEGMENT</th><th>TIME</th><th>NOTES</th></tr></thead><tbody>' + cueRows + '</tbody></table></div>' : '')
@@ -5298,9 +5396,9 @@ function renderScriptEditRows() {
   var cues = activeEp().cues || [];
   var delStyle = 'background:transparent;border:1px solid rgba(255,100,50,0.25);color:var(--orange);border-radius:4px;padding:3px 10px;font-family:\'DM Mono\',monospace;font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;';
   var rows = cues.length ? cues.map(function(c, i) {
-    return '<div class="seg-row" data-seg-id="' + esc(c.id) + '" draggable="true" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;margin-bottom:10px;cursor:default;">'
+    return '<div class="seg-row" data-seg-id="' + esc(c.id) + '" draggable="true" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;margin-bottom:10px;cursor:grab;">'
       + '<div style="display:flex;align-items:center;margin-bottom:10px;">'
-      + '<span class="seg-row-handle" style="cursor:grab;margin-right:10px;font-size:14px;color:rgba(255,255,255,0.25);" title="Drag to reorder">⠿</span>'
+      + '<span class="seg-row-handle" style="cursor:grab;margin-right:14px;font-size:30px;line-height:1;color:rgba(255,255,255,0.35);flex-shrink:0;" title="Drag to reorder">⠿</span>'
       + '<div style="font-size:10px;color:var(--teal);letter-spacing:3px;font-weight:700;font-family:\'DM Mono\',monospace;">CUE ' + (i + 1) + '</div>'
       + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:8px;">'
@@ -5517,6 +5615,11 @@ function updateCountdown() {
   parts.push(m + 'm');
   timeEl.textContent = parts.join(' ');
   timeEl.className = 'show-countdown-time' + (d === 0 ? ' urgent' : '');
+}
+
+function setLocation(val) {
+  activeEp().location = val;
+  autoSave('location set');
 }
 
 function setRecordDate(val) {
@@ -5906,6 +6009,8 @@ setInterval(updateCountdown, 60000);
   var rtEl = document.getElementById('d-release-time');
   if (rdEl) rdEl.value = activeEp().releaseDate || '';
   if (rtEl) rtEl.value = activeEp().releaseTime || '';
+  var locEl2 = document.getElementById('d-location');
+  if (locEl2) locEl2.value = activeEp().location || '';
   updateRuntime();
   var sumEl = document.getElementById('d-ep-summary');
   if (sumEl) sumEl.value = activeEp().summary || '';
@@ -6519,7 +6624,7 @@ applySession = function(data) {
   } else {
     // Migrate from flat format (old saves)
     var key = (data.state && data.state.currentEpisode) ? data.state.currentEpisode.number : 1;
-    if (!episodeStore[key]) episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, guestIntro: '', interviewQuestions: '' };
+    if (!episodeStore[key]) episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, guestIntro: '', interviewQuestions: '', location: '' };
     if (data.conversationLog) episodeStore[key].conversationLog = data.conversationLog.slice();
     if (data.briefFlags) episodeStore[key].briefFlags = data.briefFlags.slice();
     if (data.bakedContext) episodeStore[key].bakedContext = data.bakedContext.slice();
@@ -7064,11 +7169,11 @@ document.addEventListener('DOMContentLoaded', function() {
 <div id="script-edit-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:2000;overflow-y:auto;padding:24px 16px;">
   <div style="max-width:680px;margin:0 auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-      <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;">✏️ Edit Cue List</div>
+      <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;">📋 Show Script</div>
       <div style="display:flex;gap:8px;">
         <button onclick="addCueInOverlay()" style="background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ ADD CUE</button>
-        <button onclick="saveScriptEdit()" style="background:var(--teal);border:none;color:#000;border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">SAVE &amp; CLOSE</button>
-        <button onclick="closeScriptEditPanel()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text-muted);border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;cursor:pointer;">✕ DISCARD</button>
+        <button onclick="saveScriptEdit()" style="background:var(--teal);border:none;color:#000;border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">SAVE</button>
+        <button onclick="closeScriptEditPanel()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text-muted);border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;cursor:pointer;">Cancel</button>
       </div>
     </div>
     <div id="script-edit-rows"></div>
