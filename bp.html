@@ -5143,6 +5143,36 @@ document.addEventListener('DOMContentLoaded', function() {
   });
 });
 
+// ── BACK BUTTON TRAP ─────────────────────────────────────────────────────────
+// Push a sentinel so the browser has somewhere to "go back" to within the page,
+// then intercept popstate to close overlays instead of leaving the app.
+(function() {
+  history.pushState({ bp: true }, '');
+  window.addEventListener('popstate', function() {
+    var overlays = [
+      { id: 'script-edit-overlay',  close: closeScriptEditPanel },
+      { id: 'datepickerModal',      close: closeDatepicker },
+      { id: 'inviteNewModal',       close: closeInviteNewModal },
+      { id: 'loadModal',            close: closeLoadModal },
+      { id: 'historyOverlay',       close: closeSessionHistory },
+      { id: 'userProfileOverlay',   close: closeUserProfile },
+      { id: 'showInfoOverlay',      close: closeShowInfo },
+    ];
+    var closed = overlays.some(function(o) {
+      var el = document.getElementById(o.id);
+      if (el && el.style.display !== 'none' && el.style.display !== '') {
+        o.close();
+        return true;
+      }
+      return false;
+    });
+    // Re-push sentinel so the next back press is also caught
+    history.pushState({ bp: true }, '');
+    // If nothing was open, Boo is already home — no navigation needed
+    if (!closed) { /* stay put */ }
+  });
+}());
+
 // ── RIGHT PANEL TOP BAR ──────────────────────────────────────────────────────
 
 function makeShowTimeCT(dateStr, timeHHMM) {
