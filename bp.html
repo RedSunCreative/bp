@@ -5005,6 +5005,7 @@ function showScriptEditPanel() {
   renderScriptEditRows();
   document.getElementById('script-edit-overlay').style.display = 'block';
   document.getElementById('script-edit-overlay').scrollTop = 0;
+  initOverlayDrag();
 }
 
 function closeScriptEditPanel() {
@@ -5015,21 +5016,21 @@ function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
 
 function renderScriptEditRows() {
   var cues = activeEp().cues || [];
-  var btnStyle = 'background:transparent;border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.45);border-radius:4px;padding:3px 10px;font-family:\'DM Mono\',monospace;font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;';
-  var delStyle = btnStyle.replace('rgba(255,255,255,0.45)', 'var(--orange)').replace('rgba(255,255,255,0.12)', 'rgba(255,100,50,0.25)');
+  var delStyle = 'background:transparent;border:1px solid rgba(255,100,50,0.25);color:var(--orange);border-radius:4px;padding:3px 10px;font-family:\'DM Mono\',monospace;font-size:0.65rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;';
   var rows = cues.length ? cues.map(function(c, i) {
-    return '<div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;margin-bottom:10px;">'
-      + '<div style="font-size:10px;color:var(--teal);letter-spacing:3px;font-weight:700;margin-bottom:10px;font-family:\'DM Mono\',monospace;">CUE ' + (i + 1) + '</div>'
+    return '<div class="seg-row" data-seg-id="' + esc(c.id) + '" draggable="true" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);border-radius:8px;padding:14px 16px;margin-bottom:10px;cursor:default;">'
+      + '<div style="display:flex;align-items:center;margin-bottom:10px;">'
+      + '<span class="seg-row-handle" style="cursor:grab;margin-right:10px;font-size:14px;color:rgba(255,255,255,0.25);" title="Drag to reorder">⠿</span>'
+      + '<div style="font-size:10px;color:var(--teal);letter-spacing:3px;font-weight:700;font-family:\'DM Mono\',monospace;">CUE ' + (i + 1) + '</div>'
+      + '</div>'
       + '<div style="display:grid;grid-template-columns:1fr 80px;gap:8px;margin-bottom:8px;">'
-      + '<input class="edit-inp" value="' + esc(c.name) + '" id="se-name-' + i + '" placeholder="Segment name...">'
-      + '<input class="edit-inp" value="' + esc(c.duration) + '" id="se-dur-' + i + '" placeholder="min" style="text-align:center;" title="Duration in minutes">'
+      + '<input class="edit-inp se-name" value="' + esc(c.name) + '" placeholder="Segment name...">'
+      + '<input class="edit-inp se-dur" value="' + esc(c.duration) + '" placeholder="min" style="text-align:center;" title="Duration in minutes">'
       + '</div>'
       + '<div class="edit-lbl" style="margin-bottom:3px;">NOTES / TALKING POINTS</div>'
-      + '<textarea class="edit-ta" id="se-note-' + i + '" style="height:60px;" placeholder="Context, talking points, instructions for this segment...">' + esc(c.note || '') + '</textarea>'
-      + '<div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;">'
-      + (i > 0 ? '<button style="' + btnStyle + '" onclick="moveCueInOverlay(' + i + ',-1)">↑ Move Up</button>' : '')
-      + (i < cues.length - 1 ? '<button style="' + btnStyle + '" onclick="moveCueInOverlay(' + i + ',1)">↓ Move Down</button>' : '')
-      + '<button style="' + delStyle + '" onclick="deleteCueInOverlay(' + i + ')">✕ Remove</button>'
+      + '<textarea class="edit-ta se-ta" style="height:60px;" placeholder="Context, talking points, instructions for this segment...">' + esc(c.note || '') + '</textarea>'
+      + '<div style="display:flex;gap:6px;margin-top:10px;">'
+      + '<button style="' + delStyle + '" onclick="deleteCueInOverlay(\'' + c.id + '\')">✕ Remove</button>'
       + '</div>'
       + '</div>';
   }).join('') : '<div style="color:var(--text-muted);font-size:13px;padding:20px 0;text-align:center;">No cues yet — click + ADD CUE to start.</div>';
@@ -5037,32 +5038,37 @@ function renderScriptEditRows() {
 }
 
 function readOverlayToCues() {
-  // Flush current overlay field values into activeEp().cues before any mutation
   var cues = activeEp().cues || [];
-  cues.forEach(function(c, i) {
-    var nameEl = document.getElementById('se-name-' + i);
-    var durEl  = document.getElementById('se-dur-'  + i);
-    var noteEl = document.getElementById('se-note-' + i);
+  document.querySelectorAll('#script-edit-rows .seg-row').forEach(function(card) {
+    var id = card.getAttribute('data-seg-id');
+    var c = cues.find(function(x) { return x.id === id; });
+    if (!c) return;
+    var nameEl = card.querySelector('.se-name');
+    var durEl  = card.querySelector('.se-dur');
+    var noteEl = card.querySelector('.se-ta');
     if (nameEl) c.name     = nameEl.value;
     if (durEl)  c.duration = durEl.value;
     if (noteEl) c.note     = noteEl.value;
   });
 }
 
-function moveCueInOverlay(i, dir) {
+function deleteCueInOverlay(id) {
   readOverlayToCues();
   var cues = activeEp().cues;
-  var j = i + dir;
-  if (j < 0 || j >= cues.length) return;
-  var tmp = cues[i]; cues[i] = cues[j]; cues[j] = tmp;
+  var idx = cues.findIndex(function(c) { return c.id === id; });
+  if (idx !== -1) cues.splice(idx, 1);
   renderScriptEditRows();
 }
 
-function deleteCueInOverlay(i) {
-  readOverlayToCues();
-  var cues = activeEp().cues;
-  cues.splice(i, 1);
-  renderScriptEditRows();
+function initOverlayDrag() {
+  var container = document.getElementById('script-edit-rows');
+  if (!container) return;
+  initSegDrag(container, activeEp().cues, function() {
+    readOverlayToCues();
+    renderScriptEditRows();
+    renderCueList();
+    autoSave('cues reordered in overlay');
+  });
 }
 
 function addCueInOverlay() {
@@ -5368,6 +5374,8 @@ function renderCueList() {
     + availHtml;
   initSegDrag(el, activeEp().cues, function() { autoSave('cues reordered'); });
   updateRuntime();
+  var overlayEl = document.getElementById('script-edit-overlay');
+  if (overlayEl && overlayEl.style.display === 'block') renderScriptEditRows();
 }
 
 function loadCuesFromTemplate() {
