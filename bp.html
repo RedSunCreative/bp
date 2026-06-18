@@ -2817,18 +2817,17 @@ const state = {
   masterBriefItems: [],
   masterBriefFlags: [],
   showTemplate: [
-    { id: 'st-1',  name: 'Cold Open',                     note: 'Cut in post — pull charged moment from interview', default: true  },
-    { id: 'st-2',  name: 'Introductions',                  note: 'Host intro + guest intro',                         default: true  },
-    { id: 'st-5',  name: 'Guest Interview',                note: '20-25 min — closes with Fear / Opportunity / Wish', default: true  },
-    { id: 'st-12', name: 'Close / Outro',                  note: 'Sign-off + where to find guest + subscribe CTA',   default: true  },
-    { id: 'st-3',  name: 'Anno Community Workshop Update', note: 'Brief update from the Slack community — experiments, listener submissions, what people are trying in their classrooms', default: false },
-    { id: 'st-4',  name: "What's for Lunch?",              note: '60-90 sec community UGC clip — a listener shares what\'s actually happening in their school right now',           default: false },
-    { id: 'st-6',  name: 'MoH Bridge',                    note: 'Guest introduces A Moment of Hope in 2 sentences — their words, their voice, their hand-off',                    default: false },
-    { id: 'st-7',  name: 'A Moment of Hope',               note: '2-min documentary micro-feature shot separately — a student, graduate, teacher, or program in action. The emotional landing of the episode', default: false },
-    { id: 'st-8',  name: 'Question of the Week',           note: 'One question posed to the audience — answered in the Slack community and featured on the next episode',         default: false },
-    { id: 'st-9',  name: 'AI News Minute',                 note: 'One AI development from the past week that every CS educator needs to know about — 60 seconds, no hype',       default: false },
-    { id: 'st-10', name: 'Am I Human?',                    note: 'A piece of student or AI-generated work — the hosts and guest try to tell which is which. No verdict required', default: false },
-    { id: 'st-11', name: 'Does It Matter?',                note: 'Rapid-fire: the hosts name an AI capability — guest says whether it changes what we teach. Yes, no, or it depends', default: false },
+    { id: 'st-1',  name: 'Cold Open',                     est: '< 10 sec', dur: '',    note: 'Cut in post — pull a charged moment from the interview',                                                                                                             default: true  },
+    { id: 'st-2',  name: 'Introductions',                  est: '1–2 min',  dur: '2',   note: 'Host intro + guest intro — set the stakes before the conversation begins',                                                                                           default: true  },
+    { id: 'st-5',  name: 'Guest Interview',                est: '25 min',   dur: '25',  note: 'Core conversation — closes with Fear / Opportunity / Wish',                                                                                                          default: true  },
+    { id: 'st-12', name: 'Close / Outro / CTA',            est: '1 min',    dur: '1',   note: 'Sign-off + where to find the guest. CTA: subscribe, share the episode, and join the community workshop in the Anno Pod on Slack',                                    default: true  },
+    { id: 'st-3',  name: 'Anno Community Workshop Update', est: '2–5 min',  dur: '3',   note: 'Brief update from the Slack community — experiments, listener submissions, what people are trying in their classrooms',                                              default: false },
+    { id: 'st-4',  name: "What's for Lunch?",              est: '1.5 min',  dur: '1.5', note: '60-90 sec community UGC clip — a listener shares what\'s actually happening in their school right now',                                                              default: false },
+    { id: 'st-6',  name: 'MoH Bridge',                    est: '30 sec',   dur: '0.5', note: 'Guest introduces A Moment of Hope in 2 sentences — their words, their voice, their hand-off',                                                                        default: false },
+    { id: 'st-7',  name: 'A Moment of Hope',               est: '2–3 min',  dur: '2',   note: 'Documentary micro-feature shot separately — a student, graduate, teacher, or program in action. The emotional landing of the episode',                               default: false },
+    { id: 'st-8',  name: 'Question of the Week',           est: '2–3 min',  dur: '2',   note: 'One question posed to the audience — answered in the Slack community and featured on the next episode',                                                              default: false },
+    { id: 'st-9',  name: 'AI News Minute',                 est: '60 sec',   dur: '1',   note: 'One AI development from the past week that every CS educator needs to know about — 60 seconds, no hype',                                                            default: false },
+    { id: 'st-10', name: 'Am I Human?',                    est: '1 min',    dur: '1',   note: 'A piece of student or AI-generated work — the hosts and guest try to tell which is which. No verdict required',                                                      default: false },
   ],
 };
 
@@ -2843,7 +2842,7 @@ const SHOW_CONTEXT = {
   audience: 'K-12 CS teachers, district leaders, curriculum directors, school administrators',
   mission: 'Asking the question: If AI can write the code, what are we teaching students?',
   format: 'Audio-first, video recorded for shorts. Records on Riverside (remote) and sometimes in-person.',
-  segments: ['Interview', 'Question of the Week', 'A Moment of Hope', 'AI News Minute', 'Am I Human?', 'Does It Matter?'],
+  segments: ['Interview', 'Question of the Week', 'A Moment of Hope', 'AI News Minute', 'Am I Human?'],
   season1: {
     number: 1,
     theme: 'What Do We Teach Now?',
@@ -3120,7 +3119,7 @@ SHOW CONTEXT:
 - Audience: K-12 CS teachers, district leaders, curriculum directors, school administrators
 - Mission: Asking the question — if AI can write the code, what are we teaching students?
 - Format: Audio-first, video recorded for shorts. Records on Riverside (remote) and sometimes in-person.
-- Available segments: Interview, Question of the Week, A Moment of Hope, AI News Minute, Am I Human?, Does It Matter?
+- Available segments: Interview, Question of the Week, A Moment of Hope, AI News Minute, Am I Human?
 
 STANDARD EPISODE STRUCTURE (show template — editable by Mark, current order):
 ${(state.showTemplate || []).map((s, i) => (i+1) + '. ' + s.name + (s.note ? ' — ' + s.note : '')).join('\n') || 'No template set yet'}
@@ -3175,8 +3174,8 @@ Before planning anything else, gather all of these — but ask them conversation
 - What should listeners THINK differently about after this episode?
 - What should they FEEL?
 - What should they REMEMBER or DO?
-- Which segments will this episode include? (Interview is default. Options to add: Question of the Week, A Moment of Hope, AI News Minute, Am I Human?, Does It Matter?)
-- For any non-interview segment mentioned (e.g. Does It Matter?): What is the specific prompt or topic for that segment? Who leads it — Kartik, Matt, or both? Scripted talking points or free conversation?
+- Which segments will this episode include? (Interview is default. Options to add: Question of the Week, A Moment of Hope, AI News Minute, Am I Human?)
+- For any non-interview segment mentioned: What is the specific prompt or topic for that segment? Who leads it — Kartik, Matt, or both? Scripted talking points or free conversation?
 
 - Ask about recording dates: "Do you have recording dates locked in for Season 1? I can store them so they show up automatically when you invite guests." If they provide dates, confirm them back formatted as Day, Month Date at Time CT.
 
@@ -3199,8 +3198,8 @@ Do NOT use bullets, numbers, or dashes for segment lines. Pipes only. Example:
 Cold Open | 0:00 | 2 min
 Question of the Week | 2:00 | 5 min
 Guest Interview | 7:00 | 25 min
-Does It Matter? | 32:00 | 8 min
-Outro | 40:00 | 3 min
+Am I Human? | 32:00 | 1 min
+Close / Outro / CTA | 33:00 | 1 min
 
 ===== SHOW-LEVEL DECISIONS =====
 When you recognize something as a show-level decision — something that applies to EVERY episode, not just this one — flag it at the END of your response using this exact format:
@@ -5732,22 +5731,24 @@ function renderCueList() {
   var hasAvail = available.length > 0 || !hasHostAsGuest;
   if (hasAvail) {
     var hostEntry = hasHostAsGuest ? '' :
-      '<div class="seg-row-avail host-special" onclick="addHostAsGuestCue()" title="Add hosts as guests for this episode">'
+      '<div class="seg-row-avail host-special" onclick="addHostAsGuestCue()" data-tip="Matt &amp; Kartik only — adds hosts as interview guests for this episode">'
       + '<span class="seg-row-avail-plus">+</span>'
       + '<span class="seg-row-avail-name">Host as Guest</span>'
-      + '<span class="seg-row-avail-note">Matt &amp; Kartik only</span>'
       + '</div>';
     availHtml = '<div class="seg-available-label">Episode Elements</div>'
       + hostEntry
       + available.map(function(s) {
           var sid = (s.id || '').replace(/'/g,'').replace(/"/g,'&quot;');
-          var noteSnip = s.note ? s.note.substring(0, 28) + (s.note.length > 28 ? '…' : '') : '';
-          var stip = (s.note || '').replace(/"/g, '&quot;');
+          var tipParts = [];
+          if (s.est) tipParts.push(s.est);
+          if (s.note) tipParts.push(s.note);
+          var stip = tipParts.join(' — ').replace(/"/g, '&quot;');
+          var estBadge = s.est ? '<span style="font-family:\'DM Mono\',monospace;font-size:0.6rem;color:var(--teal);flex-shrink:0;opacity:0.8;">' + s.est + '</span>' : '';
           return '<div class="seg-row-avail" onclick="addCueFromTemplate(\'' + sid + '\')"'
             + (stip ? ' data-tip="' + stip + '"' : '') + '>'
             + '<span class="seg-row-avail-plus">+</span>'
             + '<span class="seg-row-avail-name">' + (s.name || '') + '</span>'
-            + (noteSnip ? '<span class="seg-row-avail-note">' + noteSnip + '</span>' : '')
+            + estBadge
             + '</div>';
         }).join('');
   }
@@ -5772,7 +5773,7 @@ function addCueFromTemplate(templateId) {
   if (!tpl) return;
   if (!activeEp().cues) activeEp().cues = [];
   // Prepend so it appears at the top — user can drag to position
-  activeEp().cues.unshift({ id: 'cue-' + Date.now(), templateId: tpl.id, name: tpl.name, duration: '', note: tpl.note || '' });
+  activeEp().cues.unshift({ id: 'cue-' + Date.now(), templateId: tpl.id, name: tpl.name, duration: tpl.dur || '', note: tpl.note || '' });
   renderCueList();
   autoSave('cue added from template');
 }
