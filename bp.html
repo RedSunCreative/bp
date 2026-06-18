@@ -1010,6 +1010,15 @@
   .edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
   .edit-field{display:flex;flex-direction:column;}
   .edit-field.full{grid-column:1/-1;}
+  /* thinking bubble */
+  .boo-thinking{display:flex;align-items:center;gap:5px;padding:10px 4px;}
+  .boo-thinking span{width:7px;height:7px;border-radius:50%;background:var(--teal);display:inline-block;animation:boo-bounce 1.1s ease-in-out infinite;opacity:0.75;}
+  .boo-thinking span:nth-child(2){animation-delay:0.18s;}
+  .boo-thinking span:nth-child(3){animation-delay:0.36s;}
+  @keyframes boo-bounce{0%,60%,100%{transform:translateY(0);}30%{transform:translateY(-7px);}}
+  /* copy button */
+  .copy-btn{background:transparent;border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.35);border-radius:4px;padding:2px 7px;font-family:'DM Mono',monospace;font-size:0.62rem;letter-spacing:0.05em;cursor:pointer;transition:color 0.15s,border-color 0.15s;flex-shrink:0;}
+  .copy-btn:hover{color:var(--teal);border-color:var(--teal);}
   .edit-lbl{font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:3px;}
   .edit-inp{background:var(--dark);border:1px solid var(--border);border-radius:4px;padding:6px 8px;color:#FFFFFF;font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;width:100%;}
   .edit-inp:focus{outline:none;border-color:var(--teal);}
@@ -2440,7 +2449,13 @@
             <div class="ep-field"><div class="ep-label">STATUS</div><div class="ep-val" id="d-epstatus" style="color:var(--teal);">PLANNING</div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">TITLE</div><div class="ep-val ep-editable" id="d-eptitle" onclick="epEditTitle(this)" title="Click to edit"><span class="empty">not set</span></div></div>
             <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">ARC ROLE</div><div class="ep-val" id="d-arcrole" style="font-size:12px;color:var(--muted);"></div></div>
-            <div class="ep-field" style="grid-column:1/-1"><div class="ep-label">EPISODE SUMMARY</div><textarea id="d-ep-summary" class="ep-summary-input" onchange="onSummaryEdit(this.value)" placeholder="Boo fills this in as you plan..."></textarea></div>
+            <div class="ep-field" style="grid-column:1/-1">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                <div class="ep-label" style="margin-bottom:0;">EPISODE SUMMARY</div>
+                <button class="copy-btn" onclick="copyToClipboard(document.getElementById('d-ep-summary').value,this)" title="Copy summary">⎘ copy</button>
+              </div>
+              <textarea id="d-ep-summary" class="ep-summary-input" onchange="onSummaryEdit(this.value)" placeholder="Boo fills this in as you plan..."></textarea>
+            </div>
             <div class="ep-field"><div class="ep-label">TARGET TIME</div><div class="ep-val ep-editable" id="d-eplen" style="color:var(--teal);" onclick="epEditTargetTime(this)" title="Click to edit target runtime in minutes">60 min</div></div>
             <div class="ep-field" style="grid-column:1/-1">
               <div class="ep-label">LOCATION</div>
@@ -2511,7 +2526,7 @@
       </div>
 
       <div class="data-section" data-sec="ep-brief">
-        <div class="data-section-header" onclick="toggleSection('ep-brief-body')">
+        <div class="data-section-header" onclick="toggleEpBriefSection()">
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="data-section-title">Episode Brief <span class="tip-q" data-tip="Boo-generated brief for this episode. Switches with the episode dropdown." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="ep-brief-badge">—</div>
@@ -3792,7 +3807,8 @@ function renderConsiderations() {
     var invited   = g.status === 'invited';
     var intro     = g.guestIntro || '';
     var introHtml = intro
-      ? '<textarea style="' + taStyle + '" oninput="saveConsiderationIntro(\'' + safeName + '\',this.value)">' + esc(intro) + '</textarea>'
+      ? '<div style="display:flex;justify-content:flex-end;margin-bottom:4px;"><button class="copy-btn" onclick="copyToClipboard(((activeEp().considerations||[]).find(function(c){return c.name===\'' + safeName + '\'})||{}).guestIntro||\'\'  ,this)">⎘ copy</button></div>'
+        + '<textarea style="' + taStyle + '" oninput="saveConsiderationIntro(\'' + safeName + '\',this.value)">' + esc(intro) + '</textarea>'
         + '<button style="' + booBtn + '" onclick="booGenerateConsiderationIntro(\'' + safeName + '\')">↺ Regenerate</button>'
       : '<div style="font-size:11px;color:var(--border);font-style:italic;margin-bottom:4px;">Not written yet.</div>'
         + '<button style="' + booBtn + '" onclick="booGenerateConsiderationIntro(\'' + safeName + '\')">✦ Boo: Write Intro</button>';
@@ -5149,7 +5165,7 @@ function renderScriptFields() {
   var questionsHtml = !questions
     ? '<div style="font-size:11.5px;color:var(--text-muted);font-style:italic;margin-bottom:8px;">Not generated yet.</div>'
       + '<button style="' + btnBase + '" onclick="booGenerateQuestions()">↺ BOO: SUGGEST QUESTIONS</button>'
-    : '<textarea style="width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.6;resize:vertical;min-height:120px;box-sizing:border-box;" onchange="saveInterviewQuestions(this.value)">' + esc(questions) + '</textarea>'
+    : '<textarea style="width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.6;resize:vertical;min-height:120px;box-sizing:border-box;" oninput="saveInterviewQuestions(this.value)">' + esc(questions) + '</textarea>'
       + '<button style="' + btnBase + 'margin-top:6px;" onclick="booGenerateQuestions()">↺ REGENERATE</button>';
 
   var filled = (ep.guestIntro ? 1 : 0) + (questions ? 1 : 0);
@@ -5160,18 +5176,29 @@ function renderScriptFields() {
   var hostIntroVal = getHostIntro();
   var hostOutroVal = getHostOutro();
 
+  function fieldHdr(label, copyExpr) {
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+      + '<div class="script-field-hdr" style="margin-bottom:0;">' + label + '</div>'
+      + '<button class="copy-btn" onclick="copyToClipboard(' + copyExpr + ',this)">⎘ copy</button>'
+      + '</div>';
+  }
+
   var hostIntroHtml = '<textarea style="' + taStyle + '" placeholder="Paste or type the host intro here, or let Boo draft one…" oninput="saveHostIntro(this.value)">' + esc(hostIntroVal) + '</textarea>'
     + '<button style="' + btnBase + 'margin-top:5px;" onclick="booGenerateHostIntro()">✦ ' + (hostIntroVal ? '↺ Regenerate' : 'Boo: Write Host Intro') + '</button>';
 
   var hostOutroHtml = '<textarea style="' + taStyle + '" placeholder="Paste or type the host outro here, or let Boo draft one…" oninput="saveHostOutro(this.value)">' + esc(hostOutroVal) + '</textarea>'
     + '<button style="' + btnBase + 'margin-top:5px;" onclick="booGenerateHostOutro()">✦ ' + (hostOutroVal ? '↺ Regenerate' : 'Boo: Write Host Outro') + '</button>';
 
+  var questionsWithCopy = questions
+    ? fieldHdr('Boo\'s Suggested Questions', 'activeEp().interviewQuestions||\'\'') + questionsHtml.replace('<textarea ', '<textarea id="sq-ta" ')
+    : '<div class="script-field-hdr teal" style="margin-bottom:6px;">Boo\'s Suggested Questions</div>' + questionsHtml;
+
   el.innerHTML = '<div style="' + secSep + '">'
     + '<button style="' + btnBase + 'margin-bottom:0;" onclick="showScriptEditPanel()">📋 SHOW SCRIPT — EDIT CUES</button>'
     + '</div>'
-    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Intro</div>' + hostIntroHtml + '</div>'
-    + '<div style="' + secSep + '"><div class="script-field-hdr teal">Boo\'s Suggested Questions</div>' + questionsHtml + '</div>'
-    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Outro</div>' + hostOutroHtml + '</div>'
+    + '<div style="' + secSep + '">' + fieldHdr('Host Intro', 'getHostIntro()') + hostIntroHtml + '</div>'
+    + '<div style="' + secSep + '">' + questionsWithCopy + '</div>'
+    + '<div style="' + secSep + '">' + fieldHdr('Host Outro', 'getHostOutro()') + hostOutroHtml + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:6px;">'
     + '<button style="' + btnBase + '" onclick="openShowScript()">📄 SHARE SHOW SCRIPT</button>'
     + '<button style="' + btnBase.replace('var(--teal)', 'rgba(59,184,201,0.55)') + '" onclick="pushScriptToTeleprompter()">🎯 PUSH TO TELEPROMPTER</button>'
@@ -6022,7 +6049,21 @@ function onSummaryEdit(val) {
   autoSave('episode summary edited');
 }
 
-function renderEpisodeBrief() {
+function copyToClipboard(text, btn) {
+  if (!text) { showToast('Nothing to copy yet.'); return; }
+  navigator.clipboard.writeText(text).then(function() {
+    if (btn) { var orig = btn.textContent; btn.textContent = '✓ done'; setTimeout(function() { btn.textContent = orig; }, 1600); }
+  }).catch(function() { showToast('Copy failed — select and copy manually.'); });
+}
+
+function toggleEpBriefSection() {
+  var body = document.getElementById('ep-brief-body');
+  var wasOpen = body && body.style.display !== 'none';
+  toggleSection('ep-brief-body');
+  if (!wasOpen && !activeEp().briefContent) generateEpisodeBrief();
+}
+
+function renderEpisodeBrief(editMode) {
   var el = document.getElementById('ep-brief-prose');
   var badge = document.getElementById('ep-brief-badge');
   var btn = document.getElementById('ep-brief-generate-btn');
@@ -6034,7 +6075,24 @@ function renderEpisodeBrief() {
     if (btn) btn.textContent = '↺ GENERATE EPISODE BRIEF';
     return;
   }
-  // Render condensed prose
+  if (badge) badge.textContent = '✓';
+  if (btn) btn.textContent = '↺ REGENERATE';
+
+  var controlBar = '<div style="display:flex;justify-content:flex-end;gap:5px;margin-bottom:8px;">'
+    + '<button class="copy-btn" onclick="copyToClipboard(activeEp().briefContent||\'\'  ,this)" title="Copy brief">⎘ copy</button>'
+    + (editMode
+        ? '<button class="copy-btn" onclick="saveEpBriefAndClose()" style="color:var(--teal);border-color:var(--teal);">✓ Done</button>'
+        : '<button class="copy-btn" onclick="renderEpisodeBrief(true)" title="Edit brief">✎ edit</button>')
+    + '</div>';
+
+  if (editMode) {
+    var taStyle = 'width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.6;resize:vertical;min-height:180px;box-sizing:border-box;';
+    el.innerHTML = controlBar + '<textarea id="ep-brief-edit-ta" style="' + taStyle + '" oninput="activeEp().briefContent=this.value;autoSave(\'ep brief edited\')">' + esc(content) + '</textarea>';
+    var ta = document.getElementById('ep-brief-edit-ta');
+    if (ta) ta.focus();
+    return;
+  }
+
   var html = content
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\*(.*?)\*/g, '<em>$1</em>');
@@ -6049,9 +6107,13 @@ function renderEpisodeBrief() {
       out += '<div style="margin-bottom:4px;">' + t + '</div>';
     }
   });
-  el.innerHTML = out;
-  if (badge) badge.textContent = '✓';
-  if (btn) btn.textContent = '↺ REGENERATE';
+  el.innerHTML = controlBar + out;
+}
+
+function saveEpBriefAndClose() {
+  var ta = document.getElementById('ep-brief-edit-ta');
+  if (ta) { activeEp().briefContent = ta.value; autoSave('ep brief edited'); }
+  renderEpisodeBrief(false);
 }
 
 function updateEpSwitchBtn() {
@@ -6297,9 +6359,8 @@ async function generateBrief() {
 async function generateEpisodeBrief() {
   const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
   const seasonNum = state.currentSeason ? state.currentSeason.number : 1;
-  const targetId = 'ep-brief-body-' + epNum;
-  const el = document.getElementById(targetId);
-  if (el) el.innerHTML = '<div style="font-size:11px;color:var(--muted);font-style:italic;">Boo is writing Episode ' + epNum + ' brief...</div>';
+  const el = document.getElementById('ep-brief-prose');
+  if (el) el.innerHTML = '<div class="boo-thinking"><span></span><span></span><span></span></div>';
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 45000);
   try {
