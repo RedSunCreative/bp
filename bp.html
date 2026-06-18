@@ -2494,10 +2494,7 @@
             <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ FIND A GUEST</button>
             <button onclick="openInviteNewModal()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">✉ INVITE SOMEONE NEW</button>
           </div>
-          <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.06);padding-top:12px;">
-            <div class="script-field-hdr teal">Guest Intro</div>
-            <div id="guest-intro-field"></div>
-          </div>
+          <div id="guest-intro-field" style="display:none;"></div>
         </div>
       </div>
 
@@ -2816,6 +2813,8 @@ const state = {
   masterBriefContent: '',
   masterBriefItems: [],
   masterBriefFlags: [],
+  hostIntro: '',
+  hostOutro: '',
   showTemplate: [
     { id: 'st-1',  name: 'Cold Open',                     est: '< 10 sec', dur: '',    note: 'Cut in post — pull a charged moment from the interview',                                                                                                             default: true  },
     { id: 'st-2',  name: 'Introductions',                  est: '1–2 min',  dur: '2',   note: 'Host intro + guest intro — set the stakes before the conversation begins',                                                                                           default: true  },
@@ -3758,7 +3757,7 @@ function considerGuest(name, title, btn) {
     showToast(name.split(' ')[0] + ' is already on your shortlist.');
     return;
   }
-  list.push({ name: name, title: title, status: 'considering' });
+  list.push({ name: name, title: title, status: 'considering', guestIntro: '' });
 
   // Visual feedback on the card button
   if (btn) { btn.textContent = '✓ Added'; btn.disabled = true; btn.style.color = 'var(--teal)'; btn.style.borderColor = 'var(--teal)'; }
@@ -3784,15 +3783,24 @@ function renderConsiderations() {
     el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No guests on the shortlist yet.</div>';
     return;
   }
+  var taStyle = 'width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:7px 9px;color:var(--text);font-family:\'DM Sans\',sans-serif;font-size:11px;line-height:1.55;resize:vertical;min-height:70px;box-sizing:border-box;';
+  var booBtn  = 'background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:4px;padding:3px 9px;font-family:\'DM Mono\',monospace;font-size:0.62rem;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;margin-top:5px;';
   var html = '';
-  list.forEach(function(g) {
-    var safeName  = g.name.replace(/'/g, "\\'");
-    var safeTitle = (g.title || '').replace(/'/g, "\\'");
+  list.forEach(function(g, idx) {
+    var safeName  = g.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var safeTitle = (g.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     var invited   = g.status === 'invited';
-    html += '<div class="guest-item">'
+    var intro     = g.guestIntro || '';
+    var introHtml = intro
+      ? '<textarea style="' + taStyle + '" oninput="saveConsiderationIntro(\'' + safeName + '\',this.value)">' + esc(intro) + '</textarea>'
+        + '<button style="' + booBtn + '" onclick="booGenerateConsiderationIntro(\'' + safeName + '\')">↺ Regenerate</button>'
+      : '<div style="font-size:11px;color:var(--border);font-style:italic;margin-bottom:4px;">Not written yet.</div>'
+        + '<button style="' + booBtn + '" onclick="booGenerateConsiderationIntro(\'' + safeName + '\')">✦ Boo: Write Intro</button>';
+    html += '<div class="guest-item" style="flex-direction:column;align-items:stretch;gap:0;">'
+      + '<div style="display:flex;align-items:flex-start;gap:6px;">'
       + '<div style="min-width:0;flex:1;">'
-      + '<div class="guest-name">' + g.name + '</div>'
-      + '<div class="guest-type">' + (g.title || '') + '</div>'
+      + '<div class="guest-name">' + esc(g.name) + '</div>'
+      + '<div class="guest-type">' + esc(g.title || '') + '</div>'
       + '<span style="font-family:DM Mono,monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;color:' + (invited ? 'var(--teal)' : 'var(--gold)') + ';">'
       + (invited ? '✓ INVITED' : 'FOR CONSIDERATION') + '</span>'
       + '</div>'
@@ -3801,6 +3809,11 @@ function renderConsiderations() {
           ? '<button onclick="inviteConsideration(\'' + safeName + '\',\'' + safeTitle + '\')" style="font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:DM Mono,monospace;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">✉ Invite</button>'
           : '<span style="font-size:10px;color:var(--teal);font-family:DM Mono,monospace;white-space:nowrap;">Email sent</span>')
       + '<button onclick="removeConsideration(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;" title="Remove">✕</button>'
+      + '</div>'
+      + '</div>'
+      + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Guest Intro</div>'
+      + introHtml
       + '</div>'
       + '</div>';
   });
@@ -3819,7 +3832,13 @@ function inviteConsideration(name, title) {
   renderConsiderations();
   autoSave('guest invited');
   draftEmail(name, title);
-  if (!activeEp().guestIntro) booGenerateGuestIntro();
+  // Use already-written consideration intro if available; otherwise generate
+  if (g && g.guestIntro) {
+    activeEp().guestIntro = g.guestIntro;
+    renderScriptFields();
+  } else if (!activeEp().guestIntro) {
+    booGenerateGuestIntro();
+  }
 }
 
 function removeConsideration(name) {
@@ -5052,6 +5071,67 @@ function renderGuestIntroField() {
     + '<button style="' + btnBase + 'margin-top:6px;" onclick="booGenerateGuestIntro()">↺ REGENERATE</button>';
 }
 
+function getHostIntro() { return state.hostIntro || SHOW_CONFIG.hostIntro || ''; }
+function getHostOutro() { return state.hostOutro || SHOW_CONFIG.hostOutro || ''; }
+
+function saveHostIntro(val) {
+  state.hostIntro = val;
+  autoSave('host intro edited');
+}
+
+function saveHostOutro(val) {
+  state.hostOutro = val;
+  autoSave('host outro edited');
+}
+
+async function booGenerateHostIntro() {
+  var season = (state.seasons && state.seasons[0]) || {};
+  showToast('Boo is writing the host intro...');
+  var prompt = 'You are Boo, the AI producer for ' + SHOW_CONFIG.showName + '.\n\n'
+    + 'Show: ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
+    + 'Hosts: ' + SHOW_CONFIG.host1 + ' and ' + SHOW_CONFIG.host2 + '\n'
+    + 'Season theme: ' + ((season.theme) || '') + '\n\n'
+    + 'Write a 30-45 second show opener the hosts read to open every episode. It should introduce the show\'s mission and why this conversation matters — energetic, specific, not generic. No stage directions. Prose only. Return ONLY the opening prose.';
+  try {
+    var resp = await fetch(PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400,
+        system: 'You are Boo, a seasoned podcast floor director. Confident, specific, never generic.',
+        messages: [{ role: 'user', content: prompt }] }) });
+    var data = await resp.json();
+    var text = (data.content && data.content[0] && data.content[0].text) || '';
+    if (!text) throw new Error('empty');
+    state.hostIntro = text.trim();
+    autoSave('host intro generated');
+    renderScriptFields();
+    showToast('Host intro ready.');
+  } catch(e) {
+    showToast('Could not generate host intro — try again.');
+  }
+}
+
+async function booGenerateHostOutro() {
+  showToast('Boo is writing the host outro...');
+  var prompt = 'You are Boo, the AI producer for ' + SHOW_CONFIG.showName + '.\n\n'
+    + 'Show: ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
+    + 'Hosts: ' + SHOW_CONFIG.host1 + ' and ' + SHOW_CONFIG.host2 + '\n\n'
+    + 'Write a 30-45 second show sign-off the hosts read to close every episode. Include a warm thank-you to the guest and a call to action: subscribe, share the episode, and join the community workshop in the Anno Pod on Slack. No stage directions. Prose only. Return ONLY the closing prose.';
+  try {
+    var resp = await fetch(PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400,
+        system: 'You are Boo, a seasoned podcast floor director. Warm, specific, never generic.',
+        messages: [{ role: 'user', content: prompt }] }) });
+    var data = await resp.json();
+    var text = (data.content && data.content[0] && data.content[0].text) || '';
+    if (!text) throw new Error('empty');
+    state.hostOutro = text.trim();
+    autoSave('host outro generated');
+    renderScriptFields();
+    showToast('Host outro ready.');
+  } catch(e) {
+    showToast('Could not generate host outro — try again.');
+  }
+}
+
 function renderScriptFields() {
   var el = document.getElementById('scripts-body');
   if (!el) return;
@@ -5076,14 +5156,22 @@ function renderScriptFields() {
   var badge = document.getElementById('scripts-badge');
   if (badge) badge.textContent = filled ? filled + '/2' : '—';
 
+  var taStyle = 'width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-family:\'DM Sans\',sans-serif;font-size:11.5px;line-height:1.6;resize:vertical;min-height:80px;box-sizing:border-box;';
+  var hostIntroVal = getHostIntro();
+  var hostOutroVal = getHostOutro();
+
+  var hostIntroHtml = '<textarea style="' + taStyle + '" placeholder="Paste or type the host intro here, or let Boo draft one…" oninput="saveHostIntro(this.value)">' + esc(hostIntroVal) + '</textarea>'
+    + '<button style="' + btnBase + 'margin-top:5px;" onclick="booGenerateHostIntro()">✦ ' + (hostIntroVal ? '↺ Regenerate' : 'Boo: Write Host Intro') + '</button>';
+
+  var hostOutroHtml = '<textarea style="' + taStyle + '" placeholder="Paste or type the host outro here, or let Boo draft one…" oninput="saveHostOutro(this.value)">' + esc(hostOutroVal) + '</textarea>'
+    + '<button style="' + btnBase + 'margin-top:5px;" onclick="booGenerateHostOutro()">✦ ' + (hostOutroVal ? '↺ Regenerate' : 'Boo: Write Host Outro') + '</button>';
+
   el.innerHTML = '<div style="' + secSep + '">'
     + '<button style="' + btnBase + 'margin-bottom:0;" onclick="showScriptEditPanel()">📋 SHOW SCRIPT — EDIT CUES</button>'
     + '</div>'
-    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Intro</div>'
-    + showBlock(SHOW_CONFIG.hostIntro, 'Not set — add to SHOW_CONFIG.hostIntro in code.') + '</div>'
+    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Intro</div>' + hostIntroHtml + '</div>'
     + '<div style="' + secSep + '"><div class="script-field-hdr teal">Boo\'s Suggested Questions</div>' + questionsHtml + '</div>'
-    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Outro</div>'
-    + showBlock(SHOW_CONFIG.hostOutro, 'Not set — add to SHOW_CONFIG.hostOutro in code.') + '</div>'
+    + '<div style="' + secSep + '"><div class="script-field-hdr">Host Outro</div>' + hostOutroHtml + '</div>'
     + '<div style="display:flex;flex-direction:column;gap:6px;">'
     + '<button style="' + btnBase + '" onclick="openShowScript()">📄 SHARE SHOW SCRIPT</button>'
     + '<button style="' + btnBase.replace('var(--teal)', 'rgba(59,184,201,0.55)') + '" onclick="pushScriptToTeleprompter()">🎯 PUSH TO TELEPROMPTER</button>'
@@ -5093,6 +5181,53 @@ function renderScriptFields() {
 function saveGuestIntro(val) {
   activeEp().guestIntro = val;
   autoSave('guest intro edited');
+}
+
+function saveConsiderationIntro(name, val) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g) return;
+  g.guestIntro = val;
+  if (g.status === 'invited') { activeEp().guestIntro = val; renderScriptFields(); }
+  autoSave('consideration intro edited');
+}
+
+async function booGenerateConsiderationIntro(name) {
+  var ep = activeEp();
+  var g = (ep.considerations || []).find(function(c) { return c.name === name; });
+  if (!g) return;
+  var season = (state.seasons && state.seasons[0]) || {};
+  var epNum = (state.currentEpisode && state.currentEpisode.number) || 1;
+  // Update the UI inline to show generating state
+  renderConsiderations();
+  var prompt = 'You are Boo, the AI producer for ' + SHOW_CONFIG.showName + '.\n\n'
+    + 'Show: ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
+    + 'Hosts: ' + SHOW_CONFIG.host1 + ' and ' + SHOW_CONFIG.host2 + '\n'
+    + 'Episode: S' + (season.number || 1) + ' E' + epNum + ' — ' + (ep.title || 'TBD') + '\n'
+    + 'Arc role: ' + (ep.arcRole || '') + '\n'
+    + 'Episode summary: ' + (ep.summary || '') + '\n\n'
+    + 'Guest under consideration: ' + g.name + '\n'
+    + (g.title ? 'Title: ' + g.title + '\n' : '')
+    + (g.org ? 'Org: ' + g.org + '\n' : '')
+    + (g.bio ? 'Bio: ' + g.bio + '\n' : '')
+    + (g.topics ? 'Topics: ' + g.topics + '\n' : '')
+    + '\nWrite a 45-75 second host-read guest introduction. Warm, specific to this episode\'s arc — not a generic bio read. No stage directions, no brackets, no clichés. Just prose the host reads verbatim. Return ONLY the introduction prose.';
+  try {
+    var resp = await fetch(PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 512,
+        system: 'You are Boo, a seasoned podcast floor director. Warm, dry, specific.',
+        messages: [{ role: 'user', content: prompt }] }) });
+    var data = await resp.json();
+    var text = (data.content && data.content[0] && data.content[0].text) || '';
+    if (!text) throw new Error('empty');
+    g.guestIntro = text.trim();
+    if (g.status === 'invited') { ep.guestIntro = g.guestIntro; renderScriptFields(); }
+    autoSave('consideration intro generated');
+    renderConsiderations();
+    showToast('Intro ready for ' + g.name.split(' ')[0] + '.');
+  } catch(e) {
+    showToast('Could not generate intro — try again.');
+    renderConsiderations();
+  }
 }
 
 function saveInterviewQuestions(val) {
@@ -5129,12 +5264,14 @@ async function booGenerateGuestIntro() {
     var text = (data.content && data.content[0] && data.content[0].text) || '';
     if (!text) throw new Error('empty');
     ep.guestIntro = text.trim();
+    var matchCons = (ep.considerations || []).find(function(c) { return c.name === guest.name; });
+    if (matchCons) matchCons.guestIntro = ep.guestIntro;
     autoSave('guest intro generated');
-    renderGuestIntroField();
+    renderConsiderations();
     renderScriptFields();
     showToast('Guest intro ready.');
   } catch(e) {
-    renderGuestIntroField();
+    renderConsiderations();
     showToast('Could not generate guest intro — try again.');
   }
 }
@@ -5182,10 +5319,10 @@ function buildShowScript() {
   var guest = ep.guest || {};
   var guestName = guest.name || '';
   var parts = [];
-  if (SHOW_CONFIG.hostIntro) parts.push('HOST INTRO\n\n' + SHOW_CONFIG.hostIntro);
+  if (getHostIntro()) parts.push('HOST INTRO\n\n' + getHostIntro());
   if (ep.guestIntro) parts.push('GUEST INTRO' + (guestName ? ' — ' + guestName : '') + '\n\n' + ep.guestIntro);
   if (ep.interviewQuestions) parts.push('INTERVIEW QUESTIONS\n\n' + ep.interviewQuestions);
-  if (SHOW_CONFIG.hostOutro) parts.push('HOST OUTRO\n\n' + SHOW_CONFIG.hostOutro);
+  if (getHostOutro()) parts.push('HOST OUTRO\n\n' + getHostOutro());
   return parts.join('\n\n─────────────────────────────────────────\n\n');
 }
 
@@ -5195,14 +5332,14 @@ function pushScriptToTeleprompter() {
   var sep = '\n\n─────────────────────────────────────────\n\n';
   var parts = [];
 
-  parts.push('HOST INTRO\n\n' + (SHOW_CONFIG.hostIntro || '[ Not set — add SHOW_CONFIG.hostIntro to the code ]'));
+  parts.push('HOST INTRO\n\n' + (getHostIntro() || '[ Not written yet — open Show Scripts and type or let Boo draft the Host Intro ]'));
 
   var guestLabel = 'GUEST INTRO' + (guestName ? ' — ' + guestName : '');
   parts.push(guestLabel + '\n\n' + (ep.guestIntro || '[ Not generated yet — open the Guests panel and click "Boo: Write Guest Intro" ]'));
 
   parts.push('INTERVIEW QUESTIONS\n\n' + (ep.interviewQuestions || '[ Not generated yet — open Show Scripts and click "Boo\'s Suggested Questions" ]'));
 
-  parts.push('HOST OUTRO\n\n' + (SHOW_CONFIG.hostOutro || '[ Not set — add SHOW_CONFIG.hostOutro to the code ]'));
+  parts.push('HOST OUTRO\n\n' + (getHostOutro() || '[ Not written yet — open Show Scripts and type or let Boo draft the Host Outro ]'));
 
   var text = parts.join(sep);
   updateTeleprompter(text);
@@ -5231,10 +5368,10 @@ function openShowScript() {
   function nl(s) { return he(s).replace(/\n/g,'<br>'); }
 
   var sections = [];
-  if (SHOW_CONFIG.hostIntro) sections.push({ label: 'HOST INTRO', body: nl(SHOW_CONFIG.hostIntro), color: '#1a7a8a' });
+  if (getHostIntro()) sections.push({ label: 'HOST INTRO', body: nl(getHostIntro()), color: '#1a7a8a' });
   if (ep.guestIntro) sections.push({ label: 'GUEST INTRO' + (guestName ? ' — ' + guestName.toUpperCase() : ''), body: nl(ep.guestIntro), color: '#B8960A' });
   if (ep.interviewQuestions) sections.push({ label: 'INTERVIEW QUESTIONS', body: nl(ep.interviewQuestions), color: '#1a7a8a' });
-  if (SHOW_CONFIG.hostOutro) sections.push({ label: 'HOST OUTRO', body: nl(SHOW_CONFIG.hostOutro), color: '#1a7a8a' });
+  if (getHostOutro()) sections.push({ label: 'HOST OUTRO', body: nl(getHostOutro()), color: '#1a7a8a' });
 
   var sectHtml = sections.map(function(s) {
     return '<div style="margin-bottom:32px;page-break-inside:avoid;">'
@@ -6611,6 +6748,8 @@ buildSessionSnapshot = function() {
   snap.masterBriefContent = state.masterBriefContent || '';
   snap.masterBriefItems = JSON.parse(JSON.stringify(state.masterBriefItems || []));
   snap.masterBriefFlags = JSON.parse(JSON.stringify(state.masterBriefFlags || []));
+  snap.hostIntro = state.hostIntro || '';
+  snap.hostOutro = state.hostOutro || '';
   return snap;
 };
 
@@ -6648,6 +6787,8 @@ applySession = function(data) {
   if (data.masterBriefContent) state.masterBriefContent = data.masterBriefContent;
   if (data.masterBriefItems) state.masterBriefItems = data.masterBriefItems;
   if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
+  if (data.hostIntro) state.hostIntro = data.hostIntro;
+  if (data.hostOutro) state.hostOutro = data.hostOutro;
   renderSeasonsList();
   renderMemoryPanel();
   renderGuestIntroField();
