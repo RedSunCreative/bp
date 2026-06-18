@@ -1,0 +1,5 @@
+# Supabase row backups — local only, never commit production data
+*-backup-*.json
+
+# API keys
+*.rtf
