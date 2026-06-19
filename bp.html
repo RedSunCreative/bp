@@ -3198,7 +3198,7 @@ STEP 2 — GUEST (only after intent is clear)
 - If researching: return 3-5 profiles, one per line, formatted EXACTLY as:
   FULL NAME | Title, Organization | 2-3 sentence description: who they are professionally + what makes their perspective unique for THIS show | Topic 1, Topic 2, Topic 3 | Tier: Spotlight/Rising/Discovery, LinkedIn: linkedin.com/in/their-slug, YouTube: youtube.com/@channel, Substack: name.substack.com, Instagram: instagram.com/handle, Podcast: name-of-show
 - Tier definitions — Spotlight (T1): large established platform (100k+ following, major publication, keynote circuit); Rising (T2): growing presence with an engaged niche audience (1k–100k); Discovery (T3): under the radar — a practitioner, researcher, blogger, or everyday expert that most hosts would never find. They may only have a LinkedIn profile or a personal blog. They are not less valuable; they are often MORE compelling on air because they speak from direct experience, not a polished media persona. Always include at least one T3 Discovery guest. This is the diamond-in-the-rough find that separates great shows from average ones.
-- For links: include LinkedIn (best-guess slug is fine — the UI converts it to a search). Include YouTube, Substack, Instagram, or podcast URL if you know them. Omit a link type only if you truly have no guess. Never write "N/A".
+- For links: always include LinkedIn (any slug — the UI converts it to a targeted search). For YouTube, Substack, and Podcast: include the URL only if you are confident it is correct. For Instagram: only include if you know the handle with high confidence — the UI cannot correct a wrong handle. If unsure about Instagram, omit it. Never write "N/A".
 - After guest is confirmed: offer outreach email and/or guest research brief
 
 STEP 3 — SCRIPT (only after guest is confirmed)
@@ -3552,19 +3552,39 @@ function buildGuestCard(name, title, why, topics, links, idx, tier) {
     : '';
 
   // Build link pills
-  // LinkedIn slugs are always guessed — route to a name search instead of a broken profile URL
-  const linkedinSearchUrl = 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(name);
+  // LinkedIn: name-only search returns too many matches — add org/title keywords to surface the right person first
+  const titleKeyword = (title || '').split(/[,|\/]/)[0].trim().split(' ').slice(0, 3).join(' ');
+  const linkedinKeywords = titleKeyword ? name + ' ' + titleKeyword : name;
+  const linkedinSearchUrl = 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent(linkedinKeywords);
+  // Instagram: guessed handles are unreliable — route to a Google site: search instead
+  function instagramSearchUrl(rawUrl) {
+    var handle = rawUrl.replace(/.*instagram\.com\//i, '').replace(/\//g, '').replace(/[?#].*/,'');
+    var q = handle ? '"' + handle + '" instagram' : name + ' instagram';
+    return 'https://www.google.com/search?q=site:instagram.com+' + encodeURIComponent(handle || name);
+  }
   let linkHtml = '<div class="guest-links">';
   let hasLinks = false;
   if (links && links.length > 0) {
     links.forEach(({ url, label, icon }) => {
-      let finalUrl = label === 'LinkedIn' ? linkedinSearchUrl : url;
-      const title_attr = label === 'LinkedIn' ? 'Search LinkedIn for ' + name : 'Open link (verify before sending)';
-      linkHtml += '<a class="guest-link" href="' + finalUrl + '" target="_blank" title="' + title_attr + '">' + icon + ' ' + label + '</a>';
+      let finalUrl, title_attr, displayLabel;
+      if (label === 'LinkedIn') {
+        finalUrl = linkedinSearchUrl;
+        title_attr = 'Search LinkedIn for ' + name + ' + role (right person is usually #1)';
+        displayLabel = 'LinkedIn';
+      } else if (label === 'Instagram') {
+        finalUrl = instagramSearchUrl(url);
+        title_attr = 'Find on Instagram via Google (handle unverified)';
+        displayLabel = 'Instagram ↗';
+      } else {
+        finalUrl = url;
+        title_attr = 'Open link (verify before sending)';
+        displayLabel = label;
+      }
+      linkHtml += '<a class="guest-link" href="' + finalUrl + '" target="_blank" title="' + title_attr + '">' + icon + ' ' + displayLabel + '</a>';
       hasLinks = true;
     });
   }
-  // Always show a LinkedIn search button even if Boo returned no links
+  // Always show LinkedIn if Boo returned none
   if (!hasLinks || !links.some(l => l.label === 'LinkedIn')) {
     linkHtml += '<a class="guest-link" href="' + linkedinSearchUrl + '" target="_blank" title="Search LinkedIn for ' + name + '">in LinkedIn</a>';
   }
