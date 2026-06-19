@@ -3711,7 +3711,8 @@ ${producerEmail}
 ---
 ${show}: ${SHOW_CONFIG.showTagline}`;
 
-  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=&su=' + (encodeURIComponent(subject.includes('%') ? decodeURIComponent(subject) : subject)) + '&body=' + (encodeURIComponent(bodyText));
+  var senderEmail = (userPrefs && userPrefs.gmail) || SHOW_CONFIG.producerEmail || '';
+  const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=&su=' + (encodeURIComponent(subject.includes('%') ? decodeURIComponent(subject) : subject)) + '&body=' + (encodeURIComponent(bodyText)) + (senderEmail ? '&authuser=' + encodeURIComponent(senderEmail) : '');
   window.open(gmailUrl, '_blank');
 
   // Log as action item
@@ -7410,8 +7411,8 @@ document.addEventListener('DOMContentLoaded', function() {
     <input id="up-name" type="text" placeholder="e.g. Karttikeya Mangalam"
       style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:14px;outline:none;box-sizing:border-box;"
       onkeydown="if(event.key==='Enter') document.getElementById('up-gmail').focus()">
-    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Your Gmail Address</div>
-    <input id="up-gmail" type="email" placeholder="you@gmail.com"
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Your Email (for Gmail invites)</div>
+    <input id="up-gmail" type="email" placeholder="you@yourdomain.com"
       style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:14px;outline:none;box-sizing:border-box;"
       onkeydown="if(event.key==='Enter') document.getElementById('up-apollo').focus()">
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Apollo API Key</div>
