@@ -3588,8 +3588,9 @@ function buildGuestCard(name, title, why, topics, links, idx, tier) {
   if (!hasLinks || !links.some(l => l.label === 'LinkedIn')) {
     linkHtml += '<a class="guest-link" href="' + linkedinSearchUrl + '" target="_blank" title="Search LinkedIn for ' + name + '">in LinkedIn</a>';
   }
+  linkHtml += '<button id="apollo-verify-' + cardId + '" onclick="verifyGuestWithApollo(\'' + safeName.replace(/'/g,"\\'")+'\',\'' + safeTitle.replace(/'/g,"\\'")+'\',\'' + cardId + '\')" style="background:transparent;border:1px solid rgba(59,184,201,0.3);color:rgba(59,184,201,0.7);border-radius:4px;padding:2px 9px;font-family:\'DM Mono\',monospace;font-size:0.62rem;letter-spacing:0.05em;cursor:pointer;margin-left:4px;" title="Resolve exact LinkedIn profile via Apollo">🔍 Verify</button>';
   linkHtml += '</div>';
-  linkHtml += '<div class="guest-unverified-note">⚠ Verify links before reaching out</div>';
+  linkHtml += '<div class="guest-unverified-note">⚠ Verify links before reaching out — or click 🔍 Verify for exact LinkedIn match</div>';
 
   return `
     <div class="guest-card" id="${cardId}" data-name="${safeName}" data-title="${safeTitle}">
@@ -7196,6 +7197,8 @@ function loadUserPrefs() {
 function openUserProfile() {
   document.getElementById('up-name').value = userPrefs.name || '';
   document.getElementById('up-gmail').value = userPrefs.gmail || '';
+  var apolloEl = document.getElementById('up-apollo');
+  if (apolloEl) apolloEl.value = getApolloKey() ? '••••••••••••••••' : '';
   document.getElementById('userProfileOverlay').style.display = 'flex';
   setTimeout(function(){ document.getElementById('up-name').focus(); }, 50);
 }
@@ -7209,8 +7212,10 @@ function saveUserProfile() {
   userPrefs.name  = (document.getElementById('up-name').value  || '').trim();
   userPrefs.gmail = (document.getElementById('up-gmail').value || '').trim();
   localStorage.setItem('boo_user_prefs', JSON.stringify(userPrefs));
+  var apolloVal = (document.getElementById('up-apollo').value || '').trim();
+  if (apolloVal && apolloVal !== '••••••••••••••••') saveApolloKey(apolloVal);
   document.getElementById('userProfileOverlay').style.display = 'none';
-  showToast('Profile saved');
+  showToast('Profile saved' + (apolloVal && apolloVal !== '••••••••••••••••' ? ' — Apollo key stored.' : '.'));
 }
 
 function openShowInfo() {
@@ -7219,6 +7224,63 @@ function openShowInfo() {
   document.getElementById('si-host2').textContent = SHOW_CONFIG.host2;
   document.getElementById('si-producer').textContent = SHOW_CONFIG.producerName + ' · ' + SHOW_CONFIG.producerCompany;
   document.getElementById('showInfoOverlay').style.display = 'flex';
+}
+
+function getApolloKey() { return localStorage.getItem('boo_apollo_key') || ''; }
+
+function saveApolloKey(val) {
+  val = (val || '').trim();
+  if (val) localStorage.setItem('boo_apollo_key', val);
+  else localStorage.removeItem('boo_apollo_key');
+}
+
+async function verifyGuestWithApollo(name, title, cardId) {
+  var key = getApolloKey();
+  if (!key) { showToast('Add your Apollo key in 👤 Profile first.'); return; }
+  var btn = document.getElementById('apollo-verify-' + cardId);
+  if (btn) { btn.textContent = '…'; btn.disabled = true; }
+
+  // Split name into first / last
+  var parts = (name || '').trim().split(/\s+/);
+  var firstName = parts[0] || '';
+  var lastName  = parts.slice(1).join(' ') || '';
+
+  // Extract org from title — take last segment after comma, or whole title
+  var orgGuess = (title || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean).pop() || '';
+
+  try {
+    var res = await fetch('https://api.apollo.io/v1/people/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': key },
+      body: JSON.stringify({ first_name: firstName, last_name: lastName, organization_name: orgGuess, reveal_personal_emails: false })
+    });
+    var data = await res.json();
+    var person = data && data.person;
+    var linkedinUrl = person && person.linkedin_url;
+    if (linkedinUrl) {
+      // Update all LinkedIn links on this card to the exact URL
+      var card = document.getElementById(cardId);
+      if (card) {
+        card.querySelectorAll('a.guest-link').forEach(function(a) {
+          if (a.textContent.indexOf('LinkedIn') !== -1) {
+            a.href = linkedinUrl;
+            a.title = 'Verified LinkedIn profile';
+            a.textContent = 'in LinkedIn ✓';
+            a.style.borderColor = 'var(--teal)';
+            a.style.color = 'var(--teal)';
+          }
+        });
+      }
+      if (btn) { btn.textContent = '✓ Verified'; btn.style.color = 'var(--teal)'; }
+      showToast('LinkedIn profile verified.');
+    } else {
+      if (btn) { btn.textContent = '? No match'; btn.disabled = false; }
+      showToast('Apollo couldn\'t match — try adding the org name manually.');
+    }
+  } catch(e) {
+    if (btn) { btn.textContent = '🔍 Verify'; btn.disabled = false; }
+    showToast('Apollo lookup failed — check your key in 👤 Profile.');
+  }
 }
 
 function closeShowInfo(e) {
@@ -7350,7 +7412,12 @@ document.addEventListener('DOMContentLoaded', function() {
       onkeydown="if(event.key==='Enter') document.getElementById('up-gmail').focus()">
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Your Gmail Address</div>
     <input id="up-gmail" type="email" placeholder="you@gmail.com"
-      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:18px;outline:none;box-sizing:border-box;"
+      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Sans',sans-serif;margin-bottom:14px;outline:none;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter') document.getElementById('up-apollo').focus()">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Apollo API Key</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.4;">Stored locally — never sent to GitHub. Enables precise LinkedIn matching on guest cards.</div>
+    <input id="up-apollo" type="password" placeholder="Paste your Apollo key here"
+      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:18px;outline:none;box-sizing:border-box;"
       onkeydown="if(event.key==='Enter') saveUserProfile()">
     <button onclick="saveUserProfile()" style="width:100%;background:var(--teal);color:#003a40;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:8px;padding:10px;cursor:pointer;">Save Profile</button>
     <button onclick="closeUserProfile()" style="width:100%;margin-top:8px;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;">Cancel</button>
