@@ -39,6 +39,7 @@
     background: var(--bg);
     color: var(--text);
     height: 100vh;
+    height: 100svh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -632,6 +633,8 @@
     background: var(--surface);
     border-top: 1px solid var(--border);
     flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
   }
 
   .input-row {
@@ -657,11 +660,11 @@
     font-size: 15px;
     line-height: 1.55;
     resize: none;
-    min-height: 24px;
+    min-height: 40px;
     max-height: 120px;
   }
 
-  .chat-input::placeholder { color: var(--text-dim); }
+  .chat-input::placeholder { color: rgba(255,255,255,0.35); }
 
   .send-btn {
     width: 34px;
@@ -4268,6 +4271,25 @@ function updateRightPanel() {
   updateEpisodeStatusCard();
   updateCountdown();
   updateEpSwitchBtn();
+  // Sync Episode Info static text fields (d-epnum, d-epstatus, d-eptitle) which are
+  // only set once at init and must be refreshed whenever the active episode changes.
+  (function() {
+    var _epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+    var _seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+    var _epData = state.seasons[0] && state.seasons[0].episodes.find(function(e){ return e.number === _epNum; });
+    var numEl = document.getElementById('d-epnum');
+    var statusEl = document.getElementById('d-epstatus');
+    var titleEl = document.getElementById('d-eptitle');
+    if (numEl) numEl.textContent = 'S' + _seasonNum + '-E' + _epNum;
+    if (statusEl) statusEl.textContent = ((_epData && _epData.status) || 'planning').toUpperCase();
+    if (titleEl) {
+      var t = _epData && _epData.title && _epData.title.indexOf('TBD') !== 0 ? _epData.title : '';
+      if (t) { titleEl.textContent = t; }
+      else { titleEl.innerHTML = '<span class="empty">not set</span>'; }
+    }
+    var arcEl = document.getElementById('d-arcrole');
+    if (arcEl) arcEl.textContent = (_epData && _epData.arcRole) || '';
+  })();
   var eplenEl = document.getElementById('d-eplen');
   if (eplenEl) eplenEl.textContent = (activeEp().targetTime || 60) + ' min';
   var rcEl = document.getElementById('d-record-date');
@@ -7457,9 +7479,9 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Cue List / Script Edit Overlay -->
-<div id="script-edit-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:2000;overflow-y:auto;padding:24px 16px;">
+<div id="script-edit-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.94);z-index:2000;overflow-y:auto;padding:0 16px 32px;">
   <div style="max-width:680px;margin:0 auto;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:20px 0 16px;margin-bottom:16px;position:sticky;top:0;z-index:1;background:#0E0F11;border-bottom:1px solid rgba(255,255,255,0.08);">
       <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:var(--teal);letter-spacing:0.12em;text-transform:uppercase;">📋 Show Script</div>
       <div style="display:flex;gap:8px;">
         <button onclick="addCueInOverlay()" style="background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:6px;padding:6px 14px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ ADD CUE</button>
@@ -7468,6 +7490,10 @@ document.addEventListener('DOMContentLoaded', function() {
       </div>
     </div>
     <div id="script-edit-rows"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;padding-top:20px;border-top:1px solid rgba(255,255,255,0.08);margin-top:8px;">
+      <button onclick="saveScriptEdit()" style="background:var(--teal);border:none;color:#000;border-radius:6px;padding:8px 20px;font-family:'DM Mono',monospace;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">SAVE &amp; CLOSE</button>
+      <button onclick="closeScriptEditPanel()" style="background:transparent;border:1px solid rgba(255,255,255,0.15);color:var(--text-muted);border-radius:6px;padding:8px 16px;font-family:'DM Mono',monospace;font-size:0.7rem;letter-spacing:0.08em;cursor:pointer;">Cancel</button>
+    </div>
   </div>
 </div>
 
