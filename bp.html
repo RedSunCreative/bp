@@ -2511,6 +2511,12 @@
           <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
             <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ FIND A GUEST</button>
             <button onclick="openInviteNewModal()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">✉ INVITE SOMEONE NEW</button>
+            <div style="display:flex;gap:6px;align-items:flex-start;">
+              <textarea id="guest-lookup-input" rows="2" placeholder="Paste name, title, org, URL — whatever you have"
+                style="flex:1;background:var(--field-bg,#1a1a2e);border:1px solid var(--border);border-radius:6px;padding:7px 9px;font-family:'DM Mono',monospace;font-size:0.72rem;color:var(--text);resize:none;line-height:1.4;outline:none;"
+                onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();lookupGuest();}"></textarea>
+              <button onclick="lookupGuest()" style="background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:7px 10px;font-family:'DM Sans',sans-serif;font-size:0.7rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;align-self:stretch;">LOOK UP</button>
+            </div>
           </div>
           <div id="guest-intro-field" style="display:none;"></div>
         </div>
@@ -4414,6 +4420,37 @@ function renderPersonCard(name, subtitle, role, status) {
 
 function findGuestChat() {
   findGuest();
+}
+
+function lookupGuest() {
+  const input = document.getElementById('guest-lookup-input');
+  const raw = (input ? input.value : '').trim();
+  if (!raw) return;
+  input.value = '';
+
+  const ep = activeEp();
+  const epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  const seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  const epRef = 'S' + seasonNum + '-E' + epNum;
+  const epData = state.seasons[0] && state.seasons[0].episodes
+    ? state.seasons[0].episodes.find(function(e) { return e.number === epNum; }) : null;
+  const seasonTheme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
+  const epTitle = (epData && epData.title && epData.title !== 'TBD' && !epData.title.startsWith('TBD')) ? epData.title : '';
+  const epBrief = ep.briefContent || '';
+
+  const ctxLines = [];
+  if (epTitle) ctxLines.push('Episode title: "' + epTitle + '"');
+  if (seasonTheme) ctxLines.push('Season theme: "' + seasonTheme + '"');
+  const ctxBlock = ctxLines.length ? '\n\nEPISODE CONTEXT:\n' + ctxLines.join('\n') : '';
+  const briefBlock = epBrief ? '\n\nEPISODE BRIEF:\n' + epBrief : '';
+
+  const prompt = 'I want to look up this person as a potential guest for ' + epRef + ': "' + raw + '"'
+    + ctxBlock + briefBlock
+    + '\n\nIdentify who this is. In 2 sentences: state your hypothesis about who this person is and what specific angle their work brings to this episode. Then ask me ONE question — something that would meaningfully change whether or how you frame them for this episode. Do not return a formatted guest card yet.';
+
+  const displayText = 'Look up: ' + raw.slice(0, 60) + (raw.length > 60 ? '...' : '');
+  setView('chat');
+  triggerBooDirectly(displayText, prompt);
 }
 
 function renderShowPanel(content) {
