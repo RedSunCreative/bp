@@ -534,6 +534,21 @@
   }
   .invite-compact-btn:hover { background: rgba(74,222,128,0.12); }
 
+  .add-guest-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--teal);
+    background: transparent;
+    color: var(--teal);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .add-guest-btn:hover { background: rgba(59,184,201,0.12); }
+
   .guest-tier {
     font-family: 'DM Mono', monospace;
     font-size: 9px;
@@ -3610,6 +3625,7 @@ function buildGuestCard(name, title, why, topics, links, idx, tier) {
           <div style="font-size:12px;color:var(--teal);line-height:1.4;">${title}</div>
         </div>
         <div class="guest-card-actions">
+          <button class="add-guest-btn" onclick="addGuestUnconfirmed('${safeName}', '${safeTitle}', this)">+ ADD GUEST</button>
           <button class="select-guest-btn" onclick="considerGuest('${safeName}', '${safeTitle}', this)">+ Consider</button>
           <button class="invite-compact-btn" onclick="openGmailInvite('${safeName}', '${safeTitle}')">✉ Invite</button>
         </div>
@@ -3819,6 +3835,22 @@ function considerGuest(name, title, btn) {
   addMsg('boo', '<strong>' + name + '</strong> added to your shortlist. Review in the Guests panel — when you\'re ready, hit Invite to send outreach.');
 }
 
+function addGuestUnconfirmed(name, title, btn) {
+  var list = activeEp().considerations;
+  if (!list) { activeEp().considerations = []; list = activeEp().considerations; }
+  var already = list.find(function(g) { return g.name === name; });
+  if (already) {
+    showToast(name.split(' ')[0] + ' is already on your guest list.');
+    return;
+  }
+  list.push({ name: name, title: title, status: 'unconfirmed', guestIntro: '', confirmed: false, email: '', mobile: '', sendKit: false });
+  if (btn) { btn.textContent = '✓ Added'; btn.disabled = true; btn.style.color = 'var(--teal)'; btn.style.borderColor = 'var(--teal)'; }
+  renderConsiderations();
+  updateContextBar();
+  autoSave('guest added unconfirmed');
+  addMsg('boo', '<strong>' + name + '</strong> added to your guest list as unconfirmed. Add their email and mobile in the Guests panel to send them the Welcome Kit.');
+}
+
 function renderConsiderations() {
   var el = document.getElementById('guest-list');
   if (!el) return;
@@ -3835,8 +3867,9 @@ function renderConsiderations() {
   list.forEach(function(g, idx) {
     var safeName  = g.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     var safeTitle = (g.title || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-    var invited   = g.status === 'invited';
-    var intro     = g.guestIntro || '';
+    var invited      = g.status === 'invited';
+    var unconfirmed  = g.status === 'unconfirmed';
+    var intro        = g.guestIntro || '';
     var introHtml = intro
       ? '<div style="display:flex;justify-content:flex-end;margin-bottom:4px;"><button class="copy-btn" onclick="copyToClipboard(((activeEp().considerations||[]).find(function(c){return c.name===\'' + safeName + '\'})||{}).guestIntro||\'\'  ,this)">⎘ copy</button></div>'
         + '<textarea style="' + taStyle + '" oninput="saveConsiderationIntro(\'' + safeName + '\',this.value)">' + esc(intro) + '</textarea>'
@@ -3849,8 +3882,8 @@ function renderConsiderations() {
       + '<div class="guest-name">' + esc(g.name) + '</div>'
       + '<div class="guest-type">' + esc(g.title || '') + '</div>'
       + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;">'
-      + '<span style="font-family:DM Mono,monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;color:' + (invited ? 'var(--teal)' : 'var(--gold)') + ';">'
-      + (invited ? '✓ INVITED' : 'FOR CONSIDERATION') + '</span>'
+      + '<span style="font-family:DM Mono,monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;color:' + (invited ? 'var(--teal)' : unconfirmed ? 'var(--orange)' : 'var(--gold)') + ';">'
+      + (invited ? '✓ INVITED' : unconfirmed ? '◆ UNCONFIRMED' : 'FOR CONSIDERATION') + '</span>'
       + '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;">'
       + '<input type="checkbox" ' + (g.confirmed ? 'checked' : '') + ' onchange="toggleConsiderationConfirmed(\'' + safeName + '\')" style="width:11px;height:11px;accent-color:var(--teal);cursor:pointer;">'
       + '<span style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.08em;color:' + (g.confirmed ? 'var(--teal)' : 'var(--muted)') + ';">CONFIRMED</span>'
