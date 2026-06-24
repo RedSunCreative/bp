@@ -51,7 +51,7 @@ function fromBase64Url(s){const b64=(s+'==').replace(/-/g,'+').replace(/_/g,'/')
   catch(e){document.getElementById('content').innerHTML='<p style="color:red;padding:60px 0;text-align:center;">Could not load guest guide data.</p>';return;}
 
   const{epNum,epTitle,seasonTheme,epDate,epTime,guestName,guestTitle,
-        producerName,producerEmail,host1,host2,showName,showTagline,platform}=data;
+        producerName,producerEmail,host1,host2,showName,showTagline,platform,hostIntro}=data;
 
   const firstName=(guestName||'there').split(' ')[0];
   const show=showName||'Anno Coding';
@@ -109,7 +109,9 @@ function fromBase64Url(s){const b64=(s+'==').replace(/-/g,'+').replace(/_/g,'/')
     </div>
 
     <h2>What This Show Is</h2>
-    <p>${esc(show)} explores the biggest question in K-12 education right now: as AI takes over code generation, data analysis, and routine knowledge work — what do we teach? The audience is CS teachers, district leaders, curriculum directors, and the school administrators making decisions today. They're looking for honest conversation, not press releases.</p>
+    ${hostIntro
+      ? `<p>${esc(hostIntro)}</p>`
+      : `<p>${esc(show)} explores the biggest question in K-12 education right now: as AI takes over code generation, data analysis, and routine knowledge work — what do we teach? The audience is CS teachers, district leaders, curriculum directors, and the school administrators making decisions today. They're looking for honest conversation, not press releases.</p>`}
     <p>You were invited because your work sits at the center of this question. We're not here for a polished media persona — we're here for your real experience, your direct perspective, and what you've actually seen happen on the ground.</p>
 
     <h2>Technical Setup</h2>

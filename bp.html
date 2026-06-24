@@ -350,6 +350,10 @@
   .msg-bubble strong { color: var(--gold); font-weight: 600; }
   .msg-bubble em { color: var(--teal); font-style: italic; }
 
+  .msg-footer { display: flex; gap: 10px; margin-top: 5px; padding-left: 2px; }
+  .msg-footer button { background:transparent; border:none; color:var(--text-muted); font-family:'DM Mono',monospace; font-size:10px; cursor:pointer; padding:2px 0; opacity:0.55; letter-spacing:0.03em; transition:all 0.15s; }
+  .msg-footer button:hover { opacity:1; color:var(--teal); }
+
   /* Action buttons in messages */
   .msg-actions {
     display: flex;
@@ -3333,11 +3337,18 @@ function addMsg(role, html, actions, rawText) {
   const isHtml = html.includes('<div ') || html.includes('<button') || html.includes('<strong>');
   const content = isHtml ? html : formatBubble(html);
 
+  const booFooter = role === 'boo'
+    ? `<div class="msg-footer">
+        <button onclick="saveFromChat(this,'hostIntro')">← host intro</button>
+        <button onclick="saveFromChat(this,'hostOutro')">← host outro</button>
+      </div>`
+    : '';
   div.innerHTML = `
     <div class="msg-avatar">${avatarText}</div>
     <div class="msg-body">
       <div class="msg-name">${name}</div>
       <div class="msg-bubble">${content}${actions ? buildActions(actions) : ''}</div>
+      ${booFooter}
     </div>
   `;
 
@@ -4007,7 +4018,8 @@ function generateGuestKitUrl(name) {
     host2: SHOW_CONFIG.host2 || '',
     showName: SHOW_CONFIG.showName || '',
     showTagline: SHOW_CONFIG.showTagline || '',
-    platform: SHOW_CONFIG.defaultLocation || 'Riverside.fm'
+    platform: SHOW_CONFIG.defaultLocation || 'Riverside.fm',
+    hostIntro: (state.hostIntro || '').slice(0, 800)
   };
   return 'https://redsuncreative.github.io/bp/kit-view.html?d=' + toBase64Url(data);
 }
@@ -5307,6 +5319,26 @@ function renderGuestIntroField() {
 
 function getHostIntro() { return state.hostIntro || SHOW_CONFIG.hostIntro || ''; }
 function getHostOutro() { return state.hostOutro || SHOW_CONFIG.hostOutro || ''; }
+
+function saveFromChat(btn, field) {
+  var bubble = btn.closest('.msg-body').querySelector('.msg-bubble');
+  var text = bubble ? (bubble.innerText || bubble.textContent || '').trim() : '';
+  if (!text) return;
+  if (field === 'hostIntro') {
+    state.hostIntro = text;
+    autoSave('host intro saved from chat');
+    renderScriptFields();
+    showToast('Host intro saved to Show Scripts.');
+  } else if (field === 'hostOutro') {
+    state.hostOutro = text;
+    autoSave('host outro saved from chat');
+    renderScriptFields();
+    showToast('Host outro saved to Show Scripts.');
+  }
+  btn.textContent = '✓ saved';
+  btn.style.color = 'var(--teal)';
+  btn.style.opacity = '1';
+}
 
 function saveHostIntro(val) {
   state.hostIntro = val;
