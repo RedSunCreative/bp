@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Anno Coding — Guest Guide</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;font-size:11pt;line-height:1.7;background:#fff;}
+    .page{max-width:7.5in;margin:0 auto;padding:0.7in;}
+    .show-header{background:#0E0F11;color:#fff;padding:28px 32px;margin:-0.7in -0.7in 32px;border-bottom:4px solid #3BB8C9;}
+    .show-name{font-family:Arial,sans-serif;font-size:22pt;font-weight:900;letter-spacing:-0.5px;color:#fff;line-height:1;}
+    .show-tagline{font-family:Arial,sans-serif;font-size:9.5pt;color:#3BB8C9;letter-spacing:0.12em;text-transform:uppercase;margin-top:7px;}
+    .doc-title{font-family:Arial,sans-serif;font-size:17pt;font-weight:900;color:#3BB8C9;letter-spacing:-0.3px;border-bottom:3px solid #3BB8C9;padding-bottom:10px;margin-bottom:22px;line-height:1.3;}
+    h2{font-family:Arial,sans-serif;font-size:12pt;font-weight:800;color:#0E0F11;margin:22px 0 9px;text-transform:uppercase;letter-spacing:0.6px;border-left:3px solid #3BB8C9;padding-left:10px;}
+    ul{padding-left:1.1in;}
+    li{margin-bottom:5px;}
+    p{margin-bottom:12px;}
+    hr{border:none;border-top:1px solid #ddd;margin:22px 0;}
+    .detail-row{display:flex;gap:12px;margin-bottom:6px;}
+    .detail-label{font-family:Arial,sans-serif;font-size:9pt;font-weight:700;color:#3BB8C9;text-transform:uppercase;letter-spacing:0.05em;width:90px;flex-shrink:0;padding-top:1px;}
+    .detail-val{font-size:10.5pt;}
+    .cb{display:inline-block;width:13px;height:13px;border:1.5px solid #888;border-radius:2px;vertical-align:middle;margin-right:8px;flex-shrink:0;margin-top:2px;}
+    .ci{display:flex;align-items:flex-start;margin-bottom:7px;}
+    .ci-text{flex:1;}
+    .host-card{background:#f5f7fa;border-left:3px solid #3BB8C9;padding:12px 16px;margin-bottom:10px;border-radius:0 6px 6px 0;}
+    .host-name{font-family:Arial,sans-serif;font-size:11pt;font-weight:700;color:#0E0F11;}
+    .host-bio{font-size:10pt;color:#444;margin-top:3px;}
+    .quote-block{background:#f0fbfc;border-left:4px solid #3BB8C9;padding:12px 16px;margin:16px 0;font-style:italic;color:#333;font-size:10.5pt;line-height:1.6;}
+    .print-btn{display:block;margin:0 auto 28px;background:#3BB8C9;color:#fff;border:none;border-radius:6px;padding:11px 32px;font-family:Arial,sans-serif;font-size:11pt;font-weight:700;cursor:pointer;letter-spacing:0.5px;}
+    .print-btn:hover{background:#2ea3b5;}
+    .footer-line{font-family:Arial,sans-serif;font-size:9pt;color:#999;border-top:1px solid #eee;margin-top:40px;padding-top:10px;text-align:center;}
+    @media print{.print-btn{display:none;} .show-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}
+  </style>
+</head>
+<body>
+<div class="page" id="content">
+  <p style="text-align:center;color:#888;padding:60px 0;">Loading guest guide...</p>
+</div>
+<script>
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt12(t){if(!t)return'—';const[hS,mS]=t.split(':');let h=parseInt(hS,10);const m=parseInt(mS||'0',10);const ap=h>=12?'PM':'AM';h=h%12||12;return`${h}:${String(m).padStart(2,'0')} ${ap} CT`;}
+function fmtDate(ds){if(!ds)return'—';const[y,mo,d]=ds.split('-').map(Number);const M=['January','February','March','April','May','June','July','August','September','October','November','December'];const sfx=[1,21,31].includes(d)?'st':[2,22].includes(d)?'nd':[3,23].includes(d)?'rd':'th';return`${M[mo-1]} ${d}${sfx}, ${y}`;}
+function fromBase64Url(s){const b64=(s+'==').replace(/-/g,'+').replace(/_/g,'/');const bin=atob(b64);const bytes=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)bytes[i]=bin.charCodeAt(i);return JSON.parse(new TextDecoder().decode(bytes));}
+
+(function(){
+  const raw=new URLSearchParams(location.search).get('d');
+  if(!raw){document.getElementById('content').innerHTML='<p style="color:red;padding:60px 0;text-align:center;">No guest guide data found in URL.</p>';return;}
+  let data;
+  try{data=fromBase64Url(raw);}
+  catch(e){document.getElementById('content').innerHTML='<p style="color:red;padding:60px 0;text-align:center;">Could not load guest guide data.</p>';return;}
+
+  const{epNum,epTitle,seasonTheme,epDate,epTime,guestName,guestTitle,
+        producerName,producerEmail,host1,host2,showName,showTagline,platform}=data;
+
+  const firstName=(guestName||'there').split(' ')[0];
+  const show=showName||'Anno Coding';
+  const tagline=showTagline||'K-12 CS Education in a Post-Coding Era';
+  const h1=host1||'Karttikeya Mangalam';
+  const h2=host2||'Matthew Callison';
+  const prod=producerName||'Mark Caddell';
+  const prodEmail=producerEmail||'mark@redsuncreative.net';
+  const rec=platform||'Riverside.fm';
+
+  const dateSection=epDate
+    ? `<div class="detail-row"><div class="detail-label">Date</div><div class="detail-val">${fmtDate(epDate)}${epTime?' at '+fmt12(epTime):''}</div></div>`
+    : '';
+  const titleSection=epTitle
+    ? `<div class="detail-row"><div class="detail-label">Episode</div><div class="detail-val">Episode ${esc(epNum)} — ${esc(epTitle)}</div></div>`
+    : `<div class="detail-row"><div class="detail-label">Episode</div><div class="detail-val">Episode ${esc(epNum)}</div></div>`;
+  const themeSection=seasonTheme
+    ? `<div class="detail-row"><div class="detail-label">Season</div><div class="detail-val">Season 1 — "${esc(seasonTheme)}"</div></div>`
+    : '';
+
+  document.title=`${show} — Guest Guide E${epNum}`;
+
+  document.getElementById('content').innerHTML=`
+    <button class="print-btn" onclick="window.print()">Print / Save as PDF</button>
+
+    <div class="show-header">
+      <div class="show-name">${esc(show)}</div>
+      <div class="show-tagline">${esc(tagline)}</div>
+    </div>
+
+    <div class="doc-title">${esc(show)} Guest Guide — Episode ${esc(epNum)}</div>
+
+    <p>Hi ${esc(firstName)},</p>
+    <p>We're glad you're joining us. This guide has everything you need to show up ready and confident for your recording session.</p>
+
+    <div class="quote-block">
+      "If AI can write the code — what are we actually teaching students?" That's the question this show is built around. We're not debating it. We're living in the middle of it. Your perspective is part of the answer.
+    </div>
+
+    <h2>Recording Details</h2>
+    ${titleSection}
+    ${themeSection}
+    ${dateSection}
+    <div class="detail-row"><div class="detail-label">Platform</div><div class="detail-val">${esc(rec)} — you'll receive a direct recording link. No download required.</div></div>
+    <div class="detail-row"><div class="detail-label">Format</div><div class="detail-val">Conversation-style interview. Audio-first, video captured for clips. Approximately 30–45 minutes.</div></div>
+
+    <h2>Your Hosts</h2>
+    <div class="host-card">
+      <div class="host-name">${esc(h1)}</div>
+      <div class="host-bio">AI researcher. Former Google, Meta. PhD, UC Berkeley. He holds the technologist's view: what does the world actually need from the next generation of students?</div>
+    </div>
+    <div class="host-card">
+      <div class="host-name">${esc(h2)}${h2.includes('PhD')||h2.includes('Dr.')?'':' PhD'}</div>
+      <div class="host-bio">Director of Innovation, South Fayette Township School District. He holds the educator's view: what should students become? Neither host is wrong. That's what makes the conversation interesting.</div>
+    </div>
+
+    <h2>What This Show Is</h2>
+    <p>${esc(show)} explores the biggest question in K-12 education right now: as AI takes over code generation, data analysis, and routine knowledge work — what do we teach? The audience is CS teachers, district leaders, curriculum directors, and the school administrators making decisions today. They're looking for honest conversation, not press releases.</p>
+    <p>You were invited because your work sits at the center of this question. We're not here for a polished media persona — we're here for your real experience, your direct perspective, and what you've actually seen happen on the ground.</p>
+
+    <h2>Technical Setup</h2>
+    <p>We use ${esc(rec)} for recording. It runs in your browser — no account or download needed. You'll receive your session link before we record.</p>
+    <div class="ci"><div class="cb"></div><div class="ci-text">Click your ${esc(rec)} link when it's time — join a few minutes early</div></div>
+    <div class="ci"><div class="cb"></div><div class="ci-text">Use <strong>headphones or earbuds</strong> — prevents audio echo</div></div>
+    <div class="ci"><div class="cb"></div><div class="ci-text">Find a <strong>quiet room with a closed door</strong> — background noise is hard to remove in post</div></div>
+    <div class="ci"><div class="cb"></div><div class="ci-text">Position your camera at <strong>eye level</strong>, facing a window or light source if possible</div></div>
+    <div class="ci"><div class="cb"></div><div class="ci-text">If you're on a laptop, plug into power — battery throttle can cut performance mid-session</div></div>
+    <div class="ci"><div class="cb"></div><div class="ci-text">Close extra browser tabs and apps — ${esc(rec)} needs bandwidth</div></div>
+
+    <h2>What to Wear</h2>
+    <ul>
+      <li><strong>Solid colors</strong> work best on camera</li>
+      <li>Avoid busy patterns, small stripes, or logos — they can strobe on video</li>
+      <li>All-white and all-black can be tricky with lighting; mid-tones are ideal</li>
+      <li>Wear whatever makes you feel natural and like yourself</li>
+    </ul>
+
+    <h2>What to Expect</h2>
+    <p>The conversation will go deeper on one or two threads rather than covering 10 topics at surface level. ${esc(h1)} and ${esc(h2)} are substantive conversationalists — expect to be challenged in a respectful way. That's the format.</p>
+    <ul>
+      <li>We'll send you a <strong>guest intro paragraph</strong> before recording so you can verify it's accurate</li>
+      <li>We'll share <strong>topic areas</strong> in advance — not a rigid script, but a direction</li>
+      <li>You can flag anything off-limits and we'll respect it</li>
+      <li>Recording runs approximately 30–45 minutes; the episode edit is typically 25–35 minutes</li>
+    </ul>
+
+    <h2>After We Record</h2>
+    <ul>
+      <li>We'll let you know when the episode is scheduled to release</li>
+      <li>We'll share a clip you can use to promote the episode on social media</li>
+      <li>If the community takes the conversation somewhere interesting, we'll loop you in</li>
+    </ul>
+
+    <hr>
+    <p><b>Questions before recording?</b> Reach out to ${esc(prod)}:</p>
+    <p style="margin-top:4px;"><a href="mailto:${esc(prodEmail)}">${esc(prodEmail)}</a></p>
+
+    <div class="footer-line">${esc(show)} Guest Guide &mdash; Episode ${esc(epNum)} &mdash; Produced by Red Sun Creative Studio</div>`;
+})();
+</script>
+</body>
+</html>

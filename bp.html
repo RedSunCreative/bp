@@ -3803,7 +3803,7 @@ function considerGuest(name, title, btn) {
     showToast(name.split(' ')[0] + ' is already on your shortlist.');
     return;
   }
-  list.push({ name: name, title: title, status: 'considering', guestIntro: '' });
+  list.push({ name: name, title: title, status: 'considering', guestIntro: '', confirmed: false, email: '', mobile: '', sendKit: false });
 
   // Visual feedback on the card button
   if (btn) { btn.textContent = '✓ Added'; btn.disabled = true; btn.style.color = 'var(--teal)'; btn.style.borderColor = 'var(--teal)'; }
@@ -3848,17 +3848,40 @@ function renderConsiderations() {
       + '<div style="min-width:0;flex:1;">'
       + '<div class="guest-name">' + esc(g.name) + '</div>'
       + '<div class="guest-type">' + esc(g.title || '') + '</div>'
+      + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:3px;">'
       + '<span style="font-family:DM Mono,monospace;font-size:9px;font-weight:700;letter-spacing:0.08em;color:' + (invited ? 'var(--teal)' : 'var(--gold)') + ';">'
       + (invited ? '✓ INVITED' : 'FOR CONSIDERATION') + '</span>'
+      + '<label style="display:flex;align-items:center;gap:3px;cursor:pointer;">'
+      + '<input type="checkbox" ' + (g.confirmed ? 'checked' : '') + ' onchange="toggleConsiderationConfirmed(\'' + safeName + '\')" style="width:11px;height:11px;accent-color:var(--teal);cursor:pointer;">'
+      + '<span style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.08em;color:' + (g.confirmed ? 'var(--teal)' : 'var(--muted)') + ';">CONFIRMED</span>'
+      + '</label>'
       + '</div>'
-      + '<div style="display:flex;gap:5px;align-items:center;flex-shrink:0;">'
+      + '<div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">'
+      + '<input type="email" value="' + esc(g.email||'') + '" placeholder="guest email" onchange="saveConsiderationField(\'' + safeName + '\',\'email\',this.value)" style="flex:1;min-width:100px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;">'
+      + '<input type="tel" value="' + esc(g.mobile||'') + '" placeholder="mobile" onchange="saveConsiderationField(\'' + safeName + '\',\'mobile\',this.value)" style="width:100px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;">'
+      + '</div>'
+      + '</div>'
+      + '<div style="display:flex;gap:4px;align-items:flex-start;flex-shrink:0;flex-direction:column;">'
       + (!invited
           ? '<button onclick="inviteConsideration(\'' + safeName + '\',\'' + safeTitle + '\')" style="font-size:10px;padding:4px 8px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:DM Mono,monospace;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">✉ Invite</button>'
           : '<span style="font-size:10px;color:var(--teal);font-family:DM Mono,monospace;white-space:nowrap;">Email sent</span>')
-      + '<button onclick="removeConsideration(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;" title="Remove">✕</button>'
+      + '<button onclick="removeConsideration(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;align-self:flex-end;" title="Remove">✕</button>'
       + '</div>'
       + '</div>'
-      + '<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">'
+      + '<div style="margin-top:7px;">'
+      + '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;margin-bottom:5px;">'
+      + '<input type="checkbox" ' + (g.sendKit ? 'checked' : '') + ' onchange="toggleConsiderationKit(\'' + safeName + '\')" style="width:12px;height:12px;accent-color:#6366f1;cursor:pointer;flex-shrink:0;">'
+      + '<span style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;color:' + (g.sendKit ? '#6366f1' : 'var(--muted)') + ';">SEND WELCOME KIT</span>'
+      + '</label>'
+      + (g.sendKit
+        ? '<div style="display:flex;gap:5px;margin-bottom:7px;flex-wrap:wrap;">'
+          + '<button onclick="window.open(generateGuestKitUrl(\'' + safeName + '\'),\'_blank\')" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.1);color:#6366f1;cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.06em;">VIEW / PDF</button>'
+          + (g.email ? '<button onclick="openKitEmail(\'' + safeName + '\')" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.1);color:#6366f1;cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.06em;">EMAIL</button>' : '')
+          + (g.mobile ? '<button onclick="openKitSMS(\'' + safeName + '\')" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid rgba(99,102,241,0.5);background:rgba(99,102,241,0.1);color:#6366f1;cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.06em;">TEXT</button>' : '')
+          + '</div>'
+        : '')
+      + '</div>'
+      + '<div style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">'
       + '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Guest Intro</div>'
       + introHtml
       + '</div>'
@@ -3894,6 +3917,87 @@ function removeConsideration(name) {
   activeEp().considerations = list.filter(function(g) { return g.name !== name; });
   renderConsiderations();
   autoSave('guest removed from consideration');
+}
+
+function toggleConsiderationConfirmed(name) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g) return;
+  g.confirmed = !g.confirmed;
+  renderConsiderations();
+  autoSave('guest confirmed');
+}
+
+function saveConsiderationField(name, field, val) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g) return;
+  g[field] = val;
+  autoSave('guest field updated');
+}
+
+function toggleConsiderationKit(name) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g) return;
+  g.sendKit = !g.sendKit;
+  renderConsiderations();
+  autoSave('guest kit toggled');
+}
+
+function toBase64Url(obj) {
+  var bytes = new TextEncoder().encode(JSON.stringify(obj));
+  var s = '';
+  bytes.forEach(function(b) { s += String.fromCharCode(b); });
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function generateGuestKitUrl(name) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g) return '';
+  var ep = activeEp();
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var epData = state.seasons[0] && state.seasons[0].episodes
+    ? state.seasons[0].episodes.find(function(e) { return e.number === epNum; }) : null;
+  var upcoming = (ep.recordingDates || []).filter(function(d) {
+    return !isSlotPassed(d.date, d.time);
+  });
+  var slot = upcoming[0] || {};
+  var data = {
+    epNum: String(epNum),
+    epTitle: (epData && epData.title && !epData.title.startsWith('TBD')) ? epData.title : '',
+    seasonTheme: (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '',
+    epDate: slot.date || ep.recordDate || '',
+    epTime: slot.time || ep.recordTime || '',
+    guestName: g.name || '',
+    guestTitle: g.title || '',
+    producerName: SHOW_CONFIG.producerName || '',
+    producerEmail: SHOW_CONFIG.producerEmail || '',
+    host1: SHOW_CONFIG.host1 || '',
+    host2: SHOW_CONFIG.host2 || '',
+    showName: SHOW_CONFIG.showName || '',
+    showTagline: SHOW_CONFIG.showTagline || '',
+    platform: SHOW_CONFIG.defaultLocation || 'Riverside.fm'
+  };
+  return 'https://redsuncreative.github.io/bp/kit-view.html?d=' + toBase64Url(data);
+}
+
+function openKitEmail(name) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g || !g.email) return;
+  var url = generateGuestKitUrl(name);
+  var firstName = (g.name || 'there').split(' ')[0];
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var subject = encodeURIComponent('Anno Coding Podcast — Episode ' + epNum + ' Guest Guide');
+  var body = encodeURIComponent('Hi ' + firstName + ',\n\nYou\'re confirmed for Anno Coding Episode ' + epNum + '! Here\'s your guest guide with everything you need before we record:\n\n' + url + '\n\nLet me know if you have any questions.\n\nMark Caddell\nRed Sun Creative Studio');
+  window.open('https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(g.email) + '&su=' + subject + '&body=' + body, '_blank');
+}
+
+function openKitSMS(name) {
+  var g = (activeEp().considerations || []).find(function(c) { return c.name === name; });
+  if (!g || !g.mobile) return;
+  var url = generateGuestKitUrl(name);
+  var firstName = (g.name || 'there').split(' ')[0];
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var msg = 'Hi ' + firstName + '! Your Anno Coding Episode ' + epNum + ' guest guide is ready — everything you need before we record. View it here: ' + url;
+  window.open('sms:' + g.mobile + '?body=' + encodeURIComponent(msg), '_self');
 }
 
 function draftEmailCurrentGuest() {
