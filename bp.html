@@ -4268,11 +4268,15 @@ function renderGuestRepo() {
     + '<span style="' + sec + '">Show</span>'
     + '<span style="' + lbl + '">Why</span>'
     + '<textarea onchange="saveRepoField(\'' + safeName + '\',\'why\',this.value)" placeholder="—" style="' + ta + 'min-height:40px;margin-bottom:5px;">' + esc(g.why||'') + '</textarea>'
-    + '<span style="' + lbl + '">Pod Intro</span>'
-    + '<textarea onchange="saveRepoField(\'' + safeName + '\',\'intro\',this.value)" placeholder="—" style="' + ta + 'min-height:55px;margin-bottom:5px;">' + esc(g.intro||'') + '</textarea>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">'
+    + '<span style="' + lbl + 'margin-bottom:0;">Pod Intro</span>'
+    + '<button onclick="writeRepoGuestIntro(\'' + safeName + '\')" style="font-size:9px;padding:1px 7px;border-radius:3px;border:1px solid rgba(59,184,201,0.35);background:rgba(59,184,201,0.08);color:rgba(59,184,201,0.8);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;">✦ Write</button>'
+    + '</div>'
+    + '<textarea id="repo-intro-' + selId + '" onchange="saveRepoField(\'' + safeName + '\',\'intro\',this.value)" placeholder="—" style="' + ta + 'min-height:55px;margin-bottom:5px;">' + esc(g.intro||'') + '</textarea>'
 
-    // Producer notes + assign
-    + '<input type="text" value="' + esc(g.notes||'') + '" placeholder="producer notes…" onchange="saveRepoField(\'' + safeName + '\',\'notes\',this.value)" style="' + inp + 'margin-bottom:5px;">'
+    // Boo's Notes + assign
+    + '<span style="' + lbl + '">Boo\'s Notes</span>'
+    + '<textarea onchange="saveRepoField(\'' + safeName + '\',\'notes\',this.value)" placeholder="Boo\'s research notes…" style="' + ta + 'min-height:48px;margin-bottom:5px;">' + esc(g.notes||'') + '</textarea>'
     + '<div style="display:flex;gap:5px;">'
     + '<select id="' + selId + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;cursor:pointer;">' + epOpts + '</select>'
     + '<button onclick="assignFromRepo(\'' + safeName + '\',document.getElementById(\'' + selId + '\').value)" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;white-space:nowrap;">→ ASSIGN</button>'
@@ -8388,11 +8392,57 @@ async function researchRepoGuest(name) {
     hideTyping();
     var parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply);
+    // Auto-save brief to Boo's Notes
+    saveRepoField(g.name, 'notes', reply.replace(/<[^>]+>/g, '').trim());
     autoSave('guest research', true);
   } catch(err) {
     activeEp().conversationLog.push({ role: 'user', text: researchPrompt });
     hideTyping();
     addMsg('boo', 'Research hit a snag: <em>' + esc(err.message) + '</em>. Try again?');
+  }
+}
+
+async function writeRepoGuestIntro(name) {
+  var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
+  if (!g) return;
+  var firstName = g.firstName || g.name.split(' ')[0];
+  showToast('Boo is writing the intro for ' + firstName + '…');
+
+  var ctx = 'Guest: ' + g.name + '\n'
+    + (g.title       ? 'Title: '       + g.title       + '\n' : '')
+    + (g.description ? 'Bio: '         + g.description + '\n' : '')
+    + (g.why         ? 'Why on show: ' + g.why         + '\n' : '')
+    + (g.notes       ? 'Research notes:\n' + g.notes   + '\n' : '')
+    + (g.source1     ? 'Source: '      + g.source1     + '\n' : '')
+    + (g.source2     ? 'Source: '      + g.source2     + '\n' : '');
+
+  var prompt = 'Show: ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
+    + 'Hosts: ' + SHOW_CONFIG.host1 + (SHOW_CONFIG.host2 ? ' and ' + SHOW_CONFIG.host2 : '') + '\n\n'
+    + ctx + '\n'
+    + 'Write a 2–3 sentence podcast introduction that a host reads aloud to bring this guest on. '
+    + 'Lead with their credentials and what makes their perspective earned. '
+    + 'Make it specific to this show\'s audience — not a generic bio read. '
+    + 'No "I\'m thrilled to welcome" or filler. Prose only. Return ONLY the introduction text.';
+
+  try {
+    var resp = await fetch(PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON, 'apikey': SB_ANON },
+      body: JSON.stringify({ model: MODEL, max_tokens: 300,
+        system: 'You are Boo, a seasoned podcast floor director. Specific, confident, never generic.',
+        messages: [{ role: 'user', content: prompt }] })
+    });
+    var data = await resp.json();
+    var text = (data.content && data.content[0] && data.content[0].text || '').trim();
+    if (!text) throw new Error('empty');
+    saveRepoField(g.name, 'intro', text);
+    // Update textarea in DOM directly so user sees it immediately
+    var selId = 'rsel-' + g.name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    var ta = document.getElementById('repo-intro-' + selId);
+    if (ta) ta.value = text;
+    showToast('Intro written for ' + firstName + '.');
+  } catch(e) {
+    showToast('Intro failed — try again.');
   }
 }
 
