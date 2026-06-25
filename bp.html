@@ -4446,9 +4446,22 @@ function importGuestsDirect() {
     document.getElementById('repo-import-text').value = '';
     document.getElementById('repo-import-area').style.display = 'none';
     showToast(added + ' guest' + (added !== 1 ? 's' : '') + ' added to repository.');
+    booPostImportNotice(added);
   } else {
     showToast('No new guests found — check column format or duplicates.');
   }
+}
+
+function booPostImportNotice(added) {
+  var sNum = state.currentSeason ? state.currentSeason.number : 1;
+  var epCount = Object.keys(episodeStore).length || '';
+  var epPhrase = epCount ? ' across ' + epCount + ' episode' + (epCount !== 1 ? 's' : '') : '';
+  addMsg('boo',
+    added + ' guest' + (added !== 1 ? 's' : '') + ' are now in the repository. '
+    + 'I can study the group and suggest how they map to Season ' + sNum + epPhrase
+    + ' — matching each guest to the episode where their angle fits the arc best, and drafting episode titles consistent with Plot Mountain.'
+    + '<br><br><button onclick="booMapSeason()" style="margin-top:4px;padding:6px 14px;background:rgba(59,184,201,0.15);border:1px solid rgba(59,184,201,0.4);border-radius:4px;color:#3BB8C9;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;letter-spacing:0.06em;cursor:pointer;">✦ Map to Season Arc</button>'
+  );
 }
 
 async function importGuestsViaBoo() {
@@ -4489,6 +4502,7 @@ async function importGuestsViaBoo() {
       document.getElementById('repo-import-text').value = '';
       document.getElementById('repo-import-area').style.display = 'none';
       showToast(added + ' guest' + (added !== 1 ? 's' : '') + ' added to repository.');
+      booPostImportNotice(added);
     } else {
       showToast('Boo returned a response but no guests were parsed — try Quick Import.');
     }
