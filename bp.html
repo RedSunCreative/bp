@@ -4181,6 +4181,7 @@ function addToRepo(name, title, tier, why) {
   var entry = { id: 'repo-' + Date.now() + Math.random().toString(36).slice(2), name: name, firstName: '', lastName: '', title: title || '', tier: tier || '', why: why || '', intro: '', email: '', day: '', time: '', timezone: '', description: '', source1: '', source2: '', location: '', notes: '', assignedTo: null };
   state.guestRepo.push(entry);
   renderGuestRepo();
+  stashGuestRepo();
   autoSave('guest repo updated', true);
   return entry;
 }
@@ -4451,6 +4452,7 @@ function importGuestsDirect() {
     }
   });
   if (added > 0) {
+    stashGuestRepo();
     autoSave('repo import', true);
     renderGuestRepo();
     renderSeasonView();
@@ -7751,6 +7753,16 @@ buildSessionSnapshot = function() {
   snap.hostIntro = state.hostIntro || '';
   snap.hostOutro = state.hostOutro || '';
   snap.guestRepo = JSON.parse(JSON.stringify(state.guestRepo || []));
+
+  // Guard: never silently overwrite real guests with an empty list.
+  // If the in-memory repo is empty but the last confirmed save had guests,
+  // use the last-known-good copy and warn so we can track the root cause.
+  if (snap.guestRepo.length === 0 && _lastSavedSnap && (_lastSavedSnap.guestRepo || []).length > 0) {
+    console.warn('[bp] guestRepo guard triggered — state.guestRepo is empty but last save had', _lastSavedSnap.guestRepo.length, 'guests. Using last-known-good copy.');
+    snap.guestRepo = JSON.parse(JSON.stringify(_lastSavedSnap.guestRepo));
+    showToast('⚠ Guest repo preserved — see console for details.');
+  }
+
   return snap;
 };
 
@@ -7790,7 +7802,7 @@ applySession = function(data) {
   if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
   if (data.hostIntro) state.hostIntro = data.hostIntro;
   if (data.hostOutro) state.hostOutro = data.hostOutro;
-  if (data.guestRepo) state.guestRepo = data.guestRepo;
+  if (data.guestRepo) { state.guestRepo = data.guestRepo; stashGuestRepo(); }
   renderSeasonsList();
   renderGuestRepo();
   renderMemoryPanel();
@@ -7808,6 +7820,26 @@ var autoSaveTimeout = null;
 var _seasonBriefAutoGen = false;
 var sessionHistory = [];
 var _lastSavedSnap = null;
+
+function stashGuestRepo() {
+  if (!state.guestRepo || state.guestRepo.length === 0) return;
+  try { localStorage.setItem('boo_guest_repo_stash', JSON.stringify(state.guestRepo)); } catch(e) {}
+}
+
+function recoverGuestRepoIfLost() {
+  if ((state.guestRepo || []).length > 0) return;
+  try {
+    var stash = localStorage.getItem('boo_guest_repo_stash');
+    if (!stash) return;
+    var guests = JSON.parse(stash);
+    if (!guests || !guests.length) return;
+    state.guestRepo = guests;
+    renderGuestRepo();
+    showToast('⚠ Guest repo recovered from local stash (' + guests.length + ' guests).');
+    console.warn('[bp] guestRepo recovered from boo_guest_repo_stash:', guests.length, 'guests');
+    autoSave('guest repo recovered', true);
+  } catch(e) {}
+}
 
 function buildSessionSnapshot() {
   return {
@@ -7895,6 +7927,7 @@ async function loadFromSupabase() {
       sessionHistory = rows[0].history || [];
       _lastSavedSnap = rows[0].data;
       applySession(rows[0].data);
+      recoverGuestRepoIfLost();
       setSaveBadge('● LOADED', '#4ade80');
       showToast('✓ Session restored');
       return;
@@ -7906,6 +7939,7 @@ async function loadFromSupabase() {
     if (local) {
       const parsed = JSON.parse(local);
       applySession(parsed);
+      recoverGuestRepoIfLost();
       setSaveBadge('● LOCAL ⚠', '#E8431A');
       showToast('⚠ Loaded from local backup — Supabase may be unavailable');
     }
