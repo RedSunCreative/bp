@@ -2564,7 +2564,20 @@
           <span class="data-section-chevron">›</span>
         </div>
         <div class="data-section-body" id="guest-repo-body" style="display:none;">
-          <div id="repo-guest-list"><div style="font-size:12px;color:var(--muted)">No guests yet — click → REPO on any Boo guest card to add one.</div></div>
+          <button onclick="toggleRepoImport()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;margin-bottom:8px;">⬆ IMPORT GUESTS</button>
+          <div id="repo-import-area" style="display:none;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;">
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;">PASTE FROM SPREADSHEET OR UPLOAD CSV<br><span style="opacity:0.6;">Columns: Name · Title/Role · Tier (T1–T3) · Notes</span></div>
+            <textarea id="repo-import-text" rows="5" placeholder="Copy cells from your spreadsheet and paste here — or upload a CSV below." style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text);resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;"></textarea>
+            <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;align-items:center;">
+              <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:4px 9px;cursor:pointer;white-space:nowrap;">
+                <input type="file" accept=".csv,.tsv,.txt" onchange="loadImportFile(this)" style="display:none;">
+                📁 CSV FILE
+              </label>
+              <button onclick="importGuestsDirect()" style="font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--border);background:rgba(255,255,255,0.05);color:var(--text);cursor:pointer;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">QUICK IMPORT</button>
+              <button onclick="importGuestsViaBoo()" style="font-size:10px;padding:4px 10px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:'DM Mono',monospace;font-weight:700;letter-spacing:0.06em;white-space:nowrap;">✦ PARSE WITH BOO</button>
+            </div>
+          </div>
+          <div id="repo-guest-list"><div style="font-size:12px;color:var(--muted)">No guests yet — click → REPO on any Boo guest card, or use Import above.</div></div>
         </div>
       </div>
 
@@ -4097,6 +4110,126 @@ function saveRepoField(name, val) {
   if (!g) return;
   g.notes = val;
   autoSave('repo notes updated');
+}
+
+function toggleRepoImport() {
+  var el = document.getElementById('repo-import-area');
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function loadImportFile(input) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var ta = document.getElementById('repo-import-text');
+    if (ta) ta.value = e.target.result;
+  };
+  reader.readAsText(file);
+}
+
+function _parseImportLine(line, delimiter) {
+  if (delimiter === ',') {
+    // Handle quoted CSV fields
+    var result = [];
+    var cur = '';
+    var inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { result.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    result.push(cur.trim());
+    return result;
+  }
+  return line.split(delimiter).map(function(s) { return s.trim(); });
+}
+
+function _mapTier(raw) {
+  var r = (raw || '').toLowerCase();
+  if (r.includes('1') || r.includes('spotlight')) return 'spotlight';
+  if (r.includes('2') || r.includes('rising')) return 'rising';
+  if (r.includes('3') || r.includes('discovery')) return 'discovery';
+  return '';
+}
+
+function importGuestsDirect() {
+  var raw = (document.getElementById('repo-import-text').value || '').trim();
+  if (!raw) { showToast('Paste some data first.'); return; }
+  var lines = raw.split('\n').filter(function(l) { return l.trim(); });
+  var delimiter = raw.includes('\t') ? '\t' : ',';
+  // Skip header row if it looks like labels
+  var first = lines[0].toLowerCase();
+  if (first.includes('name') || first.includes('title') || first.includes('guest') || first.includes('role')) {
+    lines = lines.slice(1);
+  }
+  var added = 0;
+  lines.forEach(function(line) {
+    var cols = _parseImportLine(line, delimiter);
+    var name = (cols[0] || '').replace(/^["']|["']$/g, '').trim();
+    if (!name) return;
+    var title = (cols[1] || '').replace(/^["']|["']$/g, '').trim();
+    var tier = _mapTier(cols[2]);
+    var notes = (cols[3] || '').replace(/^["']|["']$/g, '').trim();
+    var entry = addToRepo(name, title, tier, '');
+    if (entry) { if (notes) entry.notes = notes; added++; }
+  });
+  if (added > 0) {
+    autoSave('repo import', true);
+    renderGuestRepo();
+    document.getElementById('repo-import-text').value = '';
+    document.getElementById('repo-import-area').style.display = 'none';
+    showToast(added + ' guest' + (added !== 1 ? 's' : '') + ' added to repository.');
+  } else {
+    showToast('No new guests found — check column format or duplicates.');
+  }
+}
+
+async function importGuestsViaBoo() {
+  var raw = (document.getElementById('repo-import-text').value || '').trim();
+  if (!raw) { showToast('Paste some data first.'); return; }
+  var ep = activeEp();
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  var seasonNum = state.currentSeason ? state.currentSeason.number : 1;
+  var epRef = 'S' + seasonNum + '-E' + epNum;
+  var seasonTheme = (state.currentSeason && state.currentSeason.theme) || '';
+  var prompt = 'Parse the following guest list for the ' + SHOW_CONFIG.showName + ' podcast and return one line per guest in this EXACT pipe format:\n'
+    + 'Name | Title, Organization | 2–3 sentence bio and angle for this show | Topic1, Topic2 | Tier: Spotlight/Rising/Discovery\n\n'
+    + 'Show: ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
+    + 'Season theme: ' + seasonTheme + '\n\n'
+    + 'Guest list to parse:\n' + raw + '\n\n'
+    + 'Return ONLY the pipe-formatted lines, one per guest. If any info is missing, make a reasonable inference based on the name/title. Do not add preamble or explanation.';
+  showToast('Boo is parsing your guest list…');
+  try {
+    var reply = await callBoo(prompt);
+    // Parse the pipe-delimited response and add each to repo
+    var lines = reply.split('\n').filter(function(l) { return l.includes('|') && l.split('|').length >= 3; });
+    var added = 0;
+    lines.forEach(function(line) {
+      var parts = line.split('|').map(function(p) { return p.trim(); });
+      var name = parts[0].replace(/^\d+\.\s*/, '').replace(/\*\*/g, '').trim();
+      var title = (parts[1] || '').replace(/\*\*/g, '').trim();
+      var why = (parts[2] || '').trim();
+      var tierItem = (parts[4] || parts[3] || '').split(',').find(function(s) { return /tier:/i.test(s); });
+      var tier = tierItem ? tierItem.replace(/tier:\s*/i, '').trim().toLowerCase() : '';
+      if (!name) return;
+      var entry = addToRepo(name, title, tier, why);
+      if (entry) added++;
+    });
+    if (added > 0) {
+      autoSave('repo boo import', true);
+      renderGuestRepo();
+      document.getElementById('repo-import-text').value = '';
+      document.getElementById('repo-import-area').style.display = 'none';
+      showToast(added + ' guest' + (added !== 1 ? 's' : '') + ' added to repository.');
+    } else {
+      showToast('Boo returned a response but no guests were parsed — try Quick Import.');
+    }
+  } catch(e) {
+    showToast('Boo hit an error — try Quick Import instead.');
+  }
 }
 
 function toggleConsiderationConfirmed(name) {
