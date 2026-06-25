@@ -4801,8 +4801,9 @@ function renderSeasonView() {
         if (why) guestStrip += '<span class="sep-guest-why" title="' + esc(why) + '">"' + esc(why.length > 80 ? why.slice(0, 80) + '…' : why) + '"</span>';
       });
     } else {
-      guestStrip = '<span class="sep-no-guests">No guests assigned — use → ASSIGN in the Guest Repository</span>';
+      guestStrip = '<span class="sep-no-guests">None assigned</span>';
     }
+    guestStrip = '<span style="font-family:\'DM Mono\',monospace;font-size:8px;font-weight:700;color:rgba(59,184,201,0.55);letter-spacing:0.1em;text-transform:uppercase;flex-shrink:0;margin-right:2px;">Guest:</span>' + guestStrip;
     rows += '<div class="season-ep-card" data-card-ep="' + e + '"'
       + ' ondragover="guestDragOver(event)"'
       + ' ondrop="guestDrop(event,' + e + ')"'
