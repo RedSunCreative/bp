@@ -1677,6 +1677,15 @@
   .season-ep-chevron:hover { color:var(--white); }
   .season-ep-delete { color:rgba(255,255,255,0.1); font-size:18px; cursor:pointer; flex-shrink:0; line-height:1; padding:0 2px; transition:color 0.12s; font-weight:300; }
   .season-ep-delete:hover { color:#ff6b6b; }
+  .season-ep-card { margin-bottom:7px; }
+  .season-ep-card .season-ep-row { margin-bottom:0; border-radius:7px 7px 0 0; border-bottom-color:rgba(255,255,255,0.04); }
+  .season-ep-card .season-ep-row:hover { border-bottom-color:rgba(255,255,255,0.07); }
+  .season-ep-guests { border:1px solid var(--border); border-top:none; border-radius:0 0 7px 7px; padding:5px 14px 7px 54px; background:rgba(255,255,255,0.015); display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+  .sep-guest-chip { font-family:'DM Mono',monospace; font-size:9px; color:var(--teal); background:rgba(59,184,201,0.08); border:1px solid rgba(59,184,201,0.2); border-radius:3px; padding:2px 7px; white-space:nowrap; }
+  .sep-guest-why { font-family:'DM Sans',sans-serif; font-size:10px; color:var(--muted); font-style:italic; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .sep-no-guests { font-family:'DM Mono',monospace; font-size:9px; color:rgba(255,255,255,0.2); font-style:italic; }
+  .sv-map-btn { background:transparent; border:1px solid rgba(59,184,201,0.35); color:var(--teal); border-radius:4px; padding:4px 11px; font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.07em; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+  .sv-map-btn:hover { background:rgba(59,184,201,0.08); }
   .sv-add-ep-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border:1px dashed rgba(255,255,255,0.18); border-radius:7px; background:rgba(255,255,255,0.02); color:rgba(255,255,255,0.45); font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; letter-spacing:0.02em; cursor:pointer; width:100%; margin-top:6px; transition:all 0.15s; }
   .sv-add-ep-btn:hover { border-color:var(--teal); color:var(--teal); background:rgba(59,184,201,0.05); }
   .sv-ep-header { display:flex; align-items:center; gap:10px; padding:0 14px 10px 14px; }
@@ -2407,9 +2416,12 @@
 
   <!-- Season View -->
   <div class="season-view" id="seasonView">
-    <div class="season-view-header">
-      <div class="season-view-title" id="sv-title">SEASON 1</div>
-      <div class="season-view-sub" id="sv-sub">WHAT DO WE TEACH NOW? · 8 EPISODES · MID-AUGUST</div>
+    <div class="season-view-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div class="season-view-title" id="sv-title">SEASON 1</div>
+        <div class="season-view-sub" id="sv-sub">WHAT DO WE TEACH NOW? · 8 EPISODES · MID-AUGUST</div>
+      </div>
+      <button class="sv-map-btn" onclick="booMapSeason()">✦ Boo: Map Season</button>
     </div>
     <div class="season-view-body">
       <div class="season-progress-wrap">
@@ -4087,11 +4099,15 @@ function renderGuestRepo() {
     el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No guests yet — click → REPO on any Boo guest card to add one.</div>';
     return;
   }
-  var episodes = (state.seasons[0] && state.seasons[0].episodes) ? state.seasons[0].episodes : [];
-  var epOpts = '<option value="">— assign to episode —</option>' + episodes.map(function(ep) {
-    var label = 'E' + ep.number + (ep.title && !ep.title.startsWith('TBD') ? ' — ' + ep.title.slice(0, 28) : '');
-    return '<option value="' + ep.number + '">' + esc(label) + '</option>';
-  }).join('');
+  var allSeasons = (state.seasons && state.seasons.length) ? state.seasons : (state.currentSeason ? [state.currentSeason] : []);
+  var epOpts = '<option value="">— assign to episode —</option>';
+  allSeasons.forEach(function(s) {
+    var sNum = s.number || 1;
+    (s.episodes || []).forEach(function(ep) {
+      var label = 'S' + sNum + '-E' + ep.number + (ep.title && !ep.title.startsWith('TBD') ? ' — ' + ep.title.slice(0, 26) : '');
+      epOpts += '<option value="' + ep.number + '">' + esc(label) + '</option>';
+    });
+  });
   var lbl = 'display:block;font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.08em;margin-bottom:3px;';
   var inp = 'width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;';
   var ta  = 'width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-family:\'DM Sans\',sans-serif;font-size:11px;color:var(--text);outline:none;resize:vertical;box-sizing:border-box;line-height:1.5;';
@@ -4180,7 +4196,8 @@ function assignFromRepo(name, epNumStr) {
   renderGuestRepo();
   var currentEpNum = state.currentEpisode ? state.currentEpisode.number : 1;
   if (epNum === currentEpNum) renderConsiderations();
-  showToast(name.split(' ')[0] + ' → E' + epNum + ' ✓');
+  if (document.getElementById('seasonView') && document.getElementById('seasonView').style.display !== 'none') renderSeasonView();
+  showToast(name.split(' ')[0] + ' → S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + epNum + ' ✓');
 }
 
 function removeFromRepo(name) {
@@ -4705,7 +4722,20 @@ function renderSeasonView() {
     var opts = STATUS_OPTS.map(function(s) {
       return '<option value="' + s + '"' + (s === status ? ' selected' : '') + '>' + EP_STATUS_LABELS[s] + '</option>';
     }).join('');
-    rows += '<div class="season-ep-row' + (isActive ? ' active-ep' : '') + '" data-ep="' + e + '"'
+    var epGuests = (episodeStore[e] && episodeStore[e].considerations) ? episodeStore[e].considerations : [];
+    var guestStrip = '';
+    if (epGuests.length) {
+      epGuests.forEach(function(g) {
+        var why = (g.why || '').trim();
+        var statusColor = g.status === 'invited' ? 'var(--teal)' : g.status === 'unconfirmed' ? 'var(--orange)' : 'var(--gold)';
+        guestStrip += '<span class="sep-guest-chip" style="border-color:' + statusColor + ';color:' + statusColor + ';background:transparent;" title="' + esc(g.title || '') + '">' + esc(g.name) + '</span>';
+        if (why) guestStrip += '<span class="sep-guest-why" title="' + esc(why) + '">"' + esc(why.length > 80 ? why.slice(0, 80) + '…' : why) + '"</span>';
+      });
+    } else {
+      guestStrip = '<span class="sep-no-guests">No guests assigned — use → ASSIGN in the Guest Repository</span>';
+    }
+    rows += '<div class="season-ep-card">'
+      + '<div class="season-ep-row' + (isActive ? ' active-ep' : '') + '" data-ep="' + e + '"'
       + ' draggable="true"'
       + ' ondragstart="svDragStart(event,' + e + ')"'
       + ' ondragend="svDragEnd(' + e + ')"'
@@ -4726,6 +4756,8 @@ function renderSeasonView() {
       + '<select class="season-ep-status-sel ' + status + '" onclick="event.stopPropagation()" onchange="event.stopPropagation();setEpStatus(' + e + ',this.value)">' + opts + '</select>'
       + '<div class="season-ep-chevron" onclick="event.stopPropagation();goToEpisodeFromSeason(' + e + ')">›</div>'
       + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
+      + '</div>'
+      + '<div class="season-ep-guests">' + guestStrip + '</div>'
       + '</div>';
   }
   document.getElementById('sv-episode-list').innerHTML = rows;
@@ -4783,6 +4815,45 @@ async function generateSeasonBrief() {
     briefEl.textContent = 'Couldn\'t generate: ' + err.message;
   }
   if (genBtn) { genBtn.disabled = false; genBtn.textContent = 'Regenerate'; }
+}
+
+function booMapSeason() {
+  var season = state.currentSeason || (state.seasons && state.seasons[0]) || {};
+  var num = season.number || 1;
+  var theme = season.theme || 'not set';
+  var order = (season.episodeOrder || []).slice();
+  if (!order.length) { var cnt = season.episodeCount || 8; for (var i = 1; i <= cnt; i++) order.push(i); }
+
+  var epLines = order.map(function(e) {
+    var beat = getEpArcBeat(e);
+    var title = getEpTitle(e) || 'TBD';
+    var guests = (episodeStore[e] && episodeStore[e].considerations) ? episodeStore[e].considerations : [];
+    var gStr = guests.length
+      ? guests.map(function(g) { return g.name + (g.title ? ' (' + g.title.slice(0, 40) + ')' : ''); }).join(', ')
+      : 'no guests assigned';
+    return 'E' + e + ' [' + beat.label + '] ' + title + ' — ' + gStr;
+  }).join('\n');
+
+  var unassigned = (state.guestRepo || []).filter(function(g) { return !g.assignedTo; });
+  var poolLines = unassigned.length
+    ? unassigned.map(function(g) {
+        var line = '• ' + g.name + (g.title ? ', ' + g.title.slice(0, 50) : '');
+        if (g.why) line += '\n  Why: ' + g.why.slice(0, 120);
+        if (g.description) line += '\n  Profile: ' + g.description.slice(0, 80);
+        return line;
+      }).join('\n')
+    : '(no unassigned guests in pool)';
+
+  var apiPrompt = 'Show: ' + SHOW_CONFIG.showName + '\nSeason ' + num + ' theme: "' + theme + '"\n\n'
+    + 'EPISODES (current assignments):\n' + epLines + '\n\n'
+    + 'UNASSIGNED GUEST POOL:\n' + poolLines + '\n\n'
+    + 'Before suggesting assignments: in 2 sentences, share your hypothesis for which 1–2 guests are the highest priority to place and what narrative gap they fill in the arc. '
+    + 'Then ask me ONE question — something that would meaningfully change how you map the rest of the season. '
+    + 'Do not make all assignments yet.';
+
+  var displayText = '✦ Map Season — S' + num;
+  triggerBooDirectly(displayText, apiPrompt);
+  setView('chat');
 }
 
 function goToEpisodeFromSeason(epNum) {
