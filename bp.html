@@ -2457,6 +2457,7 @@
         <div class="sv-h-bar">% Complete</div>
         <div class="sv-h-stage">Stage</div>
       </div>
+      <div style="font-family:'DM Mono',monospace;font-size:7px;color:rgba(59,184,201,0.45);letter-spacing:0.12em;text-transform:uppercase;padding:0 14px 4px 54px;">Guests — drag from repository or use dropdown to assign</div>
       <div id="sv-episode-list"></div>
       <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ Add Episode</button>
       <div class="sv-brief-section">
@@ -4335,6 +4336,7 @@ function importGuestsDirect() {
   if (added > 0) {
     autoSave('repo import', true);
     renderGuestRepo();
+    renderSeasonView();
     document.getElementById('repo-import-text').value = '';
     document.getElementById('repo-import-area').style.display = 'none';
     showToast(added + ' guest' + (added !== 1 ? 's' : '') + ' added to repository.');
@@ -4377,6 +4379,7 @@ async function importGuestsViaBoo() {
     if (added > 0) {
       autoSave('repo boo import', true);
       renderGuestRepo();
+      renderSeasonView();
       document.getElementById('repo-import-text').value = '';
       document.getElementById('repo-import-area').style.display = 'none';
       showToast(added + ' guest' + (added !== 1 ? 's' : '') + ' added to repository.');
@@ -4827,9 +4830,11 @@ function renderSeasonView() {
       + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
       + '</div>'
       + '<div class="season-ep-guests">' + guestStrip
-      + (poolOptsBase ? '<select class="sep-add-sel" onchange="if(this.value){assignFromRepo(this.value,\'' + e + '\');this.value=\'\'}">'
-          + '<option value="">＋ assign guest…</option>' + poolOptsBase
-          + '</select>' : '')
+      + '<select class="sep-add-sel" onchange="if(this.value){assignFromRepo(this.value,\'' + e + '\');this.value=\'\'}">'
+      + (poolOptsBase
+          ? '<option value="">＋ assign guest…</option>' + poolOptsBase
+          : '<option value="">— import guests to assign —</option>')
+      + '</select>'
       + '</div>'
       + '</div>';
   }
