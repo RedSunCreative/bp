@@ -2543,7 +2543,7 @@
         <div class="data-section-body" id="guests-body" style="display:none;">
           <div id="guest-list"><div style="font-size:12px;color:var(--muted)">Tell Boo about your guests...</div></div>
           <div style="margin-top:12px;display:flex;flex-direction:column;gap:8px;">
-            <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">+ FIND A GUEST</button>
+            <button onclick="findGuestChat()" style="width:100%;background:transparent;border:1px dashed var(--teal);color:var(--teal);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">✦ HAVE BOO FIND A GUEST</button>
             <button onclick="openInviteNewModal()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">✉ INVITE SOMEONE NEW</button>
             <div style="display:flex;gap:6px;align-items:flex-start;">
               <textarea id="guest-lookup-input" rows="2" placeholder="Paste name, title, org, URL — whatever you have"
@@ -3949,9 +3949,15 @@ function renderConsiderations() {
       + '<span style="font-family:DM Mono,monospace;font-size:9px;letter-spacing:0.08em;color:' + (g.confirmed ? 'var(--teal)' : 'var(--muted)') + ';">CONFIRMED</span>'
       + '</label>'
       + '</div>'
-      + '<div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;">'
-      + '<input type="email" value="' + esc(g.email||'') + '" placeholder="guest email" onchange="saveConsiderationField(\'' + safeName + '\',\'email\',this.value)" style="flex:1;min-width:100px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;">'
-      + '<input type="tel" value="' + esc(g.mobile||'') + '" placeholder="mobile" onchange="saveConsiderationField(\'' + safeName + '\',\'mobile\',this.value)" style="width:100px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;">'
+      + '<div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">'
+      + '<div style="flex:1;min-width:130px;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.08em;margin-bottom:3px;">EMAIL</div>'
+      + '<input type="email" value="' + esc(g.email||'') + '" placeholder="—" onchange="saveConsiderationField(\'' + safeName + '\',\'email\',this.value)" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '</div>'
+      + '<div style="min-width:110px;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.08em;margin-bottom:3px;">PHONE</div>'
+      + '<input type="tel" value="' + esc(g.mobile||'') + '" placeholder="—" onchange="saveConsiderationField(\'' + safeName + '\',\'mobile\',this.value)" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '</div>'
       + '</div>'
       + '</div>'
       + '<div style="display:flex;gap:4px;align-items:flex-start;flex-shrink:0;flex-direction:column;">'
@@ -3975,7 +3981,7 @@ function renderConsiderations() {
         : '')
       + '</div>'
       + '<div style="margin-top:6px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.05);">'
-      + '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Guest Intro</div>'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Introduction</div>'
       + introHtml
       + '</div>'
       + '</div>';
@@ -4018,7 +4024,7 @@ function addToRepo(name, title, tier, why) {
   if (!state.guestRepo) state.guestRepo = [];
   var already = state.guestRepo.find(function(g) { return g.name === name; });
   if (already) { showToast(name.split(' ')[0] + ' is already in the repository.'); return null; }
-  var entry = { id: 'repo-' + Date.now() + Math.random().toString(36).slice(2), name: name, title: title || '', tier: tier || '', why: why || '', email: '', mobile: '', notes: '', assignedTo: null };
+  var entry = { id: 'repo-' + Date.now() + Math.random().toString(36).slice(2), name: name, title: title || '', tier: tier || '', why: why || '', email: '', mobile: '', intro: '', notes: '', assignedTo: null };
   state.guestRepo.push(entry);
   renderGuestRepo();
   autoSave('guest repo updated', true);
@@ -4069,7 +4075,21 @@ function renderGuestRepo() {
       + '</div>'
       + '<button onclick="removeFromRepo(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;flex-shrink:0;" title="Remove from repo">✕</button>'
       + '</div>'
-      + '<input type="text" value="' + esc(g.notes||'') + '" placeholder="notes…" onchange="saveRepoField(\'' + safeName + '\',this.value)" style="width:100%;margin-top:6px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '<div style="margin-top:8px;">'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
+      + '<div style="flex:1;min-width:130px;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.08em;margin-bottom:3px;">EMAIL</div>'
+      + '<input type="email" value="' + esc(g.email||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'email\',this.value)" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '</div>'
+      + '<div style="min-width:110px;">'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.08em;margin-bottom:3px;">PHONE</div>'
+      + '<input type="tel" value="' + esc(g.mobile||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'mobile\',this.value)" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '</div>'
+      + '</div>'
+      + '<div style="font-family:\'DM Mono\',monospace;font-size:8px;color:var(--muted);letter-spacing:0.08em;margin-bottom:3px;">INTRODUCTION</div>'
+      + '<textarea onchange="saveRepoField(\'' + safeName + '\',\'intro\',this.value)" placeholder="On-air intro…" style="width:100%;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-family:\'DM Sans\',sans-serif;font-size:11px;color:var(--text);outline:none;resize:vertical;min-height:55px;box-sizing:border-box;margin-bottom:6px;line-height:1.5;">' + esc(g.intro||'') + '</textarea>'
+      + '<input type="text" value="' + esc(g.notes||'') + '" placeholder="producer notes…" onchange="saveRepoField(\'' + safeName + '\',\'notes\',this.value)" style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '</div>'
       + '<div style="display:flex;gap:5px;margin-top:5px;">'
       + '<select id="' + selId + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;cursor:pointer;">' + epOpts + '</select>'
       + '<button onclick="assignFromRepo(\'' + safeName + '\',document.getElementById(\'' + selId + '\').value)" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;white-space:nowrap;">→ ASSIGN</button>'
@@ -4090,7 +4110,7 @@ function assignFromRepo(name, epNumStr) {
   if (!episodeStore[epNum].considerations) episodeStore[epNum].considerations = [];
   var already = episodeStore[epNum].considerations.find(function(c) { return c.name === name; });
   if (already) { showToast(name.split(' ')[0] + ' is already in E' + epNum + '\'s guest list.'); return; }
-  episodeStore[epNum].considerations.push({ name: g.name, title: g.title, status: 'unconfirmed', guestIntro: '', confirmed: false, email: g.email || '', mobile: g.mobile || '', sendKit: false });
+  episodeStore[epNum].considerations.push({ name: g.name, title: g.title, status: 'unconfirmed', guestIntro: g.intro || '', confirmed: false, email: g.email || '', mobile: g.mobile || '', sendKit: false });
   g.assignedTo = epNum;
   autoSave('guest assigned to episode', true);
   renderGuestRepo();
@@ -4105,11 +4125,11 @@ function removeFromRepo(name) {
   autoSave('guest repo updated', true);
 }
 
-function saveRepoField(name, val) {
+function saveRepoField(name, field, val) {
   var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
   if (!g) return;
-  g.notes = val;
-  autoSave('repo notes updated');
+  g[field] = val;
+  autoSave('repo field updated');
 }
 
 function toggleRepoImport() {
@@ -4160,21 +4180,48 @@ function importGuestsDirect() {
   if (!raw) { showToast('Paste some data first.'); return; }
   var lines = raw.split('\n').filter(function(l) { return l.trim(); });
   var delimiter = raw.includes('\t') ? '\t' : ',';
+  var firstLower = lines[0].toLowerCase();
+  // Detect new column format: Tier | First Name | Last Name | Job Title | Organization | Profile URL | Why | Introduction | Phone | Email
+  var isNewFormat = firstLower.includes('first') || firstLower.includes('introduction') || firstLower.includes('why') || firstLower.includes('angle');
   // Skip header row if it looks like labels
-  var first = lines[0].toLowerCase();
-  if (first.includes('name') || first.includes('title') || first.includes('guest') || first.includes('role')) {
+  if (firstLower.includes('name') || firstLower.includes('title') || firstLower.includes('guest') || firstLower.includes('role') || firstLower.includes('tier') || firstLower.includes('first')) {
     lines = lines.slice(1);
   }
   var added = 0;
   lines.forEach(function(line) {
     var cols = _parseImportLine(line, delimiter);
-    var name = (cols[0] || '').replace(/^["']|["']$/g, '').trim();
+    var name, title, tier, why, intro, mobile, email, notes;
+    if (isNewFormat || cols.length >= 7) {
+      // Tier | First Name | Last Name | Job Title | Organization | Profile URL | Why | Introduction | Phone | Email
+      tier   = _mapTier(cols[0]);
+      var fn = (cols[1] || '').replace(/^["']|["']$/g, '').trim();
+      var ln = (cols[2] || '').replace(/^["']|["']$/g, '').trim();
+      name   = (fn + ' ' + ln).trim();
+      var job = (cols[3] || '').replace(/^["']|["']$/g, '').trim();
+      var org = (cols[4] || '').replace(/^["']|["']$/g, '').trim();
+      title  = job && org ? job + ', ' + org : (job || org);
+      why    = (cols[6] || '').replace(/^["']|["']$/g, '').trim();
+      intro  = (cols[7] || '').replace(/^["']|["']$/g, '').trim();
+      mobile = (cols[8] || '').replace(/^["']|["']$/g, '').trim();
+      email  = (cols[9] || '').replace(/^["']|["']$/g, '').trim();
+      notes  = '';
+    } else {
+      // Legacy format: name | title | tier | notes
+      name   = (cols[0] || '').replace(/^["']|["']$/g, '').trim();
+      title  = (cols[1] || '').replace(/^["']|["']$/g, '').trim();
+      tier   = _mapTier(cols[2]);
+      notes  = (cols[3] || '').replace(/^["']|["']$/g, '').trim();
+      why = ''; intro = ''; mobile = ''; email = '';
+    }
     if (!name) return;
-    var title = (cols[1] || '').replace(/^["']|["']$/g, '').trim();
-    var tier = _mapTier(cols[2]);
-    var notes = (cols[3] || '').replace(/^["']|["']$/g, '').trim();
-    var entry = addToRepo(name, title, tier, '');
-    if (entry) { if (notes) entry.notes = notes; added++; }
+    var entry = addToRepo(name, title, tier, why);
+    if (entry) {
+      if (intro)  entry.intro  = intro;
+      if (mobile) entry.mobile = mobile;
+      if (email)  entry.email  = email;
+      if (notes)  entry.notes  = notes;
+      added++;
+    }
   });
   if (added > 0) {
     autoSave('repo import', true);
@@ -4815,7 +4862,7 @@ function renderGuestPanel(content) {
       + '</div>';
   } else {
     html += '<div style="font-size:12px;color:var(--text-muted);font-style:italic;padding:4px 0 10px;">No guest selected yet.</div>'
-      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="findGuestChat()">+ Find a Guest</button>'
+      + '<button class="action-btn teal" style="width:100%;text-align:center;" onclick="findGuestChat()">✦ Have Boo Find a Guest</button>'
       + '<button class="action-btn" style="width:100%;text-align:center;margin-top:8px;" onclick="openInviteNewModal()">✉ Invite Someone New</button>';
   }
   html += '</div></div>';
