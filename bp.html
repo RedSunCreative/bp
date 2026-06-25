@@ -4126,13 +4126,11 @@ function renderGuestRepo() {
     var selId = 'rsel-' + g.name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
     var tierLabel = g.tier === 'spotlight' ? 'T1' : g.tier === 'rising' ? 'T2' : g.tier === 'discovery' ? 'T3' : '';
     var tierColor = g.tier === 'spotlight' ? 'var(--teal)' : g.tier === 'rising' ? 'var(--gold)' : '#a78bfa';
-    html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);" draggable="true"'
-    + ' ondragstart="guestDragStart(event,\'' + safeName + '\')"'
-    + ' ondragend="guestDragEnd(event)">'
+    html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
 
     // Header
     + '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:2px;">'
-    + '<div class="repo-drag-handle" title="Drag to season arc to assign">⠿</div>'
+    + '<div class="repo-drag-handle" draggable="true" ondragstart="guestDragStart(event,\'' + safeName + '\')" ondragend="guestDragEnd(event)" title="Drag to season arc to assign">⠿</div>'
     + '<div style="flex:1;min-width:0;">'
     + '<div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:5px;">' + esc(g.name)
     + (tierLabel ? '<span style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:700;color:' + tierColor + ';">' + tierLabel + '</span>' : '')
@@ -4209,6 +4207,20 @@ function assignFromRepo(name, epNumStr) {
   if (epNum === currentEpNum) renderConsiderations();
   if (document.getElementById('seasonView') && document.getElementById('seasonView').style.display !== 'none') renderSeasonView();
   showToast(name.split(' ')[0] + ' → S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + epNum + ' ✓');
+}
+
+function unassignGuest(name, epNum) {
+  if (episodeStore[epNum] && episodeStore[epNum].considerations) {
+    episodeStore[epNum].considerations = episodeStore[epNum].considerations.filter(function(c) { return c.name !== name; });
+  }
+  var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
+  if (g) g.assignedTo = null;
+  autoSave('guest unassigned', true);
+  renderGuestRepo();
+  renderSeasonView();
+  var currentEpNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  if (epNum === currentEpNum) renderConsiderations();
+  showToast(name.split(' ')[0] + ' returned to repository.');
 }
 
 function removeFromRepo(name) {
@@ -4797,7 +4809,11 @@ function renderSeasonView() {
       epGuests.forEach(function(g) {
         var why = (g.why || '').trim();
         var statusColor = g.status === 'invited' ? 'var(--teal)' : g.status === 'unconfirmed' ? 'var(--orange)' : 'var(--gold)';
-        guestStrip += '<span class="sep-guest-chip" style="border-color:' + statusColor + ';color:' + statusColor + ';background:transparent;" title="' + esc(g.title || '') + '">' + esc(g.name) + '</span>';
+        var gSafe = g.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        guestStrip += '<span class="sep-guest-chip" style="border-color:' + statusColor + ';color:' + statusColor + ';background:transparent;display:inline-flex;align-items:center;gap:4px;" title="' + esc(g.title || '') + '">'
+          + esc(g.name)
+          + '<button onclick="unassignGuest(\'' + gSafe + '\',' + e + ')" style="background:none;border:none;color:inherit;opacity:0.5;cursor:pointer;padding:0 1px;font-size:10px;line-height:1;" title="Remove — returns to repository">✕</button>'
+          + '</span>';
         if (why) guestStrip += '<span class="sep-guest-why" title="' + esc(why) + '">"' + esc(why.length > 80 ? why.slice(0, 80) + '…' : why) + '"</span>';
       });
     } else {
