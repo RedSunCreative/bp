@@ -2536,7 +2536,7 @@
       <div class="data-section" data-sec="guests">
         <div class="data-section-header" onclick="toggleSection('guests-body')">
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
-          <div class="data-section-title">Guests <span class="tip-q" data-tip="Everyone on the show this episode. Tell Boo who's coming — he logs the details." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-title">Guests <span id="guests-ep-label" style="font-family:'DM Mono',monospace;font-size:0.65rem;color:var(--teal);font-weight:400;letter-spacing:0.05em;"></span> <span class="tip-q" data-tip="Everyone on the show this episode. Tell Boo who's coming — he logs the details." onclick="event.stopPropagation()">?</span></div>
           <div class="data-section-count" id="guest-count">0</div>
           <span class="data-section-chevron">›</span>
         </div>
@@ -3898,6 +3898,12 @@ function renderConsiderations() {
   var list = activeEp().considerations || [];
   var badge = document.getElementById('guest-count');
   if (badge) badge.textContent = list.length || '0';
+  var epLabel = document.getElementById('guests-ep-label');
+  if (epLabel) {
+    var _sn = state.currentSeason ? state.currentSeason.number : 1;
+    var _en = state.currentEpisode ? state.currentEpisode.number : 1;
+    epLabel.textContent = '— S' + _sn + '-E' + _en;
+  }
   if (list.length === 0) {
     el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No guests on the shortlist yet.</div>';
     return;
