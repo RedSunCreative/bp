@@ -1686,6 +1686,13 @@
   .sep-no-guests { font-family:'DM Mono',monospace; font-size:9px; color:rgba(255,255,255,0.2); font-style:italic; }
   .sv-map-btn { background:transparent; border:1px solid rgba(59,184,201,0.35); color:var(--teal); border-radius:4px; padding:4px 11px; font-family:'DM Mono',monospace; font-size:0.62rem; letter-spacing:0.07em; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
   .sv-map-btn:hover { background:rgba(59,184,201,0.08); }
+  .season-ep-card.guest-drop-active .season-ep-guests { background:rgba(59,184,201,0.1); border-color:var(--teal); border-top:1px solid var(--teal); }
+  .season-ep-card.guest-drop-active { filter:brightness(1.07); }
+  .sep-add-sel { appearance:none; -webkit-appearance:none; background:rgba(255,255,255,0.04); border:1px dashed rgba(255,255,255,0.15); border-radius:3px; color:var(--muted); font-family:'DM Mono',monospace; font-size:9px; padding:2px 6px; cursor:pointer; max-width:160px; }
+  .sep-add-sel:hover { border-color:var(--teal); color:var(--teal); }
+  .repo-drag-handle { color:rgba(255,255,255,0.18); font-size:14px; cursor:grab; user-select:none; padding:0 4px 0 0; flex-shrink:0; line-height:1; }
+  .repo-drag-handle:active { cursor:grabbing; }
+  .repo-entry-dragging { opacity:0.35; }
   .sv-add-ep-btn { display:flex; align-items:center; justify-content:center; gap:8px; padding:14px 20px; border:1px dashed rgba(255,255,255,0.18); border-radius:7px; background:rgba(255,255,255,0.02); color:rgba(255,255,255,0.45); font-family:'DM Sans',sans-serif; font-size:15px; font-weight:500; letter-spacing:0.02em; cursor:pointer; width:100%; margin-top:6px; transition:all 0.15s; }
   .sv-add-ep-btn:hover { border-color:var(--teal); color:var(--teal); background:rgba(59,184,201,0.05); }
   .sv-ep-header { display:flex; align-items:center; gap:10px; padding:0 14px 10px 14px; }
@@ -4118,15 +4125,18 @@ function renderGuestRepo() {
     var selId = 'rsel-' + g.name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
     var tierLabel = g.tier === 'spotlight' ? 'T1' : g.tier === 'rising' ? 'T2' : g.tier === 'discovery' ? 'T3' : '';
     var tierColor = g.tier === 'spotlight' ? 'var(--teal)' : g.tier === 'rising' ? 'var(--gold)' : '#a78bfa';
-    html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+    html += '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05);" draggable="true"'
+    + ' ondragstart="guestDragStart(event,\'' + safeName + '\')"'
+    + ' ondragend="guestDragEnd(event)">'
 
     // Header
     + '<div style="display:flex;align-items:flex-start;gap:6px;margin-bottom:2px;">'
+    + '<div class="repo-drag-handle" title="Drag to season arc to assign">⠿</div>'
     + '<div style="flex:1;min-width:0;">'
     + '<div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:5px;">' + esc(g.name)
     + (tierLabel ? '<span style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:700;color:' + tierColor + ';">' + tierLabel + '</span>' : '')
     + '</div>'
-    + (g.assignedTo ? '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);margin-top:2px;">→ E' + g.assignedTo + ' assigned</div>' : '')
+    + (g.assignedTo ? '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);margin-top:2px;">→ S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + g.assignedTo + ' assigned</div>' : '')
     + '</div>'
     + '<button onclick="removeFromRepo(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;flex-shrink:0;" title="Remove">✕</button>'
     + '</div>'
@@ -4592,6 +4602,54 @@ function getEpTitle(epNum) {
 
 var _svDragFrom = null;
 
+// ── Guest drag-and-drop (repo → season arc) ──
+var _guestDragName = null;
+
+function guestDragStart(event, guestName) {
+  _guestDragName = guestName;
+  event.dataTransfer.setData('text/guest-name', guestName);
+  event.dataTransfer.effectAllowed = 'move';
+  setTimeout(function() {
+    var card = event.target.closest ? event.target.closest('[draggable]') : event.target;
+    if (card) card.classList.add('repo-entry-dragging');
+  }, 0);
+}
+
+function guestDragEnd(event) {
+  _guestDragName = null;
+  document.querySelectorAll('.repo-entry-dragging').forEach(function(el) { el.classList.remove('repo-entry-dragging'); });
+  document.querySelectorAll('.guest-drop-active').forEach(function(el) { el.classList.remove('guest-drop-active'); });
+}
+
+function guestDragOver(event) {
+  if (!_guestDragName) return;
+  event.preventDefault();
+  event.stopPropagation();
+  event.dataTransfer.dropEffect = 'move';
+  var card = event.currentTarget;
+  document.querySelectorAll('.guest-drop-active').forEach(function(el) { if (el !== card) el.classList.remove('guest-drop-active'); });
+  card.classList.add('guest-drop-active');
+}
+
+function guestDragLeave(event) {
+  var card = event.currentTarget;
+  if (!card.contains(event.relatedTarget)) {
+    card.classList.remove('guest-drop-active');
+  }
+}
+
+function guestDrop(event, epNum) {
+  event.preventDefault();
+  event.stopPropagation();
+  var name = _guestDragName || event.dataTransfer.getData('text/guest-name');
+  _guestDragName = null;
+  document.querySelectorAll('.guest-drop-active').forEach(function(el) { el.classList.remove('guest-drop-active'); });
+  document.querySelectorAll('.repo-entry-dragging').forEach(function(el) { el.classList.remove('repo-entry-dragging'); });
+  if (!name) return;
+  assignFromRepo(name, String(epNum));
+}
+
+// ── Season episode drag-and-drop (reorder) ──
 function svDragStart(e, epNum) {
   _svDragFrom = epNum;
   e.dataTransfer.effectAllowed = 'move';
@@ -4607,6 +4665,7 @@ function svDragEnd(epNum) {
 }
 
 function svDragOver(e, epNum) {
+  if (_guestDragName) return; // guest drag has priority — handled by the card's ondragover
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   document.querySelectorAll('.season-ep-row').forEach(function(r) { r.classList.remove('drag-over'); });
@@ -4615,6 +4674,7 @@ function svDragOver(e, epNum) {
 }
 
 function svDrop(e, toEpNum) {
+  if (_guestDragName) return; // guest drop handled by guestDrop
   e.preventDefault();
   document.querySelectorAll('.season-ep-row').forEach(function(r) { r.classList.remove('drag-over', 'dragging'); });
   if (_svDragFrom === null || _svDragFrom === toEpNum) { _svDragFrom = null; return; }
@@ -4707,6 +4767,12 @@ function renderSeasonView() {
   document.getElementById('sv-progress-fill').style.width = pct + '%';
   document.getElementById('sv-progress-text').textContent = started + ' of ' + count + ' episode' + (count !== 1 ? 's' : '') + ' started';
 
+  // Unassigned guest pool for inline selects
+  var unassignedGuests = (state.guestRepo || []).filter(function(g) { return !g.assignedTo; });
+  var poolOptsBase = unassignedGuests.map(function(g) {
+    return '<option value="' + esc(g.name) + '">' + esc(g.name) + (g.title ? ' — ' + esc(g.title.slice(0, 30)) : '') + '</option>';
+  }).join('');
+
   // Episode rows
   var STATUS_OPTS = ['not-started', 'planning', 'ready-to-record', 'recorded', 'edited', 'published'];
   var activeEpNum = state.currentEpisode ? state.currentEpisode.number : 1;
@@ -4734,7 +4800,10 @@ function renderSeasonView() {
     } else {
       guestStrip = '<span class="sep-no-guests">No guests assigned — use → ASSIGN in the Guest Repository</span>';
     }
-    rows += '<div class="season-ep-card">'
+    rows += '<div class="season-ep-card" data-card-ep="' + e + '"'
+      + ' ondragover="guestDragOver(event)"'
+      + ' ondrop="guestDrop(event,' + e + ')"'
+      + ' ondragleave="guestDragLeave(event)">'
       + '<div class="season-ep-row' + (isActive ? ' active-ep' : '') + '" data-ep="' + e + '"'
       + ' draggable="true"'
       + ' ondragstart="svDragStart(event,' + e + ')"'
@@ -4757,7 +4826,11 @@ function renderSeasonView() {
       + '<div class="season-ep-chevron" onclick="event.stopPropagation();goToEpisodeFromSeason(' + e + ')">›</div>'
       + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
       + '</div>'
-      + '<div class="season-ep-guests">' + guestStrip + '</div>'
+      + '<div class="season-ep-guests">' + guestStrip
+      + (poolOptsBase ? '<select class="sep-add-sel" onchange="if(this.value){assignFromRepo(this.value,\'' + e + '\');this.value=\'\'}">'
+          + '<option value="">＋ assign guest…</option>' + poolOptsBase
+          + '</select>' : '')
+      + '</div>'
       + '</div>';
   }
   document.getElementById('sv-episode-list').innerHTML = rows;
