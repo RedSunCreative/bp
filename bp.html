@@ -553,6 +553,21 @@
   }
   .add-guest-btn:hover { background: rgba(59,184,201,0.12); }
 
+  .to-repo-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 11px;
+    cursor: pointer;
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    transition: all 0.15s;
+    text-align: center;
+  }
+  .to-repo-btn:hover { border-color: var(--text-muted); color: var(--text); }
+
   .guest-tier {
     font-family: 'DM Mono', monospace;
     font-size: 9px;
@@ -2541,6 +2556,18 @@
         </div>
       </div>
 
+      <div class="data-section" data-sec="guest-repo">
+        <div class="data-section-header" onclick="renderGuestRepo(); toggleSection('guest-repo-body')">
+          <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+          <div class="data-section-title">Guest Repository <span class="tip-q" data-tip="Show-level guest pool — not tied to a specific episode. Add guests here, then assign to an episode when you're ready." onclick="event.stopPropagation()">?</span></div>
+          <div class="data-section-count" id="repo-count">0</div>
+          <span class="data-section-chevron">›</span>
+        </div>
+        <div class="data-section-body" id="guest-repo-body" style="display:none;">
+          <div id="repo-guest-list"><div style="font-size:12px;color:var(--muted)">No guests yet — click → REPO on any Boo guest card to add one.</div></div>
+        </div>
+      </div>
+
       <div class="data-section" data-sec="cues">
         <div class="data-section-header" onclick="toggleSection('cues-body')">
           <span class="drag-handle" draggable="true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
@@ -2858,6 +2885,7 @@ const state = {
   masterBriefFlags: [],
   hostIntro: '',
   hostOutro: '',
+  guestRepo: [],
   showTemplate: [
     { id: 'st-1',  name: 'Cold Open',                     est: '< 10 sec', dur: '',    note: 'Cut in post — pull a charged moment from the interview',                                                                                                             default: true  },
     { id: 'st-2',  name: 'Introductions',                  est: '1–2 min',  dur: '2',   note: 'Host intro + guest intro — set the stakes before the conversation begins',                                                                                           default: true  },
@@ -3565,6 +3593,7 @@ function parseGuestLinks(text) {
 function buildGuestCard(name, title, why, topics, links, idx, tier) {
   const safeName = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
   const safeTitle = title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const safeWhy = (why || '').replace(/'/g, "\\'").replace(/"/g, '&quot;').slice(0, 200);
   const cardId = 'gc-' + name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
 
   // Tier badge
@@ -3639,6 +3668,7 @@ function buildGuestCard(name, title, why, topics, links, idx, tier) {
           <button class="add-guest-btn" onclick="addGuestUnconfirmed('${safeName}', '${safeTitle}', this)">+ ADD GUEST</button>
           <button class="select-guest-btn" onclick="considerGuest('${safeName}', '${safeTitle}', this)">+ Consider</button>
           <button class="invite-compact-btn" onclick="openGmailInvite('${safeName}', '${safeTitle}')">✉ Invite</button>
+          <button class="to-repo-btn" onclick="addToRepoFromCard('${safeName}', '${safeTitle}', '${(tier||'').toLowerCase().trim()}', '${safeWhy}', this)">→ REPO</button>
         </div>
       </div>
       ${why ? '<div class="guest-why" style="margin-top:8px;">' + why + '</div>' : ''}
@@ -3961,6 +3991,106 @@ function removeConsideration(name) {
   activeEp().considerations = list.filter(function(g) { return g.name !== name; });
   renderConsiderations();
   autoSave('guest removed from consideration', true);
+}
+
+// ── GUEST REPOSITORY ──
+
+function addToRepo(name, title, tier, why) {
+  if (!state.guestRepo) state.guestRepo = [];
+  var already = state.guestRepo.find(function(g) { return g.name === name; });
+  if (already) { showToast(name.split(' ')[0] + ' is already in the repository.'); return null; }
+  var entry = { id: 'repo-' + Date.now() + Math.random().toString(36).slice(2), name: name, title: title || '', tier: tier || '', why: why || '', email: '', mobile: '', notes: '', assignedTo: null };
+  state.guestRepo.push(entry);
+  renderGuestRepo();
+  autoSave('guest repo updated', true);
+  return entry;
+}
+
+function addToRepoFromCard(name, title, tier, why, btn) {
+  var entry = addToRepo(name, title, tier, why);
+  if (entry) {
+    btn.textContent = '✓ In Repo';
+    btn.disabled = true;
+    btn.style.color = 'var(--teal)';
+    btn.style.borderColor = 'var(--teal)';
+    addMsg('boo', '<strong>' + name + '</strong> added to the Guest Repository. Open the Guest Repository panel and assign to an episode when you\'re ready.');
+  }
+}
+
+function renderGuestRepo() {
+  var el = document.getElementById('repo-guest-list');
+  var badge = document.getElementById('repo-count');
+  if (!el) return;
+  var list = state.guestRepo || [];
+  if (badge) badge.textContent = list.length || '0';
+  if (!list.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--muted)">No guests yet — click → REPO on any Boo guest card to add one.</div>';
+    return;
+  }
+  var episodes = (state.seasons[0] && state.seasons[0].episodes) ? state.seasons[0].episodes : [];
+  var epOpts = '<option value="">— assign to episode —</option>' + episodes.map(function(ep) {
+    var label = 'E' + ep.number + (ep.title && !ep.title.startsWith('TBD') ? ' — ' + ep.title.slice(0, 28) : '');
+    return '<option value="' + ep.number + '">' + esc(label) + '</option>';
+  }).join('');
+  var html = '';
+  list.forEach(function(g) {
+    var safeName = g.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var selId = 'rsel-' + g.name.replace(/\s/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    var tierLabel = g.tier === 'spotlight' ? 'T1' : g.tier === 'rising' ? 'T2' : g.tier === 'discovery' ? 'T3' : '';
+    var tierColor = g.tier === 'spotlight' ? 'var(--teal)' : g.tier === 'rising' ? 'var(--gold)' : '#a78bfa';
+    html += '<div style="padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.05);">'
+      + '<div style="display:flex;align-items:flex-start;gap:6px;">'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-weight:700;font-size:13px;color:var(--text);display:flex;align-items:center;gap:5px;">' + esc(g.name)
+      + (tierLabel ? '<span style="font-family:\'DM Mono\',monospace;font-size:9px;font-weight:700;color:' + tierColor + ';">' + tierLabel + '</span>' : '')
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--teal);margin-top:1px;">' + esc(g.title || '') + '</div>'
+      + (g.assignedTo ? '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);margin-top:2px;">→ E' + g.assignedTo + ' assigned</div>' : '')
+      + (g.why ? '<div style="font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5;">' + esc(g.why.slice(0, 140)) + (g.why.length > 140 ? '…' : '') + '</div>' : '')
+      + '</div>'
+      + '<button onclick="removeFromRepo(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;flex-shrink:0;" title="Remove from repo">✕</button>'
+      + '</div>'
+      + '<input type="text" value="' + esc(g.notes||'') + '" placeholder="notes…" onchange="saveRepoField(\'' + safeName + '\',this.value)" style="width:100%;margin-top:6px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;box-sizing:border-box;">'
+      + '<div style="display:flex;gap:5px;margin-top:5px;">'
+      + '<select id="' + selId + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;cursor:pointer;">' + epOpts + '</select>'
+      + '<button onclick="assignFromRepo(\'' + safeName + '\',document.getElementById(\'' + selId + '\').value)" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;white-space:nowrap;">→ ASSIGN</button>'
+      + '</div>'
+      + '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function assignFromRepo(name, epNumStr) {
+  var epNum = parseInt(epNumStr, 10);
+  if (!epNum) { showToast('Select an episode first.'); return; }
+  var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
+  if (!g) return;
+  if (!episodeStore[epNum]) {
+    episodeStore[epNum] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], targetTime: 60, recordDate: '', recordTime: '', releaseDate: '', releaseTime: '', cues: [], summary: '', guestIntro: '', interviewQuestions: '', location: '' };
+  }
+  if (!episodeStore[epNum].considerations) episodeStore[epNum].considerations = [];
+  var already = episodeStore[epNum].considerations.find(function(c) { return c.name === name; });
+  if (already) { showToast(name.split(' ')[0] + ' is already in E' + epNum + '\'s guest list.'); return; }
+  episodeStore[epNum].considerations.push({ name: g.name, title: g.title, status: 'unconfirmed', guestIntro: '', confirmed: false, email: g.email || '', mobile: g.mobile || '', sendKit: false });
+  g.assignedTo = epNum;
+  autoSave('guest assigned to episode', true);
+  renderGuestRepo();
+  var currentEpNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  if (epNum === currentEpNum) renderConsiderations();
+  showToast(name.split(' ')[0] + ' → E' + epNum + ' ✓');
+}
+
+function removeFromRepo(name) {
+  state.guestRepo = (state.guestRepo || []).filter(function(g) { return g.name !== name; });
+  renderGuestRepo();
+  autoSave('guest repo updated', true);
+}
+
+function saveRepoField(name, val) {
+  var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
+  if (!g) return;
+  g.notes = val;
+  autoSave('repo notes updated');
 }
 
 function toggleConsiderationConfirmed(name) {
@@ -7061,6 +7191,7 @@ buildSessionSnapshot = function() {
   snap.masterBriefFlags = JSON.parse(JSON.stringify(state.masterBriefFlags || []));
   snap.hostIntro = state.hostIntro || '';
   snap.hostOutro = state.hostOutro || '';
+  snap.guestRepo = JSON.parse(JSON.stringify(state.guestRepo || []));
   return snap;
 };
 
@@ -7100,7 +7231,9 @@ applySession = function(data) {
   if (data.masterBriefFlags) state.masterBriefFlags = data.masterBriefFlags;
   if (data.hostIntro) state.hostIntro = data.hostIntro;
   if (data.hostOutro) state.hostOutro = data.hostOutro;
+  if (data.guestRepo) state.guestRepo = data.guestRepo;
   renderSeasonsList();
+  renderGuestRepo();
   renderMemoryPanel();
   renderGuestIntroField();
   renderScriptFields();
