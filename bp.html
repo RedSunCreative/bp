@@ -7165,9 +7165,8 @@ function autoSave(reason, immediate) {
   autoSaveTimeout = setTimeout(async () => {
     setSaveBadge('● SAVING', '#8a96a8');
     const snapshot = buildSessionSnapshot();
-    try {
-      sessionStorage.setItem('boo_autosave', JSON.stringify(snapshot));
-    } catch(e) {}
+    // Always write to localStorage first — survives refresh if Supabase write fails
+    try { localStorage.setItem('boo_autosave', JSON.stringify(snapshot)); } catch(e) {}
     try {
       // Archive what was last in Supabase before overwriting it
       if (_lastSavedSnap) {
@@ -7188,8 +7187,8 @@ function autoSave(reason, immediate) {
       setSaveBadge('● SAVED', '#4FC3F7');
       showToast('✓ Auto-saved (' + reason + ')');
     } catch(e) {
-      setSaveBadge('● LOCAL', '#8a96a8');
-      showToast('✓ Saved locally (' + reason + ')');
+      setSaveBadge('● LOCAL ⚠', '#E8431A');
+      showToast('⚠ Supabase unreachable — saved locally. Refresh may lose changes.');
     }
   }, immediate ? 50 : 1500);
 }
@@ -7206,6 +7205,17 @@ async function loadFromSupabase() {
       applySession(rows[0].data);
       setSaveBadge('● LOADED', '#4ade80');
       showToast('✓ Session restored');
+      return;
+    }
+  } catch(e) {}
+  // Supabase unavailable or empty — fall back to localStorage backup
+  try {
+    const local = localStorage.getItem('boo_autosave');
+    if (local) {
+      const parsed = JSON.parse(local);
+      applySession(parsed);
+      setSaveBadge('● LOCAL ⚠', '#E8431A');
+      showToast('⚠ Loaded from local backup — Supabase may be unavailable');
     }
   } catch(e) {}
 }
