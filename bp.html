@@ -3214,6 +3214,66 @@ async function triggerBooDirectly(displayText, apiPrompt) {
 
 // ── API CALL ──
 async function callBoo(userMsg) {
+  // ── Live context snapshots injected into every Boo call ──
+  var _sNum  = state.currentSeason  ? state.currentSeason.number  : 1;
+  var _epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+
+  // Guest Repository
+  var _repoList = (state.guestRepo && state.guestRepo.length)
+    ? state.guestRepo.map(function(g) {
+        var line = '• ' + g.name + (g.title ? ' | ' + g.title.slice(0, 60) : '');
+        if (g.day || g.time) line += ' | Recording: ' + [g.day, g.time, g.timezone].filter(Boolean).join(' ');
+        if (g.email) line += ' | Email: ' + g.email;
+        if (g.location) line += ' | Location: ' + g.location;
+        if (g.why) line += '\n  Why: ' + g.why.slice(0, 150);
+        if (g.intro) line += '\n  Pod Intro: ' + g.intro.slice(0, 120);
+        if (g.description) line += '\n  Profile: ' + g.description.slice(0, 100);
+        line += '\n  Status: ' + (g.assignedTo ? 'Assigned to S' + _sNum + '-E' + g.assignedTo : 'Unassigned — in pool');
+        return line;
+      }).join('\n\n')
+    : 'No guests in repository yet.';
+
+  // Season arc with guest assignments
+  var _arcSeason = state.currentSeason || (state.seasons && state.seasons[0]) || {};
+  var _arcOrder  = (_arcSeason.episodeOrder || []).slice();
+  if (!_arcOrder.length) { var _ac = _arcSeason.episodeCount || 8; for (var _ai = 1; _ai <= _ac; _ai++) _arcOrder.push(_ai); }
+  var _arcList = _arcOrder.map(function(e) {
+    var beat   = getEpArcBeat(e);
+    var title  = getEpTitle(e) || 'TBD';
+    var eGuests = (episodeStore[e] && episodeStore[e].considerations) ? episodeStore[e].considerations : [];
+    var gStr   = eGuests.length
+      ? eGuests.map(function(g) { return g.name + ' [' + (g.status || 'considering') + ']' + (g.why ? ' — ' + g.why.slice(0,80) : ''); }).join('; ')
+      : 'No guest assigned';
+    return 'S' + _sNum + '-E' + e + ' [' + beat.label + '] "' + title + '"\n  Guest: ' + gStr;
+  }).join('\n\n');
+
+  // Current episode guest list (considerations)
+  var _epConsiderations = (activeEp().considerations || []);
+  var _epGuestList = _epConsiderations.length
+    ? _epConsiderations.map(function(g) {
+        var line = '• ' + g.name + ' [' + (g.status || 'considering').toUpperCase() + ']';
+        if (g.title)     line += ' | ' + g.title;
+        if (g.email)     line += ' | ' + g.email;
+        if (g.day||g.time) line += ' | Recording: ' + [g.day, g.time, g.timezone].filter(Boolean).join(' ');
+        if (g.location)  line += ' | ' + g.location;
+        if (g.why)       line += '\n  Why: ' + g.why.slice(0, 150);
+        if (g.guestIntro) line += '\n  Pod Intro (written): ' + g.guestIntro.slice(0, 120);
+        if (g.source1)   line += '\n  Profile: ' + g.source1;
+        return line;
+      }).join('\n\n')
+    : 'No guests on this episode\'s list yet.';
+
+  // Host scripts
+  var _hostCtx = '';
+  if (state.hostIntro) _hostCtx += '\nHOST INTRO (written): ' + state.hostIntro.slice(0, 300);
+  if (state.hostOutro) _hostCtx += '\nHOST OUTRO (written): ' + state.hostOutro.slice(0, 300);
+
+  // Action items
+  var _actions = (state.actionItems || []).filter(function(a) { return !a.done; });
+  var _actCtx  = _actions.length
+    ? _actions.map(function(a) { return '• [' + (a.owner||'?') + '] ' + a.text; }).join('\n')
+    : 'None open.';
+
   const systemPrompt = `You are Boo, a podcast producer for the Anno Coding Podcast. You work one task at a time and never skip ahead.
 
 SHOW CONTEXT:
@@ -3264,9 +3324,25 @@ THE BROADER ECOSYSTEM (always keep in mind):
 - This creates ongoing relevance and audience investment beyond passive listening
 
 CURRENT STATE:
-- Season: ${state.currentSeason ? JSON.stringify(state.currentSeason) : 'None set yet'}
-- Episode: ${state.currentEpisode ? JSON.stringify(state.currentEpisode) : 'None selected'}
-- Guest: ${activeEp().guest ? JSON.stringify(activeEp().guest) : 'None booked'}
+- Working on: S${_sNum}-E${_epNum}
+- Season theme: "${(state.currentSeason && state.currentSeason.theme) || 'What Do We Teach Now?'}"
+- Episode title: "${getEpTitle(_epNum) || 'TBD'}"
+- Episode arc position: ${getEpArcBeat(_epNum).label}
+- Booked guest: ${activeEp().guest ? (activeEp().guest.name + (activeEp().guest.title ? ', ' + activeEp().guest.title : '')) : 'None booked yet'}
+${_hostCtx}
+
+===== OPEN ACTION ITEMS =====
+${_actCtx}
+
+===== GUEST REPOSITORY — ${(state.guestRepo || []).length} guests in pool =====
+This is the full show-level guest pool. Guests may be assigned to an episode (see Status) or still unassigned.
+${_repoList}
+
+===== SEASON ARC — S${_sNum} guest assignments =====
+${_arcList}
+
+===== CURRENT EPISODE GUEST LIST — S${_sNum}-E${_epNum} =====
+${_epGuestList}
 
 ===== MANDATORY PRE-PRODUCTION WORKFLOW =====
 Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
@@ -3322,12 +3398,30 @@ ACTION: Kartik — Send bio and headshot to Mark by end of week
 Only flag genuine tasks with a clear owner. Do not over-flag. One to three per response maximum.
 
 ===== YOUR BUILT-IN TOOLS =====
-You are a fully-featured producer app. You have these views built right in -- never tell the user to use an outside app:
-- Boo Chat: where you are now, for all pre-production conversation
-- Teleprompter: a full-screen script reader the hosts use during recording. When a user asks to send, push, add, or load anything into the teleprompter, tell them to click the Teleprompter nav button in the left sidebar, then use the "Load Last Script" button. Or they can click "Push to Teleprompter" on any script you generate in chat.
-- Run of Show: a live timer and segment tracker for recording day
+You are a fully-featured producer app. You have these panels built right in — never tell the user to use an outside app:
+
+PANELS IN THE RIGHT SIDEBAR (episode-level):
+- Boo Chat: where you are now — all pre-production conversation and planning
+- Episode Info: episode number, title, recording date/time, release date, target runtime, location
+- Episode Intent: central tension, what audience thinks/feels/does after, arc role, emotional landing
+- Guests (episode panel): guest list for THIS episode — each guest has fields: First, Last, Title, Email, Location, Day, Time, Time Zone, Description, Source 1, Source 2, Why, Pod Intro. Status: FOR CONSIDERATION / UNCONFIRMED / INVITED. Has CONFIRMED checkbox and SEND WELCOME KIT toggle.
+- Guest Intro: Boo-generated on-air introduction for the confirmed guest
+- Interview Questions: Boo-generated questions specific to this guest and episode intent
+- Script: full episode script with sections OPENING / GUEST INTRO / QUESTIONS / GUEST PROMO / OUTRO
+- Cue List: run-of-show segments with names and durations
+- Dates: recording and release date calendar for the season
 - Action Items: task list with owners (Mark, Matt, Kartik)
 - Context Brief: a Boo-generated living document that orients new collaborators
+
+LEFT SIDEBAR — SEASON LEVEL:
+- Season Arc view: visual Plot Mountain arc showing all episodes, their arc position (Exposition/Conflict/Rising Action/Climax/Resolution/Denouement), assigned guests, and episode status (not-started → planning → ready-to-record → recorded → edited → published). Has ✦ Boo: Map Season button. Guests can be dragged from the repository onto episode rows.
+- Guest Repository: show-level pool of ALL potential guests regardless of episode assignment. Each entry has: First, Last, Name, Title, Email, Location, Day, Time, Time Zone, Description, Source 1 (profile URL), Source 2, Why, Pod Intro, producer notes, and an → ASSIGN dropdown to place them into an episode. Guests are draggable to the season arc.
+
+WHEN THE USER REFERENCES A PANEL OR FIELD:
+You can see all current data (guest repository, episode guest lists, season arc) in your context above. Reference it directly rather than asking the user to describe it. If Mark says "the guest I just added" — look at the repository. If he says "episode 3's guest" — look at the season arc.
+
+TELEPROMPTER:
+When a user asks to send, push, add, or load anything into the teleprompter, tell them to click the Teleprompter nav button in the left sidebar, then use the "Load Last Script" button. Or they can click "Push to Teleprompter" on any script you generate in chat.
 
 When someone says "add that to the teleprompter", "send to teleprompter", "load that script", "can you add that" -- direct them to the Teleprompter view in the left nav and the Push or Load buttons. Never suggest a third-party teleprompter app.
 
