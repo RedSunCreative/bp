@@ -4231,6 +4231,7 @@ function renderGuestRepo() {
     + '</div>'
     + (g.assignedTo ? '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);margin-top:2px;">→ S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + g.assignedTo + ' assigned</div>' : '')
     + '</div>'
+    + '<button onclick="researchRepoGuest(\'' + safeName + '\')" style="font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid rgba(59,184,201,0.35);background:rgba(59,184,201,0.08);color:rgba(59,184,201,0.8);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;flex-shrink:0;" title="Research this guest with Tavily + Apollo">✦ Research</button>'
     + '<button onclick="removeFromRepo(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;flex-shrink:0;" title="Remove">✕</button>'
     + '</div>'
 
@@ -8119,6 +8120,8 @@ function openUserProfile() {
   document.getElementById('up-gmail').value = userPrefs.gmail || '';
   var apolloEl = document.getElementById('up-apollo');
   if (apolloEl) apolloEl.value = getApolloKey() ? '••••••••••••••••' : '';
+  var tavilyEl = document.getElementById('up-tavily');
+  if (tavilyEl) tavilyEl.value = getTavilyKey() ? '••••••••••••••••' : '';
   document.getElementById('userProfileOverlay').style.display = 'flex';
   setTimeout(function(){ document.getElementById('up-name').focus(); }, 50);
 }
@@ -8132,10 +8135,13 @@ function saveUserProfile() {
   userPrefs.name  = (document.getElementById('up-name').value  || '').trim();
   userPrefs.gmail = (document.getElementById('up-gmail').value || '').trim();
   localStorage.setItem('boo_user_prefs', JSON.stringify(userPrefs));
-  var apolloVal = (document.getElementById('up-apollo').value || '').trim();
-  if (apolloVal && apolloVal !== '••••••••••••••••') saveApolloKey(apolloVal);
+  var apolloVal  = (document.getElementById('up-apollo').value  || '').trim();
+  var tavilyVal  = (document.getElementById('up-tavily').value || '').trim();
+  if (apolloVal  && apolloVal  !== '••••••••••••••••') saveApolloKey(apolloVal);
+  if (tavilyVal  && tavilyVal  !== '••••••••••••••••') saveTavilyKey(tavilyVal);
   document.getElementById('userProfileOverlay').style.display = 'none';
-  showToast('Profile saved' + (apolloVal && apolloVal !== '••••••••••••••••' ? ' — Apollo key stored.' : '.'));
+  var keysSaved = [apolloVal && apolloVal !== '••••••••••••••••' ? 'Apollo' : '', tavilyVal && tavilyVal !== '••••••••••••••••' ? 'Tavily' : ''].filter(Boolean);
+  showToast('Profile saved' + (keysSaved.length ? ' — ' + keysSaved.join(' + ') + ' key' + (keysSaved.length > 1 ? 's' : '') + ' stored.' : '.'));
 }
 
 function openShowInfo() {
@@ -8146,12 +8152,166 @@ function openShowInfo() {
   document.getElementById('showInfoOverlay').style.display = 'flex';
 }
 
-function getApolloKey() { return localStorage.getItem('boo_apollo_key') || ''; }
+function getApolloKey()  { return localStorage.getItem('boo_apollo_key')  || ''; }
+function getTavilyKey() { return localStorage.getItem('boo_tavily_key') || ''; }
 
 function saveApolloKey(val) {
   val = (val || '').trim();
   if (val) localStorage.setItem('boo_apollo_key', val);
   else localStorage.removeItem('boo_apollo_key');
+}
+
+function saveTavilyKey(val) {
+  val = (val || '').trim();
+  if (val) localStorage.setItem('boo_tavily_key', val);
+  else localStorage.removeItem('boo_tavily_key');
+}
+
+async function callTavily(query, maxResults) {
+  var key = getTavilyKey();
+  if (!key) return null;
+  try {
+    var res = await fetch('https://api.tavily.com/search', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        api_key: key,
+        query: query,
+        search_depth: 'advanced',
+        max_results: maxResults || 5,
+        include_answer: true,
+        include_raw_content: false,
+        include_images: false
+      })
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch(e) { return null; }
+}
+
+// Returns Apollo professional data as a text block, or null
+async function fetchApolloData(name, title) {
+  var key = getApolloKey();
+  if (!key) return null;
+  var parts = (name || '').trim().split(/\s+/);
+  var firstName = parts[0] || '';
+  var lastName  = parts.slice(1).join(' ') || '';
+  var orgGuess  = (title || '').split(',').map(function(s){ return s.trim(); }).filter(Boolean).pop() || '';
+  try {
+    var res = await fetch('https://api.apollo.io/v1/people/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache', 'X-Api-Key': key },
+      body: JSON.stringify({ first_name: firstName, last_name: lastName, organization_name: orgGuess, reveal_personal_emails: false })
+    });
+    var data = await res.json();
+    var p = data && data.person;
+    if (!p) return null;
+    var lines = [];
+    if (p.linkedin_url) lines.push('LinkedIn: ' + p.linkedin_url);
+    if (p.title)        lines.push('Title: ' + p.title);
+    var org = p.organization_name || (p.organization && p.organization.name);
+    if (org)            lines.push('Organization: ' + org);
+    if (p.city || p.country) lines.push('Location: ' + [p.city, p.country].filter(Boolean).join(', '));
+    if (p.email)        lines.push('Email: ' + p.email);
+    return lines.length ? lines.join('\n') : null;
+  } catch(e) { return null; }
+}
+
+async function researchRepoGuest(name) {
+  var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
+  if (!g) return;
+
+  var tavilyKey = getTavilyKey();
+  var apolloKey = getApolloKey();
+  if (!tavilyKey && !apolloKey) {
+    showToast('Add a Tavily or Apollo key in 👤 Profile to enable research.');
+    return;
+  }
+
+  var firstName = g.firstName || g.name.split(' ')[0];
+
+  // Show user message in chat
+  var msgs = document.getElementById('messages');
+  var msgDiv = document.createElement('div');
+  msgDiv.className = 'msg user';
+  msgDiv.innerHTML = '<div class="msg-avatar">U</div>'
+    + '<div class="msg-body"><div class="msg-name">You</div>'
+    + '<div class="msg-bubble">Research ' + esc(firstName) + ' for ' + esc(SHOW_CONFIG.showName) + '.</div></div>';
+  msgs.appendChild(msgDiv);
+  msgs.scrollTop = msgs.scrollHeight;
+  showTyping();
+
+  var sections = [];
+  sections.push('RESEARCH TARGET: ' + g.name + (g.title ? ' | ' + g.title : ''));
+
+  // Parallel: Apollo + 2 Tavily searches
+  var apolloPromise = apolloKey
+    ? fetchApolloData(g.name, g.title || '')
+    : Promise.resolve(null);
+
+  var tavilyQ1 = tavilyKey
+    ? callTavily(g.name + (g.title ? ' ' + g.title.split(',')[0] : ''), 5)
+    : Promise.resolve(null);
+
+  var tavilyQ2 = tavilyKey
+    ? callTavily(g.name + ' podcast speaker keynote interview', 4)
+    : Promise.resolve(null);
+
+  var results = await Promise.allSettled([apolloPromise, tavilyQ1, tavilyQ2]);
+
+  var apolloStr = results[0].status === 'fulfilled' ? results[0].value : null;
+  var t1        = results[1].status === 'fulfilled' ? results[1].value : null;
+  var t2        = results[2].status === 'fulfilled' ? results[2].value : null;
+
+  if (apolloStr) sections.push('APOLLO PROFESSIONAL PROFILE:\n' + apolloStr);
+
+  function tavilySection(t, label) {
+    if (!t) return;
+    var lines = [];
+    if (t.answer) lines.push('Overview: ' + t.answer);
+    (t.results || []).forEach(function(r) {
+      lines.push('• ' + r.title + '\n  ' + r.url + (r.content ? '\n  ' + String(r.content).slice(0, 280) : ''));
+    });
+    if (lines.length) sections.push(label + ':\n' + lines.join('\n'));
+  }
+  tavilySection(t1, 'WEB PROFILE & RECENT WORK');
+  tavilySection(t2, 'SPEAKING, PODCASTS & MEDIA');
+
+  // Existing guest fields as context
+  var existing = [];
+  if (g.description) existing.push('Existing bio note: ' + g.description);
+  if (g.why)         existing.push('Existing why note: ' + g.why);
+  if (g.source1)     existing.push('Source 1: ' + g.source1);
+  if (g.source2)     existing.push('Source 2: ' + g.source2);
+  if (existing.length) sections.push('EXISTING NOTES:\n' + existing.join('\n'));
+
+  var sNum  = state.currentSeason  ? state.currentSeason.number  : 1;
+  var theme = state.currentSeason  ? state.currentSeason.theme   : '';
+  var epNum = state.currentEpisode ? state.currentEpisode.number : null;
+
+  var researchPrompt = sections.join('\n\n') + '\n\n'
+    + 'Research brief request for ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '.\n'
+    + 'Season ' + sNum + (theme ? ': "' + theme + '"' : '') + '.\n\n'
+    + 'Based on everything above, provide:\n'
+    + '1. PODCAST BIO (2–3 sentences): who they are + what makes their perspective distinct for our audience\n'
+    + '2. THEIR ANGLE: the specific question their work helps answer for this show\n'
+    + '3. EPISODE TOPICS (2–3): concrete episode concepts that fit Plot Mountain — problem, rising tension, resolution\n'
+    + '4. SEASON FIT: why they belong in Season ' + sNum + (epNum ? ', Episode ' + epNum : '') + '\n'
+    + '5. SOURCES: any confirmed URLs worth saving (LinkedIn, site, notable articles)\n\n'
+    + 'Be direct. No hedging. Labeled sections. If data is thin, say what\'s missing and what you can reasonably infer.';
+
+  try {
+    var reply = await callBoo(researchPrompt);
+    activeEp().conversationLog.push({ role: 'user', text: researchPrompt });
+    hideTyping();
+    var parsed = parseReply(reply);
+    addMsg('boo', parsed, null, reply);
+    autoSave('guest research', true);
+  } catch(err) {
+    activeEp().conversationLog.push({ role: 'user', text: researchPrompt });
+    hideTyping();
+    addMsg('boo', 'Research hit a snag: <em>' + esc(err.message) + '</em>. Try again?');
+  }
 }
 
 async function verifyGuestWithApollo(name, title, cardId) {
@@ -8337,6 +8497,11 @@ document.addEventListener('DOMContentLoaded', function() {
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Apollo API Key</div>
     <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.4;">Stored locally — never sent to GitHub. Enables precise LinkedIn matching on guest cards.</div>
     <input id="up-apollo" type="password" placeholder="Paste your Apollo key here"
+      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:14px;outline:none;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter') document.getElementById('up-tavily').focus()">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Tavily API Key</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.4;">Stored locally. Powers the ✦ Research button — Boo searches the web for each guest before briefing you.</div>
+    <input id="up-tavily" type="password" placeholder="Paste your Tavily key here"
       style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:18px;outline:none;box-sizing:border-box;"
       onkeydown="if(event.key==='Enter') saveUserProfile()">
     <button onclick="saveUserProfile()" style="width:100%;background:var(--teal);color:#003a40;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:8px;padding:10px;cursor:pointer;">Save Profile</button>
