@@ -3841,7 +3841,7 @@ function considerGuest(name, title, btn) {
 
   renderConsiderations();
   updateContextBar();
-  autoSave('guest added to consideration');
+  autoSave('guest added to consideration', true);
 
   addMsg('boo', '<strong>' + name + '</strong> added to your shortlist. Review in the Guests panel — when you\'re ready, hit Invite to send outreach.');
 }
@@ -3858,7 +3858,7 @@ function addGuestUnconfirmed(name, title, btn) {
   if (btn) { btn.textContent = '✓ Added'; btn.disabled = true; btn.style.color = 'var(--teal)'; btn.style.borderColor = 'var(--teal)'; }
   renderConsiderations();
   updateContextBar();
-  autoSave('guest added unconfirmed');
+  autoSave('guest added unconfirmed', true);
   addMsg('boo', '<strong>' + name + '</strong> added to your guest list as unconfirmed. Add their email and mobile in the Guests panel to send them the Welcome Kit.');
 }
 
@@ -3944,7 +3944,7 @@ function inviteConsideration(name, title) {
     }
   }
   renderConsiderations();
-  autoSave('guest invited');
+  autoSave('guest invited', true);
   draftEmail(name, title);
   // Use already-written consideration intro if available; otherwise generate
   if (g && g.guestIntro) {
@@ -3960,7 +3960,7 @@ function removeConsideration(name) {
   if (!list) return;
   activeEp().considerations = list.filter(function(g) { return g.name !== name; });
   renderConsiderations();
-  autoSave('guest removed from consideration');
+  autoSave('guest removed from consideration', true);
 }
 
 function toggleConsiderationConfirmed(name) {
@@ -3968,7 +3968,7 @@ function toggleConsiderationConfirmed(name) {
   if (!g) return;
   g.confirmed = !g.confirmed;
   renderConsiderations();
-  autoSave('guest confirmed');
+  autoSave('guest confirmed', true);
 }
 
 function saveConsiderationField(name, field, val) {
@@ -3983,7 +3983,7 @@ function toggleConsiderationKit(name) {
   if (!g) return;
   g.sendKit = !g.sendKit;
   renderConsiderations();
-  autoSave('guest kit toggled');
+  autoSave('guest kit toggled', true);
 }
 
 function toBase64Url(obj) {
@@ -4988,7 +4988,7 @@ function sendInviteNew() {
 
   closeInviteNewModal();
   showToast('Gmail invite opened for ' + name.split(' ')[0]);
-  autoSave('guest invited');
+  autoSave('guest invited', true);
 }
 
 function openDatepicker(guestName, guestTitle) {
@@ -5326,12 +5326,12 @@ function saveFromChat(btn, field) {
   if (!text) return;
   if (field === 'hostIntro') {
     state.hostIntro = text;
-    autoSave('host intro saved from chat');
+    autoSave('host intro saved from chat', true);
     renderScriptFields();
     showToast('Host intro saved to Show Scripts.');
   } else if (field === 'hostOutro') {
     state.hostOutro = text;
-    autoSave('host outro saved from chat');
+    autoSave('host outro saved from chat', true);
     renderScriptFields();
     showToast('Host outro saved to Show Scripts.');
   }
@@ -7160,7 +7160,7 @@ function saveSession() {
   showToast('✓ Saved: ' + (filename));
 }
 
-function autoSave(reason) {
+function autoSave(reason, immediate) {
   clearTimeout(autoSaveTimeout);
   autoSaveTimeout = setTimeout(async () => {
     setSaveBadge('● SAVING', '#8a96a8');
@@ -7191,7 +7191,7 @@ function autoSave(reason) {
       setSaveBadge('● LOCAL', '#8a96a8');
       showToast('✓ Saved locally (' + reason + ')');
     }
-  }, 1500);
+  }, immediate ? 50 : 1500);
 }
 
 async function loadFromSupabase() {
