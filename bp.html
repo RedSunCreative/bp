@@ -8122,6 +8122,8 @@ function openUserProfile() {
   if (apolloEl) apolloEl.value = getApolloKey() ? '••••••••••••••••' : '';
   var tavilyEl = document.getElementById('up-tavily');
   if (tavilyEl) tavilyEl.value = getTavilyKey() ? '••••••••••••••••' : '';
+  var proxycurlEl = document.getElementById('up-proxycurl');
+  if (proxycurlEl) proxycurlEl.value = getProxycurlKey() ? '••••••••••••••••' : '';
   document.getElementById('userProfileOverlay').style.display = 'flex';
   setTimeout(function(){ document.getElementById('up-name').focus(); }, 50);
 }
@@ -8135,12 +8137,18 @@ function saveUserProfile() {
   userPrefs.name  = (document.getElementById('up-name').value  || '').trim();
   userPrefs.gmail = (document.getElementById('up-gmail').value || '').trim();
   localStorage.setItem('boo_user_prefs', JSON.stringify(userPrefs));
-  var apolloVal  = (document.getElementById('up-apollo').value  || '').trim();
-  var tavilyVal  = (document.getElementById('up-tavily').value || '').trim();
-  if (apolloVal  && apolloVal  !== '••••••••••••••••') saveApolloKey(apolloVal);
-  if (tavilyVal  && tavilyVal  !== '••••••••••••••••') saveTavilyKey(tavilyVal);
+  var apolloVal     = (document.getElementById('up-apollo').value     || '').trim();
+  var tavilyVal     = (document.getElementById('up-tavily').value    || '').trim();
+  var proxycurlVal  = (document.getElementById('up-proxycurl').value || '').trim();
+  if (apolloVal    && apolloVal    !== '••••••••••••••••') saveApolloKey(apolloVal);
+  if (tavilyVal    && tavilyVal    !== '••••••••••••••••') saveTavilyKey(tavilyVal);
+  if (proxycurlVal && proxycurlVal !== '••••••••••••••••') saveProxycurlKey(proxycurlVal);
   document.getElementById('userProfileOverlay').style.display = 'none';
-  var keysSaved = [apolloVal && apolloVal !== '••••••••••••••••' ? 'Apollo' : '', tavilyVal && tavilyVal !== '••••••••••••••••' ? 'Tavily' : ''].filter(Boolean);
+  var keysSaved = [
+    apolloVal    && apolloVal    !== '••••••••••••••••' ? 'Apollo'    : '',
+    tavilyVal    && tavilyVal    !== '••••••••••••••••' ? 'Tavily'    : '',
+    proxycurlVal && proxycurlVal !== '••••••••••••••••' ? 'Proxycurl' : '',
+  ].filter(Boolean);
   showToast('Profile saved' + (keysSaved.length ? ' — ' + keysSaved.join(' + ') + ' key' + (keysSaved.length > 1 ? 's' : '') + ' stored.' : '.'));
 }
 
@@ -8189,7 +8197,7 @@ async function callTavily(query, maxResults) {
   } catch(e) { return null; }
 }
 
-// Returns Apollo professional data as a text block, or null
+// Returns { text, linkedinUrl } or null
 async function fetchApolloData(name, title) {
   var key = getApolloKey();
   if (!key) return null;
@@ -8213,7 +8221,71 @@ async function fetchApolloData(name, title) {
     if (org)            lines.push('Organization: ' + org);
     if (p.city || p.country) lines.push('Location: ' + [p.city, p.country].filter(Boolean).join(', '));
     if (p.email)        lines.push('Email: ' + p.email);
-    return lines.length ? lines.join('\n') : null;
+    return { text: lines.join('\n'), linkedinUrl: p.linkedin_url || null };
+  } catch(e) { return null; }
+}
+
+function getProxycurlKey() { return localStorage.getItem('boo_proxycurl_key') || ''; }
+function saveProxycurlKey(val) {
+  val = (val || '').trim();
+  if (val) localStorage.setItem('boo_proxycurl_key', val);
+  else localStorage.removeItem('boo_proxycurl_key');
+}
+
+function formatProxycurlProfile(p) {
+  if (!p || p.code === 'INVALID_LINKEDIN_PROFILE_URL' || p.code === 'PROFILE_NOT_FOUND') return null;
+  var lines = [];
+  if (p.full_name)      lines.push('Name: ' + p.full_name);
+  if (p.headline)       lines.push('Headline: ' + p.headline);
+  if (p.city || p.state || p.country)
+    lines.push('Location: ' + [p.city, p.state, p.country].filter(Boolean).join(', '));
+  if (p.follower_count) lines.push('Followers: ' + Number(p.follower_count).toLocaleString());
+  if (p.summary)        lines.push('About: ' + String(p.summary).slice(0, 700));
+  if (p.experiences && p.experiences.length) {
+    lines.push('Experience:');
+    p.experiences.slice(0, 3).forEach(function(e) {
+      var ln = '  • ' + (e.title || '') + (e.company ? ' @ ' + e.company : '');
+      if (e.starts_at && e.starts_at.year) {
+        ln += ' (' + e.starts_at.year + '–' + (e.ends_at && e.ends_at.year ? e.ends_at.year : 'Present') + ')';
+      }
+      if (e.description) ln += '\n    ' + String(e.description).slice(0, 220);
+      lines.push(ln);
+    });
+  }
+  if (p.education && p.education.length) {
+    lines.push('Education:');
+    p.education.slice(0, 2).forEach(function(e) {
+      lines.push('  • ' + [e.degree_name, e.field_of_study, e.school].filter(Boolean).join(' — '));
+    });
+  }
+  if (p.accomplishment_publications && p.accomplishment_publications.length) {
+    lines.push('Publications:');
+    p.accomplishment_publications.slice(0, 3).forEach(function(pub) {
+      lines.push('  • ' + (pub.name || '') + (pub.publisher ? ' (' + pub.publisher + ')' : ''));
+    });
+  }
+  if (p.articles && p.articles.length) {
+    lines.push('LinkedIn Articles:');
+    p.articles.slice(0, 3).forEach(function(a) {
+      lines.push('  • ' + (a.title || '') + (a.url ? ' — ' + a.url : ''));
+    });
+  }
+  return lines.length ? lines.join('\n') : null;
+}
+
+async function fetchProxycurlProfile(linkedinUrl) {
+  var key = getProxycurlKey();
+  if (!key || !linkedinUrl) return null;
+  try {
+    var endpoint = 'https://nubela.co/proxycurl/api/v2/linkedin?url='
+      + encodeURIComponent(linkedinUrl)
+      + '&use_cache=if-present&fallback_to_cache=on-error';
+    var res = await fetch(endpoint, {
+      headers: { 'Authorization': 'Bearer ' + key }
+    });
+    if (!res.ok) return null;
+    var data = await res.json();
+    return formatProxycurlProfile(data);
   } catch(e) { return null; }
 }
 
@@ -8221,10 +8293,11 @@ async function researchRepoGuest(name) {
   var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
   if (!g) return;
 
-  var tavilyKey = getTavilyKey();
-  var apolloKey = getApolloKey();
-  if (!tavilyKey && !apolloKey) {
-    showToast('Add a Tavily or Apollo key in 👤 Profile to enable research.');
+  var tavilyKey     = getTavilyKey();
+  var apolloKey     = getApolloKey();
+  var proxycurlKey  = getProxycurlKey();
+  if (!tavilyKey && !apolloKey && !proxycurlKey) {
+    showToast('Add a Tavily, Apollo, or Proxycurl key in 👤 Profile to enable research.');
     return;
   }
 
@@ -8244,26 +8317,35 @@ async function researchRepoGuest(name) {
   var sections = [];
   sections.push('RESEARCH TARGET: ' + g.name + (g.title ? ' | ' + g.title : ''));
 
-  // Parallel: Apollo + 2 Tavily searches
-  var apolloPromise = apolloKey
-    ? fetchApolloData(g.name, g.title || '')
-    : Promise.resolve(null);
+  // Apollo → Proxycurl chain (Proxycurl needs the LinkedIn URL from Apollo)
+  var apolloChain = (async function() {
+    var apollo = apolloKey ? await fetchApolloData(g.name, g.title || '') : null;
+    // LinkedIn URL: Apollo first, then check existing source fields
+    var linkedinUrl = (apollo && apollo.linkedinUrl)
+      || (g.source1 && g.source1.includes('linkedin.com') ? g.source1 : null)
+      || (g.source2 && g.source2.includes('linkedin.com') ? g.source2 : null);
+    var proxycurl = (proxycurlKey && linkedinUrl) ? await fetchProxycurlProfile(linkedinUrl) : null;
+    return { apollo: apollo, proxycurl: proxycurl, linkedinUrl: linkedinUrl };
+  })();
 
+  // Tavily searches run in parallel with the Apollo/Proxycurl chain
   var tavilyQ1 = tavilyKey
     ? callTavily(g.name + (g.title ? ' ' + g.title.split(',')[0] : ''), 5)
     : Promise.resolve(null);
-
   var tavilyQ2 = tavilyKey
     ? callTavily(g.name + ' podcast speaker keynote interview', 4)
     : Promise.resolve(null);
 
-  var results = await Promise.allSettled([apolloPromise, tavilyQ1, tavilyQ2]);
+  var results = await Promise.allSettled([apolloChain, tavilyQ1, tavilyQ2]);
 
-  var apolloStr = results[0].status === 'fulfilled' ? results[0].value : null;
-  var t1        = results[1].status === 'fulfilled' ? results[1].value : null;
-  var t2        = results[2].status === 'fulfilled' ? results[2].value : null;
+  var chain = results[0].status === 'fulfilled' ? results[0].value : {};
+  var t1    = results[1].status === 'fulfilled' ? results[1].value : null;
+  var t2    = results[2].status === 'fulfilled' ? results[2].value : null;
 
-  if (apolloStr) sections.push('APOLLO PROFESSIONAL PROFILE:\n' + apolloStr);
+  if (chain.apollo && chain.apollo.text)
+    sections.push('APOLLO PROFESSIONAL PROFILE:\n' + chain.apollo.text);
+  if (chain.proxycurl)
+    sections.push('LINKEDIN PROFILE (via Proxycurl):\n' + chain.proxycurl);
 
   function tavilySection(t, label) {
     if (!t) return;
@@ -8500,8 +8582,13 @@ document.addEventListener('DOMContentLoaded', function() {
       style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:14px;outline:none;box-sizing:border-box;"
       onkeydown="if(event.key==='Enter') document.getElementById('up-tavily').focus()">
     <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Tavily API Key</div>
-    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.4;">Stored locally. Powers the ✦ Research button — Boo searches the web for each guest before briefing you.</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.4;">Stored locally. Powers web search — Boo pulls recent articles, talks, and media for each guest.</div>
     <input id="up-tavily" type="password" placeholder="Paste your Tavily key here"
+      style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:14px;outline:none;box-sizing:border-box;"
+      onkeydown="if(event.key==='Enter') document.getElementById('up-proxycurl').focus()">
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--teal);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">Proxycurl API Key</div>
+    <div style="font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.4;">Stored locally. Reads full LinkedIn profiles — experience, bio, publications, articles. Most detailed source.</div>
+    <input id="up-proxycurl" type="password" placeholder="Paste your Proxycurl key here"
       style="width:100%;background:var(--dark);border:1px solid var(--border);color:var(--white);border-radius:6px;padding:8px 10px;font-size:13px;font-family:'DM Mono',monospace;margin-bottom:18px;outline:none;box-sizing:border-box;"
       onkeydown="if(event.key==='Enter') saveUserProfile()">
     <button onclick="saveUserProfile()" style="width:100%;background:var(--teal);color:#003a40;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;border:none;border-radius:8px;padding:10px;cursor:pointer;">Save Profile</button>
