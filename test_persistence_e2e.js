@@ -242,6 +242,24 @@ async function main() {
   await loadFromSupabase();
   check('Newer Supabase -> Supabase chat wins', chatPresent(sb, FRESH));
 
+  // ── Scenario 5: season brief guard — empty brief must NOT clobber a good one ─
+  // Reproduces the reported loss: a real brief exists, then a snapshot is built
+  // while the in-memory brief is empty. The guard must preserve the saved brief.
+  const BRIEF = 'E2E_SEASON_BRIEF_ACCUMULATED';
+  const flush = () => new Promise((r) => setImmediate(r)); // drain async autoSave continuation
+  // 1) Establish a known-good saved brief: put it in state, autoSave (sets _lastSavedSnap).
+  if (!sb.__state.seasons[0]) sb.__state.seasons[0] = { number: 1 };
+  sb.__state.seasons[0].seasonBrief = BRIEF;
+  autoSave('seed-brief', true);
+  await flush(); // let autoSave's async body run to `_lastSavedSnap = snapshot`
+  // 2) Now the in-memory brief gets emptied (simulating the bug path).
+  sb.__state.seasons[0].seasonBrief = '';
+  // 3) Build a snapshot — the guard should refuse to persist the empty brief.
+  const guardedSnap = sb.__SNAP__();
+  const guardedBrief = guardedSnap && guardedSnap.state && guardedSnap.state.seasons && guardedSnap.state.seasons[0] && guardedSnap.state.seasons[0].seasonBrief;
+  check('Empty brief does NOT overwrite a saved brief (guard holds)', guardedBrief === BRIEF);
+  check('Guard also restores brief into live state', sb.__state.seasons[0].seasonBrief === BRIEF);
+
   // ── Report ─────────────────────────────────────────────────────────────────
   const pad = (s, n) => (String(s) + ' '.repeat(n)).slice(0, n);
   console.log('');

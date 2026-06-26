@@ -7847,6 +7847,25 @@ buildSessionSnapshot = function() {
     showToast('⚠ Guest repo preserved — see console for details.');
   }
 
+  // Guard: never silently overwrite a real season brief with an empty one.
+  // seasonBrief rides inside snap.state.seasons[0]. If the new snapshot's brief
+  // is empty but the last confirmed save had one, restore the last-known-good text.
+  function _briefOf(s) {
+    var seas = s && s.state && s.state.seasons;
+    return (seas && seas[0] && typeof seas[0].seasonBrief === 'string') ? seas[0].seasonBrief : '';
+  }
+  var _newBrief  = _briefOf(snap);
+  var _lastBrief = _briefOf(_lastSavedSnap);
+  if ((!_newBrief || !_newBrief.trim()) && _lastBrief && _lastBrief.trim()) {
+    console.warn('[bp] seasonBrief guard triggered — brief is empty but last save had', _lastBrief.length, 'chars. Preserving last-known-good brief.');
+    if (snap.state && snap.state.seasons && snap.state.seasons[0]) {
+      snap.state.seasons[0].seasonBrief = _lastBrief;
+      // also reflect it back into live state so the UI doesn't show empty
+      if (state.seasons && state.seasons[0]) state.seasons[0].seasonBrief = _lastBrief;
+    }
+    showToast('⚠ Season brief preserved — see console for details.');
+  }
+
   return snap;
 };
 
@@ -7958,10 +7977,14 @@ function buildSessionSnapshot() {
       hour: 'numeric', minute: '2-digit', hour12: true
     }),
     show: 'Anno Coding',
+    // Deep-copy so the snapshot is a true point-in-time capture, not a live
+    // reference. Storing live references made _lastSavedSnap and every history
+    // entry mutate with current state (e.g. all history briefs looked identical),
+    // and broke any guard that compares a new snapshot against the last saved one.
     state: {
-      seasons: state.seasons,
-      currentSeason: state.currentSeason,
-      currentEpisode: state.currentEpisode,
+      seasons: JSON.parse(JSON.stringify(state.seasons)),
+      currentSeason: JSON.parse(JSON.stringify(state.currentSeason)),
+      currentEpisode: JSON.parse(JSON.stringify(state.currentEpisode)),
     },
     conversationLog: activeEp().conversationLog.slice(-60), // for message count display on load
     meta: {
