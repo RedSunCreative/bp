@@ -4439,6 +4439,8 @@ function importGuestsDirect() {
       source1     = clean(cols[10]);
       source2     = clean(cols[11]);
       why         = clean(cols[12]);
+      // If Why is empty but Source 2 is text (not a URL), promote it to Why
+      if (!why && source2 && !source2.startsWith('http')) { why = source2; source2 = ''; }
       intro       = clean(cols[13]);
       notes = '';
     } else {
