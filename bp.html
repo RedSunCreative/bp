@@ -3554,6 +3554,7 @@ function showTyping() {
     <div class="msg-avatar">🎬</div>
     <div class="msg-body">
       <div class="msg-name">Boo</div>
+      <div id="booStatusLine" style="display:none;font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);line-height:1.7;letter-spacing:0.03em;margin-bottom:4px;"></div>
       <div class="typing-dots">
         <span></span><span></span><span></span>
       </div>
@@ -3561,6 +3562,20 @@ function showTyping() {
   `;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
+}
+
+// Append/replace a live status line inside the typing bubble while Boo works
+function setBooStatus(text, append) {
+  var el = document.getElementById('booStatusLine');
+  if (!el) return;
+  el.style.display = 'block';
+  if (append) {
+    el.innerHTML += (el.innerHTML ? '<br>' : '') + text;
+  } else {
+    el.innerHTML = text;
+  }
+  var msgs = document.getElementById('messages');
+  if (msgs) msgs.scrollTop = msgs.scrollHeight;
 }
 
 function hideTyping() {
@@ -8450,22 +8465,34 @@ async function researchRepoGuest(name) {
   msgs.appendChild(msgDiv);
   msgs.scrollTop = msgs.scrollHeight;
   showTyping();
+  setBooStatus('Pulling everything I can find on ' + esc(firstName) + '…');
 
   var sections = [];
   sections.push('RESEARCH TARGET: ' + g.name + (g.title ? ' | ' + g.title : ''));
 
   // Apollo → Proxycurl chain (Proxycurl needs the LinkedIn URL from Apollo)
   var apolloChain = (async function() {
-    var apollo = apolloKey ? await fetchApolloData(g.name, g.title || '') : null;
+    var apollo = null;
+    if (apolloKey) {
+      setBooStatus('Checking Apollo for professional records…', true);
+      apollo = await fetchApolloData(g.name, g.title || '');
+      setBooStatus(apollo ? '✓ Apollo — profile found.' : '· Apollo — no match.', true);
+    }
     // LinkedIn URL: Apollo first, then check existing source fields
     var linkedinUrl = (apollo && apollo.linkedinUrl)
       || (g.source1 && g.source1.includes('linkedin.com') ? g.source1 : null)
       || (g.source2 && g.source2.includes('linkedin.com') ? g.source2 : null);
-    var proxycurl = (proxycurlKey && linkedinUrl) ? await fetchProxycurlProfile(linkedinUrl) : null;
+    var proxycurl = null;
+    if (proxycurlKey && linkedinUrl) {
+      setBooStatus('Reading the LinkedIn profile…', true);
+      proxycurl = await fetchProxycurlProfile(linkedinUrl);
+      setBooStatus(proxycurl ? '✓ LinkedIn — profile read.' : '· LinkedIn — unavailable.', true);
+    }
     return { apollo: apollo, proxycurl: proxycurl, linkedinUrl: linkedinUrl };
   })();
 
   // Tavily searches run in parallel with the Apollo/Proxycurl chain
+  if (tavilyKey) setBooStatus('Scanning the web with Tavily…', true);
   var tavilyQ1 = tavilyKey
     ? callTavily(g.name + (g.title ? ' ' + g.title.split(',')[0] : ''), 5)
     : Promise.resolve(null);
@@ -8495,6 +8522,11 @@ async function researchRepoGuest(name) {
   }
   tavilySection(t1, 'WEB PROFILE & RECENT WORK');
   tavilySection(t2, 'SPEAKING, PODCASTS & MEDIA');
+  if (tavilyKey) {
+    var hitCount = ((t1 && t1.results) ? t1.results.length : 0) + ((t2 && t2.results) ? t2.results.length : 0);
+    setBooStatus(hitCount ? '✓ Tavily — ' + hitCount + ' sources.' : '· Tavily — no results.', true);
+  }
+  setBooStatus('Compiling the brief…', true);
 
   // Existing guest fields as context
   var existing = [];
