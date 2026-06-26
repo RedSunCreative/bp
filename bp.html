@@ -5099,13 +5099,16 @@ function booMapSeason() {
   }).join('\n');
 
   var unassigned = (state.guestRepo || []).filter(function(g) { return !g.assignedTo; });
+  // Full dump — this is a one-time placement request, so Boo gets EVERYTHING uncapped
   var poolLines = unassigned.length
     ? unassigned.map(function(g) {
-        var line = '• ' + g.name + (g.title ? ', ' + g.title.slice(0, 50) : '');
-        if (g.why) line += '\n  Why: ' + g.why.slice(0, 120);
-        if (g.description) line += '\n  Profile: ' + g.description.slice(0, 80);
+        var line = '• ' + g.name + (g.title ? ', ' + g.title : '') + (g.org ? ' — ' + g.org : '');
+        if (g.why)         line += '\n  Why on the show: ' + g.why;
+        if (g.description) line += '\n  Profile/Bio: ' + g.description;
+        if (g.intro)       line += '\n  Pod Intro: ' + g.intro;
+        if (g.notes)       line += '\n  Boo\'s Research Notes:\n' + g.notes.split('\n').map(function(l){ return '    ' + l; }).join('\n');
         return line;
-      }).join('\n')
+      }).join('\n\n')
     : '(no unassigned guests in pool)';
 
   var apiPrompt = 'Show: ' + SHOW_CONFIG.showName + '\nSeason ' + num + ' theme: "' + theme + '"\n\n'
