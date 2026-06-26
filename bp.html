@@ -4344,12 +4344,13 @@ function saveRepoField(name, field, val) {
   var g = (state.guestRepo || []).find(function(r) { return r.name === name; });
   if (!g) return;
   g[field] = val;
+  stashGuestRepo(); // synchronous local backup — survives refresh even if Supabase save fails
   if (field === 'firstName' || field === 'lastName') {
     g.name = ((g.firstName || '') + ' ' + (g.lastName || '')).trim() || g.name;
     autoSave('repo field updated', true);
     renderGuestRepo();
   } else {
-    autoSave('repo field updated');
+    autoSave('repo field updated', true);
   }
 }
 
@@ -7846,18 +7847,42 @@ function stashGuestRepo() {
 }
 
 function recoverGuestRepoIfLost() {
-  if ((state.guestRepo || []).length > 0) return;
+  var stashGuests = null;
   try {
     var stash = localStorage.getItem('boo_guest_repo_stash');
-    if (!stash) return;
-    var guests = JSON.parse(stash);
-    if (!guests || !guests.length) return;
-    state.guestRepo = guests;
-    renderGuestRepo();
-    showToast('⚠ Guest repo recovered from local stash (' + guests.length + ' guests).');
-    console.warn('[bp] guestRepo recovered from boo_guest_repo_stash:', guests.length, 'guests');
-    autoSave('guest repo recovered', true);
+    if (stash) stashGuests = JSON.parse(stash);
   } catch(e) {}
+  if (!stashGuests || !stashGuests.length) return;
+
+  // Case 1: repo is empty — restore the whole thing from stash
+  if (!state.guestRepo || state.guestRepo.length === 0) {
+    state.guestRepo = stashGuests;
+    renderGuestRepo();
+    showToast('⚠ Guest repo recovered from local backup (' + stashGuests.length + ' guests).');
+    console.warn('[bp] guestRepo fully recovered from stash:', stashGuests.length);
+    autoSave('guest repo recovered', true);
+    return;
+  }
+
+  // Case 2: repo is present but may be missing research-heavy fields
+  // (e.g. Supabase had stale data but the stash holds notes). Merge field-by-field.
+  var mergeFields = ['notes','intro','why','description','org','title','email','location','day','time','timezone','source1','source2','tier','firstName','lastName'];
+  var recovered = 0;
+  state.guestRepo.forEach(function(g) {
+    var match = stashGuests.find(function(s) { return s.id === g.id; })
+             || stashGuests.find(function(s) { return s.name === g.name; });
+    if (!match) return;
+    mergeFields.forEach(function(f) {
+      // Only fill in when current value is empty but stash has content
+      if ((!g[f] || g[f] === '') && match[f]) { g[f] = match[f]; recovered++; }
+    });
+  });
+  if (recovered > 0) {
+    renderGuestRepo();
+    showToast('⚠ Recovered ' + recovered + ' guest field' + (recovered !== 1 ? 's' : '') + ' from local backup.');
+    console.warn('[bp] merged', recovered, 'fields from stash into loaded repo');
+    autoSave('guest fields recovered', true);
+  }
 }
 
 function buildSessionSnapshot() {
