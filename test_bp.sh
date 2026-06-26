@@ -42,6 +42,11 @@ if [[ "$BREAK_MODE" == "--break" ]]; then
   # T13: inject </script> literal inside the script block to simulate early close
   sed -i '' "s|// tip-q tooltip — must run after DOM is ready; #boo-tip is after the script block|// tip-q tooltip — must run after DOM is ready; #boo-tip is after </script>|" "$BP"
   echo "  Injected: </script> literal in comment inside script block"
+  # T17: disable load gate AND anti-shrink guard (autoSave can write seed pre-load / over real data)
+  sed -i '' 's/if (!_supabaseLoaded) {/if (false) { \/\/ BREAK-gate/' "$BP"
+  echo "  Injected: disabled load gate (_supabaseLoaded check)"
+  sed -i '' 's/if (_isNearSeed(snapshot)) {/if (false) { \/\/ BREAK-guard/' "$BP"
+  echo "  Injected: disabled anti-shrink guard (_isNearSeed check)"
   echo ""
 fi
 
@@ -456,6 +461,31 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 17 (behavioral): load gate + Supabase-reading anti-shrink guard
+# Drives the REAL autoSave in a vm sandbox with a stateful fake Supabase.
+# Proves: no PATCH before loadFromSupabase completes (gate); a near-empty
+# snapshot is refused when the LIVE row holds real content (anti-shrink);
+# and a near-empty snapshot is allowed when the live row is empty.
+# Incident 2026-06-26: app autosaved seed state over Season 1 during the
+# async load window, and the in-memory guard couldn't catch it.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 17: load gate + anti-shrink guard (no pre-load write / no seed-over-real) ---"
+T17_OUT=$(node test_loadgate.js 2>&1)
+T17_RC=$?
+T17_FAILS=$(printf '%s\n' "$T17_OUT" | grep -c 'FAIL')
+T17_PASSES=$(printf '%s\n' "$T17_OUT" | grep -c 'PASS')
+if [[ $T17_RC -eq 0 && $T17_FAILS -eq 0 && $T17_PASSES -gt 0 ]]; then
+  pass "load gate blocks pre-load writes; anti-shrink blocks seed-over-real ($T17_PASSES assertions)"
+elif [[ $T17_RC -eq 2 ]]; then
+  fail "load-gate test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T17_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "load gate / anti-shrink broke ($T17_FAILS assertion(s) failed)"
+  printf '%s\n' "$T17_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
@@ -466,6 +496,8 @@ if [[ "$BREAK_MODE" == "--break" ]]; then
   sed -i '' 's/  \/\/ BREAK-renderSeasonsList-removed/  renderSeasonsList();/' "$BP"
   sed -i '' "s/addEventListener('DISABLED', function() {$/addEventListener('DOMContentLoaded', function() {/" "$BP"
   sed -i '' "s|// tip-q tooltip — must run after DOM is ready; #boo-tip is after </script>|// tip-q tooltip — must run after DOM is ready; #boo-tip is after the script block|" "$BP"
+  sed -i '' 's/if (false) { \/\/ BREAK-gate/if (!_supabaseLoaded) {/' "$BP"
+  sed -i '' 's/if (false) { \/\/ BREAK-guard/if (_isNearSeed(snapshot)) {/' "$BP"
   echo ""
   echo "  (break-test injections removed — file restored)"
 fi

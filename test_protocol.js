@@ -90,6 +90,7 @@ function buildSandbox(scriptSrc) {
   try { globalThis.__autoSave = autoSave; } catch(e){}
   try { globalThis.__state = state; } catch(e){}
   try { globalThis.__snap = buildSessionSnapshot; } catch(e){}
+  try { globalThis.__setLoaded = function(v){ _supabaseLoaded = v; }; } catch(e){}
 })();`;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename: 'bp.html#inline', timeout: 20000 });
   return sandbox;
@@ -104,6 +105,9 @@ async function main() {
   const sb = buildSandbox(extractFirstInlineScript(html));
   const P = sb.__P, confirm = sb.__confirm, gen = sb.__gen, autoSave = sb.__autoSave, state = sb.__state;
   if (typeof gen !== 'function' || !P || typeof confirm !== 'function') { console.error('FATAL: protocol internals not exposed'); process.exit(2); }
+  // Post-load precondition: autoSave only fires after loadFromSupabase() completes
+  // (load gate added 2026-06-26). This test exercises post-load behavior.
+  if (typeof sb.__setLoaded === 'function') sb.__setLoaded(true);
 
   // Seed: a real accumulated brief exists, and the fake server already holds it.
   if (!state.seasons[0]) state.seasons[0] = { number: 1 };

@@ -2850,6 +2850,7 @@ const SHOW_REGISTRY = {
 };
 
 let currentShowCode = '';
+let _supabaseLoaded = false;   // gate: block ALL Supabase writes until load+apply completes
 function getShowRow() { return (SHOW_REGISTRY[currentShowCode] || {rowId: 98}).rowId; }
 
 // ── SHOW CONFIG — populated at login from SHOW_REGISTRY ──
@@ -3100,6 +3101,7 @@ let rosCurrentSegIdx = 0;
 async function initApp() {
   loadUserPrefs();
   await loadFromSupabase();
+  _supabaseLoaded = true;        // load+apply done — Supabase writes are now safe
   renderSeasonsList();
   booGreet();
   if (!userPrefs.gmail) {
@@ -8176,9 +8178,22 @@ function saveSession() {
   showToast('✓ Saved: ' + (filename));
 }
 
+// ── ANTI-SHRINK GUARD HELPERS ──
+// Measure the "weight" of a snapshot or a raw row's data payload.
+function _ssEpisodes(d){ try { return (d.state.seasons[0].episodes || []).length; } catch(e){ return 0; } }
+function _ssBriefLen(d){ try { return (d.state.seasons[0].seasonBrief || '').length; } catch(e){ return 0; } }
+function _ssGuests(d){   try { return (d.guestRepo || []).length; } catch(e){ return 0; } }
+function _isNearSeed(d){      return _ssBriefLen(d) < 200 && _ssEpisodes(d) <= 1 && _ssGuests(d) === 0; }
+function _hasRealContent(d){  return _ssBriefLen(d) >= 1000 || _ssEpisodes(d) >= 2 || _ssGuests(d) >= 1; }
+
 function autoSave(reason, immediate) {
   clearTimeout(autoSaveTimeout);
   autoSaveTimeout = setTimeout(async () => {
+    // LOAD GATE: never write before loadFromSupabase() has completed + applied.
+    if (!_supabaseLoaded) {
+      console.warn('[bp] autoSave SUPPRESSED — Supabase load not complete (reason: ' + reason + ')');
+      return;
+    }
     setSaveBadge('● SAVING', '#8a96a8');
     const snapshot = buildSessionSnapshot();
     // PROTOCOL (silent pattern): back up the prior saved snapshot (held in memory)
@@ -8186,6 +8201,34 @@ function autoSave(reason, immediate) {
     var _priorSnap = _lastSavedSnap ? JSON.stringify(_lastSavedSnap) : '';
     // Critical write FIRST (synchronous) — survives refresh if Supabase write fails.
     try { localStorage.setItem('boo_autosave', JSON.stringify(snapshot)); } catch(e) {}
+
+    // ── ANTI-SHRINK GUARD ───────────────────────────────────────────────
+    // Refuse to overwrite the SUPABASE row (shared source of truth) when it holds
+    // REAL Season data and this snapshot is near-empty (seed). Reads the LIVE row —
+    // not _lastSavedSnap, which is the seed on a fresh load (incident 2026-06-26).
+    // Placed AFTER the synchronous localStorage write so the local copy still lands.
+    if (_isNearSeed(snapshot)) {
+      let cur = null, readOk = false;
+      try {
+        const _r = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}&select=data`, {
+          headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` },
+        });
+        const _rows = await _r.json();
+        cur = (_rows && _rows[0]) ? _rows[0].data : null;
+        readOk = true;
+      } catch(e) { readOk = false; }
+      // Allow the near-empty write ONLY if we positively confirmed the row is
+      // also empty. Real content — or an unreadable row — means REFUSE (fail safe).
+      if (!readOk || (cur && _hasRealContent(cur))) {
+        setSaveBadge('● BLOCKED ⚠', '#E8431A');
+        showToast('⚠ Save blocked — refusing to overwrite saved Season data with an empty state.');
+        console.error('[bp] ANTI-SHRINK BLOCKED near-seed Supabase write (reason: ' + reason + '). live row brief=' +
+          (cur ? _ssBriefLen(cur) : '?') + ' eps=' + (cur ? _ssEpisodes(cur) : '?') +
+          ' guests=' + (cur ? _ssGuests(cur) : '?') + ' readOk=' + readOk);
+        return;
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────
     // Then back up the prior snapshot + verify the write actually landed (silent).
     await dataMutationProtocol.backup('autoSave', _priorSnap);
     await dataMutationProtocol.silentVerify('autoSave', async () => {

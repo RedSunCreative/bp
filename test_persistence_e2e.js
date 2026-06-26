@@ -141,6 +141,7 @@ function buildSandboxAndLoad(scriptSrc) {
   try { globalThis.__state    = state;               } catch(e) {}
   try { globalThis.__episodeStore = episodeStore;    } catch(e) {}
   try { globalThis.__activeEp  = activeEp;            } catch(e) {}
+  try { globalThis.__setLoaded = function(v){ _supabaseLoaded = v; }; } catch(e) {}
 })();
 `;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename: 'bp.html#inline', timeout: 20000 });
@@ -192,6 +193,10 @@ async function main() {
     console.error('FATAL: autoSave/loadFromSupabase not exposed (autoSave=' + typeof autoSave + ', loadFromSupabase=' + typeof loadFromSupabase + ')');
     process.exit(2);
   }
+  // Post-load precondition: in production autoSave only ever fires AFTER
+  // loadFromSupabase() completes (the load gate added 2026-06-26). These scenarios
+  // exercise that post-load behavior, so open the gate.
+  if (typeof sb.__setLoaded === 'function') sb.__setLoaded(true);
 
   // ── Scenario 1: autoSave serializes chat into localStorage ─────────────────
   setChat(sb, CHAT);
