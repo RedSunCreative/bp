@@ -3402,6 +3402,13 @@ ACTION: Matt — Review episode 3 questions before next session
 ACTION: Kartik — Send bio and headshot to Mark by end of week
 Only flag genuine tasks with a clear owner. Do not over-flag. One to three per response maximum.
 
+===== WRITING A GUEST POD INTRO =====
+When the user asks you to write or revise a guest's Pod Intro (the short on-air introduction the host reads), write it, then on its OWN line at the END of your response use this EXACT format so it saves to that guest's Pod Intro field automatically:
+POD-INTRO [Exact Guest Name] — [the full intro text on one line]
+Example:
+POD-INTRO Jigar Patel — Our guest today works at the intersection of CS education and equity in rural Pennsylvania, running offline AI tutoring experiments for students without home internet.
+Use the guest's exact name as it appears in the repository. Still show the intro conversationally in your reply too — the POD-INTRO line is what routes it to the field.
+
 ===== YOUR BUILT-IN TOOLS =====
 You are a fully-featured producer app. You have these panels built right in — never tell the user to use an outside app:
 
@@ -3595,8 +3602,22 @@ async function sendMessage() {
 function parseReply(text) {
   // Extract and remove ACTION: lines before rendering
   const actionLines = [];
+  const podIntros = [];
   const cleanedLines = text.split('\n').filter(line => {
     const trimmed = line.trim();
+    // Match: POD-INTRO Guest Name — intro text  (routes to that guest's Pod Intro field)
+    if (/^POD-INTRO\b/i.test(trimmed)) {
+      const withoutPrefix = trimmed.replace(/^POD-INTRO\s*/i, '');
+      const sepIdx = withoutPrefix.search(/[—–]|\s-\s/);
+      if (sepIdx > 0) {
+        const guestName = withoutPrefix.slice(0, sepIdx).trim();
+        const introText = withoutPrefix.slice(sepIdx).replace(/^[\s—–-]+/, '').trim();
+        if (guestName && introText.length > 5) {
+          podIntros.push({ name: guestName, text: introText });
+          return false; // strip the tag from visible chat
+        }
+      }
+    }
     // Match: ACTION: Owner — task  (supports em dash, en dash, or hyphen)
     if (trimmed.startsWith('ACTION:')) {
       const withoutPrefix = trimmed.slice(7).trim(); // remove "ACTION:"
@@ -3627,6 +3648,21 @@ function parseReply(text) {
         ? 'S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + (state.currentEpisode.number || '?')
         : (state.currentSeason ? 'S1' : null),
     });
+  });
+
+  // Route detected POD-INTRO lines to the matching guest's Pod Intro field
+  podIntros.forEach(function(pi) {
+    var g = (state.guestRepo || []).find(function(r) {
+      return r.name.toLowerCase() === pi.name.toLowerCase();
+    }) || (state.guestRepo || []).find(function(r) {
+      return r.name.toLowerCase().indexOf(pi.name.toLowerCase()) !== -1
+          || pi.name.toLowerCase().indexOf(r.name.toLowerCase()) !== -1;
+    });
+    if (g) {
+      saveRepoField(g.name, 'intro', pi.text);
+      renderGuestRepo();
+      showToast('✓ Pod Intro saved for ' + g.name.split(' ')[0] + '.');
+    }
   });
 
   // Count pipe-separated lines with time patterns — strong ROS signal
