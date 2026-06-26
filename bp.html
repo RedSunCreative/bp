@@ -5062,6 +5062,10 @@ function renderSeasonView() {
 
 async function generateSeasonBrief() {
   var season = state.seasons[0] || {};
+  // Don't silently clobber an existing brief (e.g. a saved placement plan)
+  if (season.seasonBrief && season.seasonBrief.trim()) {
+    if (!confirm('This will REPLACE the current Season Context Brief with a freshly written one. Your existing brief (including anything saved from chat) will be lost. Continue?')) return;
+  }
   var briefEl = document.getElementById('sv-season-brief');
   if (!briefEl) return;
   var genBtn = document.querySelector('.sv-brief-gen-btn');
