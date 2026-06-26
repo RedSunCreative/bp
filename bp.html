@@ -3202,16 +3202,18 @@ async function triggerBooDirectly(displayText, apiPrompt) {
   showTyping();
   try {
     const reply = await callBoo(apiPrompt);
-    // Log user turn now (before boo's response) so history stays alternating
-    activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
+    // Log user turn now (before boo's response) so history stays alternating.
+    // text = short label (clean display on restore); rawText = full prompt (API context).
+    activeEp().conversationLog.push({ role: 'user', text: displayText, rawText: apiPrompt });
     hideTyping();
     const parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply); // pass original reply for clean API context
-    autoSave('conversation updated');
+    autoSave('conversation updated', true);
   } catch (err) {
-    activeEp().conversationLog.push({ role: 'user', text: apiPrompt });
+    activeEp().conversationLog.push({ role: 'user', text: displayText, rawText: apiPrompt });
     hideTyping();
     addMsg('boo', 'Hmm, I hit a snag: <em>' + err.message + '</em>. Try again?');
+    autoSave('conversation updated', true);
   }
   if (btn) btn.disabled = false;
 }
@@ -3603,9 +3605,11 @@ async function sendMessage() {
     // Parse reply for special content types
     const parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply); // pass original reply for clean API context
+    autoSave('conversation updated', true);
   } catch (err) {
     hideTyping();
     addMsg('boo', 'Hmm, I hit a snag: <em>' + (err.message) + '</em>. Try again?');
+    autoSave('conversation updated', true);
   }
 
   document.getElementById('sendBtn').disabled = false;
