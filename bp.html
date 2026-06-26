@@ -3504,6 +3504,7 @@ function addMsg(role, html, actions, rawText) {
     ? `<div class="msg-footer">
         <button onclick="saveFromChat(this,'hostIntro')">← host intro</button>
         <button onclick="saveFromChat(this,'hostOutro')">← host outro</button>
+        <button onclick="saveFromChat(this,'seasonBrief')">→ season brief</button>
       </div>`
     : '';
   div.innerHTML = `
@@ -6091,6 +6092,18 @@ function saveFromChat(btn, field) {
     autoSave('host outro saved from chat', true);
     renderScriptFields();
     showToast('Host outro saved to Show Scripts.');
+  } else if (field === 'seasonBrief') {
+    var s = state.seasons[0] || (state.seasons[0] = {});
+    if (s.seasonBrief && s.seasonBrief.trim()) {
+      // Append under a divider so an existing brief isn't clobbered
+      s.seasonBrief = s.seasonBrief.trim() + '\n\n— — —\n\n' + text;
+      showToast('Added to Season Context Brief.');
+    } else {
+      s.seasonBrief = text;
+      showToast('Saved to Season Context Brief.');
+    }
+    autoSave('season brief saved from chat', true);
+    renderSeasonView();
   }
   btn.textContent = '✓ saved';
   btn.style.color = 'var(--teal)';
