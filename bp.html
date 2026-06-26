@@ -8435,8 +8435,9 @@ async function researchRepoGuest(name) {
     hideTyping();
     var parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply);
-    // Auto-save brief to Boo's Notes
+    // Auto-save brief to Boo's Notes and refresh card
     saveRepoField(g.name, 'notes', reply.replace(/<[^>]+>/g, '').trim());
+    renderGuestRepo();
     autoSave('guest research', true);
   } catch(err) {
     activeEp().conversationLog.push({ role: 'user', text: researchPrompt });
