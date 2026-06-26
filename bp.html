@@ -8450,9 +8450,13 @@ async function researchRepoGuest(name) {
     hideTyping();
     var parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply);
-    // Auto-save brief to Boo's Notes and refresh card
-    saveRepoField(g.name, 'notes', reply.replace(/<[^>]+>/g, '').trim());
+    // Auto-save brief to Boo's Notes and refresh card + overlay
+    var cleanNotes = reply.replace(/<[^>]+>/g, '').trim();
+    saveRepoField(g.name, 'notes', cleanNotes);
     renderGuestRepo();
+    // Also update detail overlay if it's open for this guest
+    var gdNotesEl = document.getElementById('gd-notes');
+    if (_gdName === g.name && gdNotesEl) gdNotesEl.value = cleanNotes;
     autoSave('guest research', true);
   } catch(err) {
     activeEp().conversationLog.push({ role: 'user', text: researchPrompt });
