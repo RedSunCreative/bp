@@ -4741,12 +4741,9 @@ function setView(view) {
   }
   if (view === 'season') {
     renderSeasonView();
-    if (!_seasonBriefAutoGen) {
-      _seasonBriefAutoGen = true;
-      if (!(state.seasons[0] || {}).seasonBrief) {
-        setTimeout(generateSeasonBrief, 300);
-      }
-    }
+    // NOTE: never auto-generate the season brief. Auto-generation could overwrite
+    // a brief the user saved from chat (e.g. a placement plan). The brief is only
+    // ever written on explicit user action (Generate button, with confirm guard).
   }
 }
 
