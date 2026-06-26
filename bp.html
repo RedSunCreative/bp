@@ -4178,7 +4178,7 @@ function addToRepo(name, title, tier, why) {
   if (!state.guestRepo) state.guestRepo = [];
   var already = state.guestRepo.find(function(g) { return g.name === name; });
   if (already) { showToast(name.split(' ')[0] + ' is already in the repository.'); return null; }
-  var entry = { id: 'repo-' + Date.now() + Math.random().toString(36).slice(2), name: name, firstName: '', lastName: '', title: title || '', tier: tier || '', why: why || '', intro: '', email: '', day: '', time: '', timezone: '', description: '', source1: '', source2: '', location: '', notes: '', assignedTo: null };
+  var entry = { id: 'repo-' + Date.now() + Math.random().toString(36).slice(2), name: name, firstName: '', lastName: '', title: title || '', org: '', tier: tier || '', why: why || '', intro: '', email: '', day: '', time: '', timezone: '', description: '', source1: '', source2: '', location: '', notes: '', assignedTo: null };
   state.guestRepo.push(entry);
   renderGuestRepo();
   stashGuestRepo();
@@ -4257,6 +4257,7 @@ function renderGuestRepo() {
     + '<div style="flex:1;min-width:80px;"><span style="' + lbl + '">Last</span><input type="text" value="' + esc(g.lastName||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'lastName\',this.value)" style="' + inp + '"></div>'
     + '</div>'
     + '<span style="' + lbl + '">Title</span><input type="text" value="' + esc(g.title||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'title\',this.value)" style="' + inp + 'margin-bottom:5px;">'
+    + '<span style="' + lbl + '">Organization</span><input type="text" value="' + esc(g.org||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'org\',this.value)" style="' + inp + 'margin-bottom:5px;">'
     + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:5px;">'
     + '<div style="flex:1;min-width:110px;"><span style="' + lbl + '">Email</span><input type="email" value="' + esc(g.email||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'email\',this.value)" style="' + inp + '"></div>'
     + '<div style="min-width:90px;"><span style="' + lbl + '">Location</span><input type="text" value="' + esc(g.location||'') + '" placeholder="—" onchange="saveRepoField(\'' + safeName + '\',\'location\',this.value)" style="' + inp + '"></div>'
@@ -4305,7 +4306,7 @@ function assignFromRepo(name, epNumStr) {
   if (!episodeStore[epNum].considerations) episodeStore[epNum].considerations = [];
   var already = episodeStore[epNum].considerations.find(function(c) { return c.name === name; });
   if (already) { showToast(name.split(' ')[0] + ' is already in E' + epNum + '\'s guest list.'); return; }
-  episodeStore[epNum].considerations.push({ name: g.name, firstName: g.firstName || '', lastName: g.lastName || '', title: g.title, status: 'unconfirmed', guestIntro: g.intro || '', why: g.why || '', day: g.day || '', time: g.time || '', timezone: g.timezone || '', description: g.description || '', source1: g.source1 || '', source2: g.source2 || '', location: g.location || '', confirmed: false, email: g.email || '', mobile: g.mobile || '', sendKit: false });
+  episodeStore[epNum].considerations.push({ name: g.name, firstName: g.firstName || '', lastName: g.lastName || '', title: g.title, org: g.org || '', status: 'unconfirmed', guestIntro: g.intro || '', why: g.why || '', day: g.day || '', time: g.time || '', timezone: g.timezone || '', description: g.description || '', source1: g.source1 || '', source2: g.source2 || '', location: g.location || '', confirmed: false, email: g.email || '', mobile: g.mobile || '', sendKit: false });
   g.assignedTo = epNum;
   autoSave('guest assigned to episode', true);
   renderGuestRepo();
@@ -4398,7 +4399,7 @@ function importGuestsDirect() {
   var delimiter = raw.includes('\t') ? '\t' : ',';
   var firstLower = lines[0].toLowerCase();
   // Detect new column format:
-  //  Day | Time | Time Zone | First | Last | Name | Email | Title | Description | Source 1 | Source 2 | Why | Pod Intro
+  //  Day | Time | Time Zone | First | Last | Name | Email | Title | Description | Source 1 | Source 2 | Why | Pod Intro | Org
   var isNewFormat = firstLower.includes('day') || firstLower.includes('first') || firstLower.includes('pod intro') || firstLower.includes('description');
   // Skip header row if it looks like labels
   if (firstLower.includes('day') || firstLower.includes('name') || firstLower.includes('first') || firstLower.includes('title') || firstLower.includes('guest') || firstLower.includes('role') || firstLower.includes('tier')) {
@@ -4408,9 +4409,9 @@ function importGuestsDirect() {
   var added = 0;
   lines.forEach(function(line) {
     var cols = _parseImportLine(line, delimiter);
-    var name, title, why, intro, email, day, time, timezone, description, source1, source2, notes;
+    var name, title, org, why, intro, email, day, time, timezone, description, source1, source2, notes;
     if (isNewFormat || cols.length >= 7) {
-      // Day(0) | Time(1) | Time Zone(2) | First(3) | Last(4) | Name(5) | Email(6) | Title(7) | Description(8) | Source1(9) | Source2(10) | Why(11) | Pod Intro(12)
+      // Day(0) | Time(1) | Time Zone(2) | First(3) | Last(4) | Name(5) | Email(6) | Title(7) | Description(8) | Source1(9) | Source2(10) | Why(11) | Pod Intro(12) | Org(13)
       day         = clean(cols[0]);
       time        = clean(cols[1]);
       timezone    = clean(cols[2]);
@@ -4425,6 +4426,7 @@ function importGuestsDirect() {
       source2     = clean(cols[10]);
       why         = clean(cols[11]);
       intro       = clean(cols[12]);
+      org         = clean(cols[13]);
       notes = '';
     } else {
       // Legacy format: name | title | tier | notes
@@ -4447,6 +4449,7 @@ function importGuestsDirect() {
       if (source1)     entry.source1     = source1;
       if (source2)     entry.source2     = source2;
       if (intro)       entry.intro       = intro;
+      if (org)         entry.org         = org;
       if (notes)       entry.notes       = notes;
       added++;
     }
@@ -8560,7 +8563,7 @@ function openGuestDetail(name) {
   tierEl.style.display = tierLabel ? '' : 'none';
 
   // Populate fields
-  var fields = ['firstName','lastName','title','email','location','day','time','timezone','description','source1','source2','why','intro','notes'];
+  var fields = ['firstName','lastName','title','org','email','location','day','time','timezone','description','source1','source2','why','intro','notes'];
   fields.forEach(function(f) {
     var el = document.getElementById('gd-' + f) || document.getElementById('gd-' + f + '-inp');
     if (el) el.value = g[f] || '';
@@ -8811,6 +8814,8 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="gd-lbl">Title</div>
         <input class="gd-inp" id="gd-title-inp" type="text" placeholder="—" onchange="gdSave('title',this.value)" style="margin-bottom:8px;">
+        <div class="gd-lbl">Organization</div>
+        <input class="gd-inp" id="gd-org" type="text" placeholder="—" onchange="gdSave('org',this.value)" style="margin-bottom:8px;">
         <div style="display:flex;gap:8px;margin-bottom:8px;">
           <div style="flex:1;"><div class="gd-lbl">Email</div><input class="gd-inp" id="gd-email" type="email" placeholder="—" onchange="gdSave('email',this.value)"></div>
           <div style="flex:1;"><div class="gd-lbl">Location</div><input class="gd-inp" id="gd-location" type="text" placeholder="—" onchange="gdSave('location',this.value)"></div>
