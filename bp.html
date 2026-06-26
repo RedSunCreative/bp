@@ -2593,6 +2593,7 @@
             <button onclick="toggleRepoImport()" style="flex:1;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">⬆ IMPORT GUESTS</button>
             <button onclick="clearGuestRepo()" style="background:transparent;border:1px solid rgba(220,60,60,0.3);color:rgba(220,60,60,0.6);border-radius:6px;padding:7px 10px;font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">✕ CLEAR</button>
           </div>
+          <button onclick="researchAllGuests()" style="width:100%;background:rgba(59,184,201,0.1);border:1px solid rgba(59,184,201,0.4);color:#3BB8C9;border-radius:6px;padding:7px 12px;font-family:'DM Mono',monospace;font-size:0.72rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;margin-bottom:8px;">✦ RESEARCH ALL</button>
           <div id="repo-import-area" style="display:none;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;">
             <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;">PASTE FROM SPREADSHEET OR UPLOAD CSV<br><span style="opacity:0.6;">Columns: Day · Time · TZ · First · Last · Name · Email · Org · Title · Description · Source1 · Source2 · Why · Pod Intro</span></div>
             <textarea id="repo-import-text" rows="5" placeholder="Copy cells from your spreadsheet and paste here — or upload a CSV below." style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text);resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;"></textarea>
@@ -4241,7 +4242,7 @@ function renderGuestRepo() {
     + (g.assignedTo ? '<div style="font-family:\'DM Mono\',monospace;font-size:9px;color:var(--teal);margin-top:2px;">→ S' + (state.currentSeason ? state.currentSeason.number : 1) + '-E' + g.assignedTo + ' assigned</div>' : '')
     + '</div>'
     + '<button onclick="openGuestDetail(\'' + safeName + '\')" style="font-size:11px;padding:2px 5px;border-radius:3px;border:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;flex-shrink:0;" title="Open full guest detail">⤢</button>'
-    + '<button onclick="researchRepoGuest(\'' + safeName + '\')" style="font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid rgba(59,184,201,0.35);background:rgba(59,184,201,0.08);color:rgba(59,184,201,0.8);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;flex-shrink:0;" title="Research this guest with Tavily + Apollo">✦ Research</button>'
+    + '<button onclick="researchRepoGuest(\'' + safeName + '\')" style="font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid ' + (g.notes ? 'rgba(74,222,128,0.5)' : 'rgba(220,60,60,0.45)') + ';background:' + (g.notes ? 'rgba(74,222,128,0.12)' : 'rgba(220,60,60,0.1)') + ';color:' + (g.notes ? '#4ade80' : 'rgba(230,90,90,0.95)') + ';cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;flex-shrink:0;" title="Research this guest with Tavily + Apollo">' + (g.notes ? '✓ Researched' : '✦ Research') + '</button>'
     + '<button onclick="removeFromRepo(\'' + safeName + '\')" style="font-size:11px;background:none;border:none;color:var(--muted);cursor:pointer;padding:2px 4px;flex-shrink:0;" title="Remove">✕</button>'
     + '</div>'
 
@@ -8349,6 +8350,24 @@ async function fetchProxycurlProfile(linkedinUrl) {
     var data = await res.json();
     return formatProxycurlProfile(data);
   } catch(e) { return null; }
+}
+
+async function researchAllGuests() {
+  var list = (state.guestRepo || []).filter(function(g) { return !g.notes; });
+  if (!list.length) {
+    showToast('All guests already have research notes.');
+    return;
+  }
+  if (!getTavilyKey() && !getApolloKey() && !getProxycurlKey()) {
+    showToast('Add a Tavily, Apollo, or Proxycurl key in 👤 Profile to enable research.');
+    return;
+  }
+  if (!confirm('Research ' + list.length + ' guest' + (list.length !== 1 ? 's' : '') + ' one at a time? This may take a few minutes.')) return;
+  for (var i = 0; i < list.length; i++) {
+    showToast('Researching ' + (i + 1) + ' of ' + list.length + ': ' + list[i].name.split(' ')[0] + '…');
+    await researchRepoGuest(list[i].name);
+  }
+  showToast('✓ Researched ' + list.length + ' guest' + (list.length !== 1 ? 's' : '') + '.');
 }
 
 async function researchRepoGuest(name) {
