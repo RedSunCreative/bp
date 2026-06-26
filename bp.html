@@ -8025,32 +8025,60 @@ function autoSave(reason, immediate) {
 }
 
 async function loadFromSupabase() {
+  // Gather both sources, then load whichever was saved most recently.
+  // This protects against a failed/stale Supabase write losing newer local work.
+  var supaData = null, supaHistory = [];
   try {
     const res = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}&select=data,history`, {
       headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` },
     });
     const rows = await res.json();
     if (rows?.[0]?.data && Object.keys(rows[0].data).length > 0) {
-      sessionHistory = rows[0].history || [];
-      _lastSavedSnap = rows[0].data;
-      applySession(rows[0].data);
-      recoverGuestRepoIfLost();
-      setSaveBadge('● LOADED', '#4ade80');
-      showToast('✓ Session restored');
-      return;
+      supaData = rows[0].data;
+      supaHistory = rows[0].history || [];
     }
   } catch(e) {}
-  // Supabase unavailable or empty — fall back to localStorage backup
+
+  var localData = null;
   try {
-    const local = localStorage.getItem('boo_autosave');
-    if (local) {
-      const parsed = JSON.parse(local);
-      applySession(parsed);
-      recoverGuestRepoIfLost();
-      setSaveBadge('● LOCAL ⚠', '#E8431A');
-      showToast('⚠ Loaded from local backup — Supabase may be unavailable');
-    }
+    var local = localStorage.getItem('boo_autosave');
+    if (local) localData = JSON.parse(local);
   } catch(e) {}
+
+  function savedTime(d) { return (d && d.savedAt) ? new Date(d.savedAt).getTime() : 0; }
+  var supaT  = savedTime(supaData);
+  var localT = savedTime(localData);
+
+  // Pick the newer snapshot. Ties and missing timestamps favor Supabase (shared source of truth).
+  if (supaData && supaT >= localT) {
+    sessionHistory = supaHistory;
+    _lastSavedSnap = supaData;
+    applySession(supaData);
+    recoverGuestRepoIfLost();
+    setSaveBadge('● LOADED', '#4ade80');
+    showToast('✓ Session restored');
+    if (localData && localT > supaT) {} // (unreachable here; kept for clarity)
+    return;
+  }
+  if (localData) {
+    // localStorage is newer than Supabase (or Supabase was empty/unreachable) — use it,
+    // then push it back up so Supabase catches up to the latest state.
+    _lastSavedSnap = supaData; // so the guard compares against what Supabase had
+    applySession(localData);
+    recoverGuestRepoIfLost();
+    setSaveBadge(supaData ? '● LOADED' : '● LOCAL ⚠', supaData ? '#4ade80' : '#E8431A');
+    showToast(supaData ? '✓ Session restored (recovered newer local changes)' : '⚠ Loaded from local backup — Supabase may be unavailable');
+    autoSave('sync local to supabase', true);
+    return;
+  }
+  if (supaData) {
+    sessionHistory = supaHistory;
+    _lastSavedSnap = supaData;
+    applySession(supaData);
+    recoverGuestRepoIfLost();
+    setSaveBadge('● LOADED', '#4ade80');
+    showToast('✓ Session restored');
+  }
 }
 
 function showToast(msg) {
