@@ -390,6 +390,50 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 14 (mechanical): persistence round-trip — every field survives
+#   buildSessionSnapshot -> JSON round-trip -> applySession
+# Executes the REAL functions from bp.html in a vm sandbox (no jsdom).
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 14: persistence round-trip (save -> serialize -> load) ---"
+T14_OUT=$(node test_persistence.js 2>&1)
+T14_RC=$?
+T14_FAILS=$(printf '%s\n' "$T14_OUT" | grep -c 'FAIL')
+T14_PASSES=$(printf '%s\n' "$T14_OUT" | grep -c 'PASS')
+if [[ $T14_RC -eq 0 && $T14_FAILS -eq 0 && $T14_PASSES -gt 0 ]]; then
+  pass "all persisted fields survive round-trip ($T14_PASSES fields captured + restored)"
+elif [[ $T14_RC -eq 2 ]]; then
+  fail "persistence test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T14_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "persistence round-trip broke ($T14_FAILS field(s) failed capture/restore)"
+  printf '%s\n' "$T14_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
+# TEST 15 (behavioral): end-to-end persistence — autoSave + loadFromSupabase
+# Proves the ACTUAL runtime path that has lost chat: autoSave serializes the
+# chat to localStorage, and loadFromSupabase restores it (Supabase empty,
+# stale-Supabase-vs-newer-local, and newer-Supabase scenarios).
+# Executes the REAL autoSave / loadFromSupabase from bp.html in a vm sandbox.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 15: end-to-end persistence (autoSave -> load newest -> chat survives) ---"
+T15_OUT=$(node test_persistence_e2e.js 2>&1)
+T15_RC=$?
+T15_FAILS=$(printf '%s\n' "$T15_OUT" | grep -c 'FAIL')
+T15_PASSES=$(printf '%s\n' "$T15_OUT" | grep -c 'PASS')
+if [[ $T15_RC -eq 0 && $T15_FAILS -eq 0 && $T15_PASSES -gt 0 ]]; then
+  pass "chat survives the real save/load cycle ($T15_PASSES scenarios)"
+elif [[ $T15_RC -eq 2 ]]; then
+  fail "e2e persistence test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T15_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "end-to-end persistence broke ($T15_FAILS scenario(s) failed)"
+  printf '%s\n' "$T15_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
