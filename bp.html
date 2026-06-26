@@ -4286,8 +4286,8 @@ function renderGuestRepo() {
     + '<textarea id="repo-intro-' + selId + '" onchange="saveRepoField(\'' + safeName + '\',\'intro\',this.value)" placeholder="—" style="' + ta + 'min-height:55px;margin-bottom:5px;">' + esc(g.intro||'') + '</textarea>'
 
     // Boo's Notes + assign
-    + '<span style="' + lbl + '">Boo\'s Notes</span>'
-    + '<textarea onchange="saveRepoField(\'' + safeName + '\',\'notes\',this.value)" placeholder="Boo\'s research notes…" style="' + ta + 'min-height:48px;margin-bottom:5px;">' + esc(g.notes||'') + '</textarea>'
+    + '<span style="' + lbl + (g.notes ? 'color:#4ade80;' : '') + '">Boo\'s Notes' + (g.notes ? ' ✓' : '') + '</span>'
+    + '<textarea onchange="saveRepoField(\'' + safeName + '\',\'notes\',this.value)" placeholder="Boo\'s research notes…" style="' + ta + 'min-height:200px;margin-bottom:5px;' + (g.notes ? 'border-color:rgba(74,222,128,0.4);' : '') + '">' + esc(g.notes||'') + '</textarea>'
     + '<div style="display:flex;gap:5px;">'
     + '<select id="' + selId + '" style="flex:1;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:4px;padding:4px 7px;font-family:\'DM Mono\',monospace;font-size:10px;color:var(--text);outline:none;cursor:pointer;">' + epOpts + '</select>'
     + '<button onclick="assignFromRepo(\'' + safeName + '\',document.getElementById(\'' + selId + '\').value)" style="font-size:10px;padding:4px 9px;border-radius:4px;border:1px solid var(--teal);background:rgba(59,184,201,0.1);color:var(--teal);cursor:pointer;font-family:\'DM Mono\',monospace;font-weight:700;letter-spacing:0.05em;white-space:nowrap;">→ ASSIGN</button>'
