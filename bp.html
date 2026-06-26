@@ -2488,6 +2488,7 @@
           </div>
           <button class="settings-gear" onclick="openUserProfile()" title="Your profile" style="font-size:16px;">👤</button>
           <button class="settings-gear" onclick="openSessionHistory()" title="Restore from history" style="font-size:14px;">&#x21BA;</button>
+          <button class="settings-gear" onclick="saveSession()" title="Export a full backup file to your computer" style="font-size:14px;">⬇</button>
           <button class="settings-gear" onclick="openShowInfo()" title="Show info">⚙</button>
           <button class="save-badge" id="save-badge" onclick="autoSave('manual')" title="Click to save now">● READY</button>
         </div>
@@ -8023,10 +8024,17 @@ function autoSave(reason, immediate) {
     // Always write to localStorage first — survives refresh if Supabase write fails
     try { localStorage.setItem('boo_autosave', JSON.stringify(snapshot)); } catch(e) {}
     try {
-      // Archive what was last in Supabase before overwriting it
+      // Archive the last confirmed snapshot before overwriting it. Throttle so
+      // history holds meaningful, time-spaced rollback points (not dozens of
+      // near-identical saves from the same minute). Keep up to 30 — true frozen
+      // copies now that buildSessionSnapshot deep-copies state.
       if (_lastSavedSnap) {
-        sessionHistory.unshift({ savedAt: _lastSavedSnap.savedAt || new Date().toISOString(), snap: _lastSavedSnap });
-        if (sessionHistory.length > 10) sessionHistory.pop();
+        var _lastArchiveAt = (sessionHistory[0] && sessionHistory[0].savedAt) ? new Date(sessionHistory[0].savedAt).getTime() : 0;
+        var _spacedEnough = (Date.now() - _lastArchiveAt) > 120000; // 2 min between archive points
+        if (sessionHistory.length === 0 || _spacedEnough) {
+          sessionHistory.unshift({ savedAt: _lastSavedSnap.savedAt || new Date().toISOString(), snap: _lastSavedSnap });
+          if (sessionHistory.length > 30) sessionHistory.pop();
+        }
       }
       await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}`, {
         method: 'PATCH',
