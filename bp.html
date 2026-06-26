@@ -8223,10 +8223,18 @@ function applySession(data) {
     div.className = 'msg ' + (entry.role);
     const avatarText = entry.role === 'boo' ? '🎬' : 'U';
     const name = entry.role === 'boo' ? 'Boo' : 'You';
+    const footer = entry.role === 'boo'
+      ? '<div class="msg-footer">'
+        + '<button onclick="saveFromChat(this,\'hostIntro\')">← host intro</button>'
+        + '<button onclick="saveFromChat(this,\'hostOutro\')">← host outro</button>'
+        + '<button onclick="saveFromChat(this,\'seasonBrief\')">→ season brief</button>'
+        + '</div>'
+      : '';
     div.innerHTML = '<div class="msg-avatar">' + avatarText + '</div>'
       + '<div class="msg-body">'
       + '<div class="msg-name">' + name + '</div>'
       + '<div class="msg-bubble">' + (entry.html || formatBubble(entry.text)) + '</div>'
+      + footer
       + '</div>';
     msgs.appendChild(div);
   });
@@ -8786,10 +8794,18 @@ function switchEpisode(num) {
     div.className = 'msg ' + entry.role;
     const avatarText = entry.role === 'boo' ? '🎬' : 'U';
     const name = entry.role === 'boo' ? 'Boo' : 'You';
+    const footer = entry.role === 'boo'
+      ? '<div class="msg-footer">'
+        + '<button onclick="saveFromChat(this,\'hostIntro\')">← host intro</button>'
+        + '<button onclick="saveFromChat(this,\'hostOutro\')">← host outro</button>'
+        + '<button onclick="saveFromChat(this,\'seasonBrief\')">→ season brief</button>'
+        + '</div>'
+      : '';
     div.innerHTML = '<div class="msg-avatar">' + avatarText + '</div>'
       + '<div class="msg-body">'
       + '<div class="msg-name">' + name + '</div>'
       + '<div class="msg-bubble">' + (entry.html || formatBubble(entry.text)) + '</div>'
+      + footer
       + '</div>';
     msgs.appendChild(div);
   });
