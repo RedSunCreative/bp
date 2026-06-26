@@ -3232,6 +3232,7 @@ async function callBoo(userMsg) {
         if (g.why) line += '\n  Why: ' + g.why.slice(0, 150);
         if (g.intro) line += '\n  Pod Intro: ' + g.intro.slice(0, 120);
         if (g.description) line += '\n  Profile: ' + g.description.slice(0, 100);
+        if (g.notes) line += '\n  Boo\'s Research Notes:\n' + g.notes.slice(0, 900).split('\n').map(function(l){ return '    ' + l; }).join('\n');
         line += '\n  Status: ' + (g.assignedTo ? 'Assigned to S' + _sNum + '-E' + g.assignedTo : 'Unassigned — in pool');
         return line;
       }).join('\n\n')
