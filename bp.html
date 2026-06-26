@@ -946,7 +946,7 @@
   }
 
   /* ── BEB RIGHT PANEL TOP-BAR ── */
-  .rp-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px 10px;background:var(--card);border-bottom:1px solid var(--border);margin:-20px -20px 16px -20px;}
+  .rp-topbar{display:flex;align-items:center;gap:8px;padding:10px 16px 10px;background:var(--card);border-bottom:1px solid var(--border);margin:-20px -20px 16px -20px;flex-wrap:wrap;}
   .show-countdown{display:flex;flex-direction:column;align-items:flex-start;}
   .show-countdown-label{font-family:'DM Mono',monospace;font-size:0.6rem;font-weight:400;color:#8A8A9A;letter-spacing:0.15em;text-transform:uppercase;line-height:1;}
   .show-countdown-time{font-family:'Syne',sans-serif;font-size:1.05rem;font-weight:700;color:#4FC3F7;letter-spacing:0.02em;line-height:1.3;}
@@ -2486,7 +2486,7 @@
           <div class="show-countdown-time empty" id="show-countdown-time">— —</div>
           <div id="show-countdown-sub" style="font-family:'DM Mono',monospace;font-size:0.62rem;font-weight:400;color:#8A8A9A;letter-spacing:0.08em;line-height:1;margin-top:1px;"></div>
         </div>
-        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
           <div style="position:relative;" id="rp-ep-switcher">
             <button class="ep-switch-btn" id="ep-switch-btn" onclick="toggleRpEpList()">S1-E1 ▾</button>
             <div class="ep-list-panel" id="ep-list-panel" style="display:none;"></div>
