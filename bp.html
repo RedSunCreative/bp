@@ -8457,6 +8457,7 @@ async function researchRepoGuest(name) {
     // Also update detail overlay if it's open for this guest
     var gdNotesEl = document.getElementById('gd-notes');
     if (_gdName === g.name && gdNotesEl) gdNotesEl.value = cleanNotes;
+    showToast('✓ Research brief saved to Boo\'s Notes — open ⤢ to read.');
     autoSave('guest research', true);
   } catch(err) {
     activeEp().conversationLog.push({ role: 'user', text: researchPrompt });
