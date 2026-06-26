@@ -2589,7 +2589,10 @@
           <span class="data-section-chevron">›</span>
         </div>
         <div class="data-section-body" id="guest-repo-body" style="display:none;">
-          <button onclick="toggleRepoImport()" style="width:100%;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;margin-bottom:8px;">⬆ IMPORT GUESTS</button>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button onclick="toggleRepoImport()" style="flex:1;background:transparent;border:1px dashed var(--border);color:var(--text-muted);border-radius:6px;padding:7px 12px;font-family:'DM Sans',sans-serif;font-size:0.72rem;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">⬆ IMPORT GUESTS</button>
+            <button onclick="clearGuestRepo()" style="background:transparent;border:1px solid rgba(220,60,60,0.3);color:rgba(220,60,60,0.6);border-radius:6px;padding:7px 10px;font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">✕ CLEAR</button>
+          </div>
           <div id="repo-import-area" style="display:none;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;">
             <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;">PASTE FROM SPREADSHEET OR UPLOAD CSV<br><span style="opacity:0.6;">Columns: Name · Title/Role · Tier (T1–T3) · Notes</span></div>
             <textarea id="repo-import-text" rows="5" placeholder="Copy cells from your spreadsheet and paste here — or upload a CSV below." style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text);resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;"></textarea>
@@ -4353,6 +4356,15 @@ function toggleRepoImport() {
   var el = document.getElementById('repo-import-area');
   if (!el) return;
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function clearGuestRepo() {
+  if (!confirm('Clear all guests from the repository? This cannot be undone.')) return;
+  state.guestRepo = [];
+  try { localStorage.removeItem('boo_guest_repo_stash'); } catch(e) {}
+  renderGuestRepo();
+  autoSave('repo cleared', true);
+  showToast('Guest repository cleared.');
 }
 
 function loadImportFile(input) {
