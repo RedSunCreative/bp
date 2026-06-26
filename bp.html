@@ -2594,7 +2594,7 @@
             <button onclick="clearGuestRepo()" style="background:transparent;border:1px solid rgba(220,60,60,0.3);color:rgba(220,60,60,0.6);border-radius:6px;padding:7px 10px;font-family:'DM Mono',monospace;font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;white-space:nowrap;">✕ CLEAR</button>
           </div>
           <div id="repo-import-area" style="display:none;margin-bottom:12px;padding:10px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;">
-            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;">PASTE FROM SPREADSHEET OR UPLOAD CSV<br><span style="opacity:0.6;">Columns: Name · Title/Role · Tier (T1–T3) · Notes</span></div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;">PASTE FROM SPREADSHEET OR UPLOAD CSV<br><span style="opacity:0.6;">Columns: Day · Time · TZ · First · Last · Name · Email · Org · Title · Description · Source1 · Source2 · Why · Pod Intro</span></div>
             <textarea id="repo-import-text" rows="5" placeholder="Copy cells from your spreadsheet and paste here — or upload a CSV below." style="width:100%;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:6px;padding:8px;font-family:'DM Mono',monospace;font-size:10px;color:var(--text);resize:vertical;line-height:1.5;outline:none;box-sizing:border-box;"></textarea>
             <div style="display:flex;gap:5px;margin-top:7px;flex-wrap:wrap;align-items:center;">
               <label style="font-family:'DM Mono',monospace;font-size:10px;color:var(--text-muted);border:1px solid var(--border);border-radius:4px;padding:4px 9px;cursor:pointer;white-space:nowrap;">
@@ -4423,22 +4423,23 @@ function importGuestsDirect() {
     var cols = _parseImportLine(line, delimiter);
     var name, title, org, why, intro, email, day, time, timezone, description, source1, source2, notes;
     if (isNewFormat || cols.length >= 7) {
-      // Day(0) | Time(1) | Time Zone(2) | First(3) | Last(4) | Name(5) | Email(6) | Title(7) | Description(8) | Source1(9) | Source2(10) | Why(11) | Pod Intro(12) | Org(13)
+      // Day(0) | Time(1) | Time Zone(2) | First(3) | Last(4) | Name(5) | Email(6) | Organization(7) | Title(8) | Description(9) | Source1(10) | Source2(11) | Why(12) | Pod Intro(13)
       day         = clean(cols[0]);
       time        = clean(cols[1]);
       timezone    = clean(cols[2]);
       var fn      = clean(cols[3]);
       var ln      = clean(cols[4]);
       var fullN   = clean(cols[5]);
-      name        = fullN || (fn + ' ' + ln).trim();
+      // Prefer First+Last when both present (avoids "Mr./Dr." prefixes in Name column)
+      name        = (fn && ln) ? (fn + ' ' + ln).trim() : (fullN || (fn + ' ' + ln).trim());
       email       = clean(cols[6]);
-      title       = clean(cols[7]);
-      description = clean(cols[8]);
-      source1     = clean(cols[9]);
-      source2     = clean(cols[10]);
-      why         = clean(cols[11]);
-      intro       = clean(cols[12]);
-      org         = clean(cols[13]);
+      org         = clean(cols[7]);
+      title       = clean(cols[8]);
+      description = clean(cols[9]);
+      source1     = clean(cols[10]);
+      source2     = clean(cols[11]);
+      why         = clean(cols[12]);
+      intro       = clean(cols[13]);
       notes = '';
     } else {
       // Legacy format: name | title | tier | notes
