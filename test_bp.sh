@@ -434,6 +434,28 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 16 (behavioral): data mutation protocol — destructive gated, autoSave silent
+# Drives the REAL generateSeasonBrief / autoSave / onUserConfirmation in a vm
+# sandbox with a stateful fake Supabase. Proves backup -> gate -> confirm ->
+# apply -> verify on destructive ops, and silent backup+verify on autoSave.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 16: data mutation protocol (destructive gated / autoSave silent) ---"
+T16_OUT=$(node test_protocol.js 2>&1)
+T16_RC=$?
+T16_FAILS=$(printf '%s\n' "$T16_OUT" | grep -c 'FAIL')
+T16_PASSES=$(printf '%s\n' "$T16_OUT" | grep -c 'PASS')
+if [[ $T16_RC -eq 0 && $T16_FAILS -eq 0 && $T16_PASSES -gt 0 ]]; then
+  pass "protocol enforced ($T16_PASSES assertions: backup/gate/confirm/apply/verify)"
+elif [[ $T16_RC -eq 2 ]]; then
+  fail "protocol test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T16_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "data mutation protocol broke ($T16_FAILS assertion(s) failed)"
+  printf '%s\n' "$T16_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then

@@ -2943,6 +2943,120 @@ const actionItems = [];
 let aiFilter = 'all';
 let aiIdCounter = 1;
 
+// ===== PROTOCOL: Data Mutation Guard =====
+// Destructive ops (regenerate / restore / clear / bulk overwrite) use the full
+// five-step protocol: backup -> showDiff -> wait for "proceed" -> apply -> verify.
+// Routine autoSave uses silent backup + verify-after-write (no confirmation gate).
+const dataMutationProtocol = {
+  _lastBackupFile: null,
+  _lastBackupValue: null,
+  _pendingOperation: null,
+
+  // Real backup: persist the prior value to localStorage (recoverable) + keep in memory.
+  backup: async function(operationName, currentValue) {
+    const ts = new Date().toISOString().replace(/[:.]/g, '').slice(0, 15);
+    const filename = operationName.replace(/\s+/g, '-') + '-backup-' + ts + '.json';
+    const backup = {
+      operation: operationName,
+      timestamp: new Date().toISOString(),
+      currentValueLength: currentValue ? String(currentValue).length : 0,
+      currentValue: currentValue,
+    };
+    try { localStorage.setItem('boo_protocol_backup', JSON.stringify(backup)); } catch (e) {}
+    this._lastBackupFile = filename;
+    this._lastBackupValue = currentValue;
+    console.log('[PROTOCOL] BACKUP: ' + filename + ' (' + backup.currentValueLength + ' chars) -> localStorage[boo_protocol_backup]');
+    return filename;
+  },
+
+  // Show the diff and BLOCK until the user types "proceed"/"yes" (resolve true) or cancels (false).
+  showDiff: async function(operationName, currentValue, newValue) {
+    const currentLen = currentValue ? String(currentValue).length : 0;
+    const newLen = newValue ? String(newValue).length : 0;
+    console.warn('[PROTOCOL] AWAITING CONFIRMATION: ' + operationName);
+    console.log('  Current: ' + currentLen + ' chars | New: ' + newLen + ' chars');
+    console.log('  Backup: ' + this._lastBackupFile);
+    console.log('  Type "proceed" in chat to confirm, or I will not apply this change.');
+    showToast('⚠️ CONFIRM: ' + operationName + ' — type "proceed" in chat to apply');
+    if (typeof addMsg === 'function') {
+      addMsg('boo', '⚠️ <strong>Confirmation required — ' + operationName + '</strong><br>'
+        + 'This replaces <strong>' + currentLen + '</strong> chars with <strong>' + newLen + '</strong> chars. '
+        + 'Backup saved (<code>' + this._lastBackupFile + '</code>).<br>'
+        + 'Type <strong>proceed</strong> (or <strong>yes</strong>) to apply — anything else cancels.');
+    }
+    this._pendingOperation = operationName;
+    return new Promise((resolve) => { window._protocolConfirmationResolver = resolve; });
+  },
+
+  // Called by onUserConfirmation(ok). ok=true applies, ok=false cancels.
+  confirmOperation: function(ok) {
+    if (window._protocolConfirmationResolver) {
+      console.log('[PROTOCOL] ' + (ok ? '✓ Confirmed. Applying ' : '✗ Cancelled ') + this._pendingOperation);
+      const r = window._protocolConfirmationResolver;
+      window._protocolConfirmationResolver = null;
+      this._pendingOperation = null;
+      r(!!ok);
+    }
+  },
+
+  hasPending: function() { return !!window._protocolConfirmationResolver; },
+
+  apply: async function(applyFn) {
+    try {
+      const result = await applyFn();
+      console.log('[PROTOCOL] Applied successfully');
+      return result;
+    } catch (e) {
+      console.error('[PROTOCOL] FAILED: ' + e.message);
+      showToast('❌ Failed. Backup: ' + this._lastBackupFile);
+      throw e;
+    }
+  },
+
+  verify: async function(operationName, verifyFn) {
+    try {
+      const result = await verifyFn();
+      if (result.success) {
+        console.log('[PROTOCOL] ✓ VERIFIED ' + operationName + ': ' + result.message);
+        showToast('✅ ' + operationName + ' verified');
+        return true;
+      }
+      console.error('[PROTOCOL] Verification failed: ' + result.message);
+      showToast('❌ Verification failed. Backup: ' + this._lastBackupFile);
+      return false;
+    } catch (e) {
+      console.error('[PROTOCOL] Verify error: ' + e.message);
+      return false;
+    }
+  },
+
+  silentVerify: async function(operationName, verifyFn) {
+    try {
+      const result = await verifyFn();
+      if (result.success) console.log('[PROTOCOL] ✓ Silent verify ' + operationName + ': ' + result.message);
+      else console.warn('[PROTOCOL] Silent verify FAILED ' + operationName + ': ' + result.message);
+      return result.success;
+    } catch (e) {
+      console.error('[PROTOCOL] Silent verify error: ' + e.message);
+      return false;
+    }
+  },
+};
+
+// proceed/yes -> confirm; anything else while pending -> cancel.
+function onUserConfirmation(ok) { dataMutationProtocol.confirmOperation(ok !== false); }
+
+// Raw Supabase read-back (does NOT apply the session) — used by verify steps.
+async function fetchRowRaw() {
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}&select=data`, {
+      headers: { 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}` },
+    });
+    const rows = await res.json();
+    return (rows && rows[0] && rows[0].data) ? rows[0].data : null;
+  } catch (e) { return null; }
+}
+
 const SHOW_CONTEXT = {
   name: 'Anno Coding',
   tagline: 'K–12 Computer Science Education in a Post-Coding Era',
@@ -3592,6 +3706,22 @@ async function sendMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
+
+  // If a destructive operation is awaiting confirmation, this message is the
+  // answer to it — not a chat turn. "proceed"/"yes" applies; anything else cancels.
+  if (dataMutationProtocol.hasPending()) {
+    const t = text.toLowerCase().replace(/[.!]+$/, '');
+    input.value = '';
+    autoResize(input);
+    addMsg('user', text);
+    if (t === 'proceed' || t === 'yes' || t === 'confirm') {
+      onUserConfirmation(true);
+    } else {
+      onUserConfirmation(false);
+      addMsg('boo', 'Cancelled — nothing was changed. Your backup is intact.');
+    }
+    return;
+  }
 
   input.value = '';
   autoResize(input);
@@ -4409,13 +4539,24 @@ function toggleRepoImport() {
   el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-function clearGuestRepo() {
-  if (!confirm('Clear all guests from the repository? This cannot be undone.')) return;
-  state.guestRepo = [];
-  try { localStorage.removeItem('boo_guest_repo_stash'); } catch(e) {}
-  renderGuestRepo();
-  autoSave('repo cleared', true);
-  showToast('Guest repository cleared.');
+async function clearGuestRepo() {
+  // ── DESTRUCTIVE OP: full five-step protocol (wipes all guests) ──
+  var current = JSON.parse(JSON.stringify(state.guestRepo || []));
+  if (current.length === 0) { showToast('Repository is already empty.'); return; }
+  await dataMutationProtocol.backup('Clear Guest Repo', JSON.stringify(current));
+  const ok = await dataMutationProtocol.showDiff('Clear Guest Repo', current.map(function(g){return g.name;}).join(', '), '(empty)');
+  if (!ok) return;
+  await dataMutationProtocol.apply(async () => {
+    state.guestRepo = [];
+    try { localStorage.removeItem('boo_guest_repo_stash'); } catch(e) {}
+    renderGuestRepo();
+    return autoSave('repo cleared', true);
+  });
+  await dataMutationProtocol.verify('Clear Guest Repo', async () => {
+    const d = await fetchRowRaw();
+    const n = (d && d.guestRepo) ? d.guestRepo.length : 0;
+    return { success: n === 0, message: n + ' guests remain (expected 0)' };
+  });
 }
 
 function loadImportFile(input) {
@@ -5060,10 +5201,7 @@ function renderSeasonView() {
 
 async function generateSeasonBrief() {
   var season = state.seasons[0] || {};
-  // Don't silently clobber an existing brief (e.g. a saved placement plan)
-  if (season.seasonBrief && season.seasonBrief.trim()) {
-    if (!confirm('This will REPLACE the current Season Context Brief with a freshly written one. Your existing brief (including anything saved from chat) will be lost. Continue?')) return;
-  }
+  var currentBrief = season.seasonBrief || '';
   var briefEl = document.getElementById('sv-season-brief');
   if (!briefEl) return;
   var genBtn = document.querySelector('.sv-brief-gen-btn');
@@ -5081,6 +5219,7 @@ async function generateSeasonBrief() {
     + 'the emotional journey for the audience, and any key recurring threads. '
     + '3–4 paragraphs, confident prose. No title or heading before the first paragraph.';
 
+  var text;
   try {
     const res = await fetch(PROXY, {
       method: 'POST',
@@ -5089,18 +5228,39 @@ async function generateSeasonBrief() {
     });
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || 'API error');
-    const text = data.content && data.content[0] && data.content[0].text;
-    if (text) {
-      (state.seasons[0] || (state.seasons[0] = {})).seasonBrief = text;
-      autoSave('season-brief');
-      briefEl.className = 'sv-brief-content';
-      briefEl.textContent = text;
-    }
+    text = data.content && data.content[0] && data.content[0].text;
   } catch(err) {
     briefEl.className = 'sv-brief-empty';
     briefEl.textContent = 'Couldn\'t generate: ' + err.message;
+    if (genBtn) { genBtn.disabled = false; genBtn.textContent = 'Regenerate'; }
+    return;
   }
   if (genBtn) { genBtn.disabled = false; genBtn.textContent = 'Regenerate'; }
+  if (!text) return;
+
+  // ── DESTRUCTIVE OP: full five-step protocol (overwrites the brief) ──
+  await dataMutationProtocol.backup('Regenerate Season Brief', currentBrief);
+  // If there's no existing brief, there's nothing to destroy — apply directly.
+  if (currentBrief.trim()) {
+    const ok = await dataMutationProtocol.showDiff('Regenerate Season Brief', currentBrief, text);
+    if (!ok) {
+      // Cancelled — restore the display to the untouched current brief.
+      briefEl.className = 'sv-brief-content';
+      briefEl.textContent = currentBrief;
+      return;
+    }
+  }
+  await dataMutationProtocol.apply(async () => {
+    (state.seasons[0] || (state.seasons[0] = {})).seasonBrief = text;
+    briefEl.className = 'sv-brief-content';
+    briefEl.textContent = text;
+    return autoSave('season-brief', true);
+  });
+  await dataMutationProtocol.verify('Season Brief', async () => {
+    const d = await fetchRowRaw();
+    const saved = d && d.state && d.state.seasons && d.state.seasons[0] && d.state.seasons[0].seasonBrief;
+    return { success: saved === text, message: text.length + ' chars saved' };
+  });
 }
 
 function booMapSeason() {
@@ -8021,8 +8181,17 @@ function autoSave(reason, immediate) {
   autoSaveTimeout = setTimeout(async () => {
     setSaveBadge('● SAVING', '#8a96a8');
     const snapshot = buildSessionSnapshot();
-    // Always write to localStorage first — survives refresh if Supabase write fails
+    // PROTOCOL (silent pattern): back up the prior saved snapshot (held in memory)
+    // before we overwrite, so a bad write never erases the last good one.
+    var _priorSnap = _lastSavedSnap ? JSON.stringify(_lastSavedSnap) : '';
+    // Critical write FIRST (synchronous) — survives refresh if Supabase write fails.
     try { localStorage.setItem('boo_autosave', JSON.stringify(snapshot)); } catch(e) {}
+    // Then back up the prior snapshot + verify the write actually landed (silent).
+    await dataMutationProtocol.backup('autoSave', _priorSnap);
+    await dataMutationProtocol.silentVerify('autoSave', async () => {
+      const stored = localStorage.getItem('boo_autosave');
+      return { success: !!stored && stored.length > 0, message: 'Stored ' + (stored ? stored.length : 0) + ' bytes' };
+    });
     try {
       // Archive the last confirmed snapshot before overwriting it. Throttle so
       // history holds meaningful, time-spaced rollback points (not dozens of
@@ -8164,15 +8333,26 @@ function renderHistoryList() {
   }).join('');
 }
 
-function restoreFromHistory(idx) {
+async function restoreFromHistory(idx) {
   var entry = sessionHistory[idx];
   if (!entry || !entry.snap) return;
-  applySession(entry.snap);
-  document.getElementById('historyOverlay').style.display = 'none';
-  autoSave('history restore');
   var d = new Date(entry.savedAt);
   var timeStr = d.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true });
-  showToast('Restored to ' + timeStr);
+  document.getElementById('historyOverlay').style.display = 'none';
+
+  // ── DESTRUCTIVE OP: full five-step protocol (replaces the entire session) ──
+  await dataMutationProtocol.backup('Restore from History (' + timeStr + ')', JSON.stringify(buildSessionSnapshot()));
+  const ok = await dataMutationProtocol.showDiff(
+    'Restore from History', 'current session', 'snapshot from ' + timeStr);
+  if (!ok) return;
+  await dataMutationProtocol.apply(async () => {
+    applySession(entry.snap);
+    return autoSave('history restore', true);
+  });
+  await dataMutationProtocol.verify('Restore from History', async () => {
+    const stored = localStorage.getItem('boo_autosave');
+    return { success: !!stored && stored.length > 0, message: 'session restored to ' + timeStr };
+  });
 }
 
 // ── LOAD SESSION ──
