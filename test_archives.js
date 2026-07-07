@@ -103,6 +103,8 @@ function buildSandboxAndLoad(scriptSrc) {
   try { globalThis.__APPLY = applySession; } catch(e){ globalThis.__e4 = String(e); }
   try { globalThis.__state = state; } catch(e){ globalThis.__e5 = String(e); }
   try { globalThis.__renderSeason = renderSeasonView; } catch(e){ globalThis.__e6 = String(e); }
+  try { globalThis.__startFresh = startFreshSeason; } catch(e){ globalThis.__e7 = String(e); }
+  try { globalThis.__episodeStore = episodeStore; } catch(e){ globalThis.__e8 = String(e); }
 })();
 `;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename: 'bp.html#inline-script', timeout: 20000 });
@@ -126,7 +128,12 @@ function main() {
     process.exit(2);
   }
   const { __archive: archiveCurrentSeason, __restore: restoreArcArchive, __SNAP: buildSessionSnapshot,
-    __APPLY: applySession, __state: state, __renderSeason: renderSeasonView } = sb;
+    __APPLY: applySession, __state: state, __renderSeason: renderSeasonView,
+    __startFresh: startFreshSeason, __episodeStore: episodeStore } = sb;
+  if (typeof startFreshSeason !== 'function' || !episodeStore) {
+    console.error('FATAL: could not expose startFreshSeason / episodeStore');
+    process.exit(2);
+  }
 
   // 4 (first — guards the wiring that broke): Season view renders without throwing.
   let rendered = true;
@@ -161,6 +168,25 @@ function main() {
   restoreArcArchive(archOrig.id);
   ok(state.seasons[0].theme === 'ORIGINAL THEME', 'restore brings back the archived season');
   ok(state.arcArchives.length === before + 1, 'restore auto-archived the current state first (nothing lost)');
+
+  // 6. Start Fresh zeroes episodes but PRESERVES guests (harvested to the repo).
+  // Real episodeStore entries always carry conversationLog; mirror that here.
+  episodeStore[1] = { conversationLog: [], considerations: [{ name: 'Kip Glazer', title: 'Principal, Mountain View HS' }] };
+  episodeStore[2] = { conversationLog: [], considerations: [{ name: 'Dominick Sanders', title: 'Director of Innovation' }] };
+  state.seasons[0].theme = 'What Do We Teach Now?';
+  state.seasons[0].episodes = [{ number: 1, title: 'The Principal' }, { number: 2, title: 'Who Was Left Behind' }];
+  state.seasons[0].seasonBrief = 'a long season brief that should be cleared';
+  state.seasons[0].episodeCount = 9;
+  state.guestRepo = [];
+  const arcsBefore = (state.arcArchives || []).length;
+  startFreshSeason();
+  ok(state.seasons[0].episodes.length === 0 && state.seasons[0].episodeCount === 0, 'Start Fresh zeroes the episodes');
+  ok(state.seasons[0].theme === '' && state.seasons[0].seasonBrief === '', 'Start Fresh clears theme + brief');
+  ok(state.guestRepo.some(function (g) { return g.name === 'Kip Glazer'; })
+    && state.guestRepo.some(function (g) { return g.name === 'Dominick Sanders'; }),
+    'guests preserved in the repository (harvested from episodes)');
+  ok(state.guestRepo.length >= 2 && state.guestRepo.every(function (g) { return !g.assignedTo; }), 'harvested guests are unassigned');
+  ok((state.arcArchives || []).length === arcsBefore + 1, 'Start Fresh archived the previous season first');
 
   console.log('');
   console.log(FAIL === 0 ? ('All ' + PASS + ' archive assertions passed.') : (FAIL + ' assertion(s) failed.'));

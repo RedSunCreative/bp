@@ -5473,6 +5473,55 @@ function deleteArcArchive(id) {
   renderArchivesList();
 }
 
+// Start Fresh: archive the current season, harvest its guests into the repo (so
+// they survive + Boo can reconnect them), then clear the season to a blank slate.
+// Destructive → confirm-gated; the archive it takes first makes it reversible.
+function startFreshSeason() {
+  if (!confirm('Start fresh? This archives the current Season, then clears its theme, episodes, and brief to a blank slate — KEEPING all guests (moved to the guest repository, unassigned). A full copy is archived first, so you can restore it.')) return;
+  archiveCurrentSeason('Before Start Fresh — ' + new Date().toLocaleString());
+  if (!state.guestRepo) state.guestRepo = [];
+  var byName = {};
+  state.guestRepo.forEach(function(g) { if (g && g.name) byName[g.name.toLowerCase()] = g; });
+  function harvest(c) {
+    if (!c || !c.name) return;
+    var key = c.name.toLowerCase();
+    if (byName[key]) return;
+    var g = {};
+    for (var f in c) if (Object.prototype.hasOwnProperty.call(c, f)) g[f] = c[f];
+    g.assignedTo = '';
+    byName[key] = g;
+    state.guestRepo.push(g);
+  }
+  Object.keys(episodeStore).forEach(function(k) {
+    ((episodeStore[k] && episodeStore[k].considerations) || []).forEach(harvest);
+    if (episodeStore[k] && episodeStore[k].guest) harvest(episodeStore[k].guest);
+  });
+  ((state.seasons[0] && state.seasons[0].episodes) || []).forEach(function(e) { if (e && e.guest) harvest(e.guest); });
+  // Clear the episode structure — guests are already harvested above.
+  Object.keys(episodeStore).forEach(function(k) { delete episodeStore[k]; });
+  if (state.seasons[0]) {
+    state.seasons[0].theme = '';
+    state.seasons[0].launchTarget = '';
+    state.seasons[0].seasonBrief = '';
+    state.seasons[0].episodes = [];
+    state.seasons[0].episodeOrder = [];
+    state.seasons[0].episodeCount = 0;
+    state.seasons[0].storyShape = 'plot-mountain';
+  }
+  if (state.currentSeason) {
+    state.currentSeason.theme = '';
+    state.currentSeason.launchTarget = '';
+    state.currentSeason.episodeCount = 0;
+    state.currentSeason.storyShape = 'plot-mountain';
+  }
+  if (typeof stashGuestRepo === 'function') stashGuestRepo();
+  autoSave('season cleared to blank slate (guests kept)');
+  if (typeof renderGuestRepo === 'function') renderGuestRepo();
+  renderArchivesList();
+  renderSeasonView();
+  showToast('Fresh season ready — ' + state.guestRepo.length + ' guest' + (state.guestRepo.length === 1 ? '' : 's') + ' kept in the repository.');
+}
+
 function renderArchivesList() {
   var el = document.getElementById('sv-archives');
   if (!el) return;
@@ -5481,6 +5530,7 @@ function renderArchivesList() {
     + '<span>SEASON ARCHIVES</span>'
     + '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;">' + arr.length + ' saved · snapshot the whole season to retrieve or model later</span>'
     + '<button class="action-btn teal" style="margin-left:auto;" onclick="promptArchiveCurrentSeason()">⤓ Archive current season</button>'
+    + '<button class="action-btn" onclick="startFreshSeason()" title="Archive, then clear the season to a blank slate — guests are kept">Start Fresh (keeps guests)</button>'
     + '</div>';
   var list = arr.length
     ? arr.map(function(a) {
@@ -5540,7 +5590,7 @@ function renderSeasonView() {
   var season = state.currentSeason || (state.seasons && state.seasons[0]) || {};
   var num = season.number || 1;
   var theme = season.theme || '';
-  var count = season.episodeCount || 8;
+  var count = (season.episodeCount != null) ? season.episodeCount : 8;
   var launch = season.launchTarget || '';
 
   // Build episode display order
