@@ -3396,6 +3396,9 @@ async function callBoo(userMsg) {
   if (state.hostIntro) _hostCtx += '\nHOST INTRO (written): ' + state.hostIntro.slice(0, 300);
   if (state.hostOutro) _hostCtx += '\nHOST OUTRO (written): ' + state.hostOutro.slice(0, 300);
 
+  // Season recordings (imported transcript cards) — travels with every planning turn
+  var _recCtx = buildRecordingsContext();
+
   // Action items
   var _actions = (state.actionItems || []).filter(function(a) { return !a.done; });
   var _actCtx  = _actions.length
@@ -3471,6 +3474,10 @@ ${_arcList}
 
 ===== CURRENT EPISODE GUEST LIST — S${_sNum}-E${_epNum} =====
 ${_epGuestList}
+
+===== SEASON RECORDINGS — ${(state.recordings || []).length} imported =====
+Interviews recorded for this season, each distilled to a planning card. Use these when planning or ordering the season; cite the actual guests and quotes, never invent.
+${_recCtx}
 
 ===== MANDATORY PRE-PRODUCTION WORKFLOW =====
 Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
@@ -5361,6 +5368,7 @@ function renderRecordingsList() {
     + '<label class="action-btn" style="cursor:pointer;">＋ Add transcript files'
     + '<input id="rec-file-input" type="file" accept=".txt,.md,.vtt,.srt" multiple style="display:none;" onchange="handleTranscriptFiles(this.files)"></label>'
     + '<button class="action-btn" onclick="toggleRecordingPaste()">or paste one</button>'
+    + (recs.length >= 2 ? '<button class="action-btn teal" onclick="planSeason()">✦ Plan Season</button>' : '')
     + '<span id="rec-progress" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--teal);"></span>'
     + '</div>'
     + '<div id="rec-paste-box" style="display:none;margin-bottom:8px;">'
@@ -5385,6 +5393,44 @@ function renderRecordingsList() {
       }).join('') + '</div>'
     : '<div style="font-size:12px;color:var(--muted);padding:4px 0 8px;">No recordings yet — add transcript files or paste one, and Boo will read each and file a card.</div>';
   el.innerHTML = '<div class="season-arc-wrap">' + head + controls + cards + '</div>';
+}
+
+// Compact recording-card context injected into every Boo turn during planning,
+// so the cards travel with the conversation (not just the kickoff).
+function buildRecordingsContext() {
+  var recs = state.recordings || [];
+  if (!recs.length) return 'No recordings imported yet.';
+  return recs.map(function(r, i) {
+    var line = (i + 1) + '. ' + (r.guest || r.label || 'Untitled recording') + (r.title ? ' — ' + r.title : '');
+    if (r.shape) line += '\n   Candidate shape: ' + r.shape;
+    if (r.tension) line += '\n   Tension: ' + r.tension;
+    if (r.arc) line += '\n   Arc: ' + r.arc;
+    var q = (r.quotes || []).slice(0, 2).map(function(x) { return '"' + x.quote + '"' + (x.timecode ? ' [' + x.timecode + ']' : ''); });
+    if (q.length) line += '\n   Quotes: ' + q.join('  |  ');
+    return line;
+  }).join('\n\n');
+}
+
+// The Plan-Season kickoff: container FIRST (finished vs. raw material + bookends),
+// evidence-grounded hypothesis, then exactly ONE upstream question — no story
+// shape or ordering yet. Encodes the choreography designed + tested with Mark.
+function buildSeasonPlanPrompt() {
+  var n = (state.recordings || []).length;
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  return 'We are planning Season ' + sNum + ' from the ' + n + ' recordings in your context (see SEASON RECORDINGS). '
+    + 'Think like a seasoned floor director and follow the Boo dialogue pattern exactly.\n\n'
+    + 'FIRST, resolve the PRODUCTION CONTAINER before any story-shape talk. In 2-3 confident sentences, give your hypothesis grounded in SPECIFIC evidence from the cards: which recordings overlap enough to merge (name them and the shared ground), and whether the season is missing a front door or a close (a premise-setting opener, a hosts-only finale). Cite the actual guests and quotes — never invent.\n\n'
+    + 'THEN ask exactly ONE question — the single most upstream one: are these finished episodes to sequence as-is, or raw material to recombine into fewer, with new bookend recordings to complete the season? Do NOT propose an ordering or a story shape yet — that comes only after I answer.\n\n'
+    + 'When relevant, distinguish guest-gaps (need a new interviewee) from host-gaps (Matt & Kartik can carry alone). Keep it to the hypothesis plus the one question.';
+}
+
+// Button handler: kick off season planning in the chat, over the cards.
+function planSeason() {
+  var recs = state.recordings || [];
+  if (recs.length < 2) { showToast('Import at least two recordings first.'); return; }
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  setView('chat');
+  triggerBooDirectly('Plan Season ' + sNum + ' from these ' + recs.length + ' recordings', buildSeasonPlanPrompt());
 }
 
 function renderSeasonView() {

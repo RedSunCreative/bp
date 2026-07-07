@@ -105,6 +105,8 @@ function buildSandboxAndLoad(scriptSrc) {
   try { globalThis.__SNAP = buildSessionSnapshot; } catch(e){ globalThis.__e3 = String(e); }
   try { globalThis.__APPLY = applySession; } catch(e){ globalThis.__e4 = String(e); }
   try { globalThis.__state = state; } catch(e){ globalThis.__e5 = String(e); }
+  try { globalThis.__buildPlan = buildSeasonPlanPrompt; } catch(e){ globalThis.__e6 = String(e); }
+  try { globalThis.__recCtx = buildRecordingsContext; } catch(e){ globalThis.__e7 = String(e); }
 })();
 `;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename: 'bp.html#inline-script', timeout: 20000 });
@@ -144,7 +146,12 @@ function main() {
     process.exit(2);
   }
   const { __buildPrompt: buildCharacterizePrompt, __parseCard: parseRecordingCard,
-    __SNAP: buildSessionSnapshot, __APPLY: applySession, __state: state } = sb;
+    __SNAP: buildSessionSnapshot, __APPLY: applySession, __state: state,
+    __buildPlan: buildSeasonPlanPrompt, __recCtx: buildRecordingsContext } = sb;
+  if (typeof buildSeasonPlanPrompt !== 'function' || typeof buildRecordingsContext !== 'function') {
+    console.error('FATAL: could not expose planning internals');
+    process.exit(2);
+  }
 
   // 1. Prompt builder embeds transcript + field labels + label, and stays non-hijackable.
   const prompt = buildCharacterizePrompt('SPEAKER: barbershop computing at 05:01', 'Dominick');
@@ -179,8 +186,19 @@ function main() {
     && state.recordings[0].quotes[0].timecode === '12:03',
     'recordings survive snapshot -> applySession round-trip');
 
+  // 5. Plan-Season kickoff is container-first and holds the one-question discipline.
+  const plan = buildSeasonPlanPrompt();
+  ok(/CONTAINER/.test(plan), 'plan prompt leads with the production container');
+  ok(/ONE question/.test(plan) && /recombine/i.test(plan) && /bookend/i.test(plan), 'plan prompt asks the single upstream container question (recombine / bookends)');
+  ok(/not propose an ordering or a story shape yet/i.test(plan), 'plan prompt withholds ordering/shape until answered');
+  ok(/guest-gap/i.test(plan) && /host-gap/i.test(plan), 'plan prompt distinguishes guest-gaps from host-gaps');
+
+  // 6. Recording context (injected into every planning turn) lists the cards.
+  const rc = buildRecordingsContext(); // state.recordings holds the restored Dominick card from step 4
+  ok(rc.indexOf('Dr. Dominick Sanders') !== -1 && /Man in Hole/.test(rc), 'recordings context lists guest + candidate shape');
+
   console.log('');
-  console.log(FAIL === 0 ? ('All ' + PASS + ' recording-import assertions passed.') : (FAIL + ' assertion(s) failed.'));
+  console.log(FAIL === 0 ? ('All ' + PASS + ' recording assertions passed.') : (FAIL + ' assertion(s) failed.'));
   process.exit(FAIL === 0 ? 0 : 1);
 }
 
