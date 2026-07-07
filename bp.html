@@ -5003,16 +5003,24 @@ function getEpArcBeat(n) {
   var b = beatForEpisode(activeStoryShape(), n);
   return { label: b.label, cls: b.cls, tip: b.tip };
 }
+// Whether Boo has DETERMINED the story shape yet. Until then the arc
+// visualization stays behind the curtain (hidden); once chosen it renders.
+function seasonShapeChosen() {
+  return !!((state.currentSeason && state.currentSeason.storyShapeChosen)
+    || (state.seasons && state.seasons[0] && state.seasons[0].storyShapeChosen));
+}
+
 // Switch the active season's shape. Writes to BOTH currentSeason and the durable
 // state.seasons record so selectSeason() (which reassigns currentSeason from
-// state.seasons) keeps the choice. Non-destructive: episode content never moves.
+// state.seasons) keeps the choice. Marks the shape as chosen so the arc
+// visualization becomes visible. Non-destructive: episode content never moves.
 function setStoryShape(id) {
   if (!STORY_SHAPES[id]) return;
-  if (state.currentSeason) state.currentSeason.storyShape = id;
+  if (state.currentSeason) { state.currentSeason.storyShape = id; state.currentSeason.storyShapeChosen = true; }
   var num = state.currentSeason ? state.currentSeason.number : 1;
   var srec = (state.seasons || []).find(function(s){ return s.number === num; });
-  if (srec) srec.storyShape = id;
-  else if (state.seasons && state.seasons[0]) state.seasons[0].storyShape = id;
+  if (srec) { srec.storyShape = id; srec.storyShapeChosen = true; }
+  else if (state.seasons && state.seasons[0]) { state.seasons[0].storyShape = id; state.seasons[0].storyShapeChosen = true; }
   renderSeasonView();
   autoSave('Story shape -> ' + id);
 }
@@ -5510,12 +5518,14 @@ function startFreshSeason() {
     state.seasons[0].episodeOrder = [];
     state.seasons[0].episodeCount = 0;
     state.seasons[0].storyShape = 'plot-mountain';
+    state.seasons[0].storyShapeChosen = false;
   }
   if (state.currentSeason) {
     state.currentSeason.theme = '';
     state.currentSeason.launchTarget = '';
     state.currentSeason.episodeCount = 0;
     state.currentSeason.storyShape = 'plot-mountain';
+    state.currentSeason.storyShapeChosen = false;
   }
   if (typeof stashGuestRepo === 'function') stashGuestRepo();
   autoSave('season cleared to blank slate (guests kept)');
@@ -5532,7 +5542,9 @@ function renderArchivesList() {
   var head = '<div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
     + '<span>SEASON ARCHIVES</span>'
     + '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;">' + arr.length + ' saved · snapshot the whole season to retrieve or model later</span>'
-    + '<button class="action-btn teal" style="margin-left:auto;" onclick="promptArchiveCurrentSeason()">⤓ Archive current season</button>'
+    + '</div>'
+    + '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">'
+    + '<button class="action-btn teal" onclick="promptArchiveCurrentSeason()">⤓ Archive current season</button>'
     + '<button class="action-btn" onclick="startFreshSeason()" title="Archive, then clear the season to a blank slate — guests are kept">Start Fresh (keeps guests)</button>'
     + '</div>';
   var list = arr.length
@@ -5618,6 +5630,7 @@ function renderSeasonView() {
 
   // ── Story Shape: selector + active arc strip + compare-in-frame ──
   var activeShape = activeStoryShape();
+  var shapeChosen = seasonShapeChosen();
   var shapeSel = document.getElementById('sv-shape-select');
   if (shapeSel) {
     shapeSel.innerHTML = Object.keys(STORY_SHAPES).map(function(id){
@@ -5628,7 +5641,9 @@ function renderSeasonView() {
   var srcEl = document.getElementById('sv-shape-source');
   if (srcEl) srcEl.textContent = activeShape.source ? ('— ' + activeShape.source) : '';
   var beatsEl = document.getElementById('sv-arc-beats');
-  if (beatsEl) beatsEl.innerHTML = renderShapeStrip(activeShape, count);
+  if (beatsEl) beatsEl.innerHTML = shapeChosen
+    ? renderShapeStrip(activeShape, count)
+    : '<div style="font-size:12px;color:var(--muted);padding:6px 0;">Story shape — Boo maps this once the season is planned.</div>';
   var cmpEl = document.getElementById('sv-shape-compare');
   var cmpBtn = document.getElementById('sv-compare-btn');
   if (cmpEl) {
@@ -5707,7 +5722,7 @@ function renderSeasonView() {
       + ' onclick="goToEpisodeFromSeason(' + e + ')">'
       + '<div class="season-ep-drag" onclick="event.stopPropagation()" title="Drag to reorder">⠿</div>'
       + '<div class="season-ep-ref">S' + num + '-E' + e + '</div>'
-      + '<div class="season-ep-arc"><span class="arc-beat ' + beat.cls + '" style="padding:2px 6px;font-size:9px;" data-tip="' + beat.tip + '">' + beat.label + '</span></div>'
+      + '<div class="season-ep-arc">' + (shapeChosen ? '<span class="arc-beat ' + beat.cls + '" style="padding:2px 6px;font-size:9px;" data-tip="' + beat.tip + '">' + beat.label + '</span>' : '') + '</div>'
       + '<div class="season-ep-title' + (!title ? ' empty' : '') + '" contenteditable="true"'
         + ' onclick="event.stopPropagation()"'
         + ' onfocus="if(this.classList.contains(\'empty\')){this.textContent=\'\';this.classList.remove(\'empty\');}"'
