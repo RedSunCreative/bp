@@ -105,6 +105,8 @@ function buildSandboxAndLoad(scriptSrc) {
   try { globalThis.__renderSeason = renderSeasonView; } catch(e){ globalThis.__e6 = String(e); }
   try { globalThis.__startFresh = startFreshSeason; } catch(e){ globalThis.__e7 = String(e); }
   try { globalThis.__episodeStore = episodeStore; } catch(e){ globalThis.__e8 = String(e); }
+  try { globalThis.__setLastSaved = function(v){ _lastSavedSnap = v; }; } catch(e){ globalThis.__e9 = String(e); }
+  try { globalThis.__setBriefIntent = function(v){ _briefClearIntent = v; }; } catch(e){ globalThis.__e10 = String(e); }
 })();
 `;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename: 'bp.html#inline-script', timeout: 20000 });
@@ -201,6 +203,21 @@ function main() {
   ok(!!dom && dom.intro === 'Dominick has seen the access problem from every angle', 'written intro (guestIntro) mapped to repo intro field');
   ok(!!dom && dom.description === "Former SC's first CS Supervisor; invented Barbershop Computing" && dom.why === 'the equity angle', 'research (description) + why preserved');
   ok(!!dom && dom.source1 === 'https://linkedin.com/in/dominick' && dom.email === 'dom@x.com' && dom.timezone === 'ET', 'source, email, and scheduling preserved');
+
+  // 8. Brief guard: protects accidental empties, but stands down for Start Fresh's intentional clear.
+  const LAST = function () { return { guestRepo: [], state: { seasons: [{ seasonBrief: 'A REAL SEASON BRIEF' }], currentSeason: {}, currentEpisode: {} } }; };
+  sb.__setBriefIntent(false); // reset flag (real app consumes it on the next save; the setTimeout stub here doesn't)
+  sb.__setLastSaved(LAST());
+  state.seasons[0].seasonBrief = '';
+  const guarded = buildSessionSnapshot();
+  ok(guarded.state.seasons[0].seasonBrief === 'A REAL SEASON BRIEF', 'brief guard restores an accidentally-emptied brief (protection intact)');
+
+  state.seasons[0].seasonBrief = 'A REAL SEASON BRIEF';
+  sb.__setLastSaved(LAST());
+  startFreshSeason();
+  const cleared = buildSessionSnapshot();
+  ok(cleared.state.seasons[0].seasonBrief === '' && state.seasons[0].seasonBrief === '',
+    'Start Fresh clears the brief for real (guard stands down for the intentional clear)');
 
   console.log('');
   console.log(FAIL === 0 ? ('All ' + PASS + ' archive assertions passed.') : (FAIL + ' assertion(s) failed.'));

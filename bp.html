@@ -5528,6 +5528,7 @@ function startFreshSeason() {
     state.currentSeason.storyShapeChosen = false;
   }
   if (typeof stashGuestRepo === 'function') stashGuestRepo();
+  _briefClearIntent = true; // intentional brief clear — let the snapshot guard stand down once
   autoSave('season cleared to blank slate (guests kept)');
   if (typeof renderGuestRepo === 'function') renderGuestRepo();
   renderArchivesList();
@@ -8578,7 +8579,7 @@ buildSessionSnapshot = function() {
   }
   var _newBrief  = _briefOf(snap);
   var _lastBrief = _briefOf(_lastSavedSnap);
-  if ((!_newBrief || !_newBrief.trim()) && _lastBrief && _lastBrief.trim()) {
+  if (!_briefClearIntent && (!_newBrief || !_newBrief.trim()) && _lastBrief && _lastBrief.trim()) {
     console.warn('[bp] seasonBrief guard triggered — brief is empty but last save had', _lastBrief.length, 'chars. Preserving last-known-good brief.');
     if (snap.state && snap.state.seasons && snap.state.seasons[0]) {
       snap.state.seasons[0].seasonBrief = _lastBrief;
@@ -8587,6 +8588,7 @@ buildSessionSnapshot = function() {
     }
     showToast('⚠ Season brief preserved — see console for details.');
   }
+  _briefClearIntent = false; // consume — only the one intentional clear bypasses the guard
 
   return snap;
 };
@@ -8645,6 +8647,7 @@ var autoSaveTimeout = null;
 var _seasonBriefAutoGen = false;
 var sessionHistory = [];
 var _lastSavedSnap = null;
+var _briefClearIntent = false; // set by Start Fresh so the brief guard allows ONE intentional clear
 
 function stashGuestRepo() {
   if (!state.guestRepo || state.guestRepo.length === 0) return;
