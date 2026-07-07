@@ -532,6 +532,30 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 20 (behavioral): Season-Planning recording import
+# Drives the REAL buildCharacterizePrompt / parseRecordingCard and the
+# snapshot round-trip from bp.html in a vm sandbox. Proves the prompt
+# embeds the transcript + labeled fields, the parser reads cards (incl.
+# timecoded quotes) safely, and recording cards persist while raw
+# transcripts stay OUT of the autosave snapshot.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 20: recording import (characterize + card persistence) ---"
+T20_OUT=$(node test_recordings.js 2>&1)
+T20_RC=$?
+T20_FAILS=$(printf '%s\n' "$T20_OUT" | grep -c 'FAIL')
+T20_PASSES=$(printf '%s\n' "$T20_OUT" | grep -c 'PASS')
+if [[ $T20_RC -eq 0 && $T20_FAILS -eq 0 && $T20_PASSES -gt 0 ]]; then
+  pass "prompt + parser + card persistence work; transcript stays out of snapshot ($T20_PASSES assertions)"
+elif [[ $T20_RC -eq 2 ]]; then
+  fail "recording-import test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T20_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "recording import broke ($T20_FAILS assertion(s) failed)"
+  printf '%s\n' "$T20_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then

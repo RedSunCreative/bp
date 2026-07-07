@@ -2439,6 +2439,7 @@
       <button class="sv-map-btn" onclick="booMapSeason()">✦ Boo: Map Season</button>
     </div>
     <div class="season-view-body">
+      <div id="sv-recordings"></div>
       <div class="season-progress-wrap">
         <div class="season-progress-label">
           <span>SEASON PROGRESS</span>
@@ -2927,6 +2928,7 @@ const state = {
   hostIntro: '',
   hostOutro: '',
   guestRepo: [],
+  recordings: [],
   showTemplate: [
     { id: 'st-1',  name: 'Cold Open',                     est: '< 10 sec', dur: '',    note: 'Cut in post — pull a charged moment from the interview',                                                                                                             default: true  },
     { id: 'st-2',  name: 'Introductions',                  est: '1–2 min',  dur: '2',   note: 'Host intro + guest intro — set the stakes before the conversation begins',                                                                                           default: true  },
@@ -5197,6 +5199,194 @@ function deleteEpisodeFromSeason(epNum) {
   autoSave('delete-episode');
 }
 
+// ── SEASON PLANNING: recording import + characterize ──
+// Each imported transcript is distilled to a compact "recording card" (small,
+// persisted in the session snapshot). The full transcript is kept OUT of the
+// autosave snapshot — held in memory + mirrored to localStorage — because it's
+// bulky and re-importable source material, not authored data. saveTranscript/
+// loadTranscript are the seam; a durable server-side store can swap in later.
+var _transcriptStore = {};
+function _transcriptKey(id) { return 'boo_tx_' + (currentShowCode || 'x') + '_' + id; }
+function saveTranscript(id, text) {
+  _transcriptStore[id] = text;
+  try { localStorage.setItem(_transcriptKey(id), text); } catch (e) {}
+}
+function loadTranscript(id) {
+  if (_transcriptStore[id] != null) return _transcriptStore[id];
+  try { return localStorage.getItem(_transcriptKey(id)); } catch (e) { return null; }
+}
+
+// Build the prompt that turns one raw transcript into a labeled recording card.
+// Labeled-line output (never pipe+Tier) so parseReply can't mistake it for guest cards.
+function buildCharacterizePrompt(transcript, label) {
+  var t = String(transcript || '');
+  if (t.length > 300000) t = t.slice(0, 300000); // defensive cap
+  return 'You are Boo, the producer for ' + SHOW_CONFIG.showName + '. Read this raw interview transcript and distill it to a compact recording card for season planning. '
+    + 'Do NOT summarize everything — extract only what a producer needs to decide where this belongs in a season. Never invent; if something is not in the transcript, leave it blank.\n\n'
+    + 'Return ONLY these labeled lines, nothing else:\n'
+    + 'GUEST: <full name>\n'
+    + 'TITLE: <role, organization>\n'
+    + 'ARC: <one sentence — the shape of this person\'s story>\n'
+    + 'TENSION: <one sentence — the central tension or question they wrestle with>\n'
+    + 'FEAR: <their stated fear, if any>\n'
+    + 'OPPORTUNITY: <the opportunity they name>\n'
+    + 'WISH: <their wish or hope, if any>\n'
+    + 'SHAPE: <which story shape this recording best fits, and why — one line>\n'
+    + 'QUOTES:\n'
+    + '- [<timecode>] <a strong verbatim pull-quote>\n'
+    + '- [<timecode>] <another strong verbatim pull-quote>\n'
+    + '- [<timecode>] <a third>\n'
+    + 'SUMMARY: <2-3 sentences on what this episode could be>\n\n'
+    + 'Use timecodes exactly as they appear in the transcript (e.g. 12:03). Quotes must be verbatim.\n'
+    + (label ? ('Recording label: ' + label + '\n') : '')
+    + '\nTRANSCRIPT:\n' + t;
+}
+
+// Parse Boo's labeled reply into a card object. Robust to missing/extra fields.
+function parseRecordingCard(text, id, label) {
+  var card = { id: id, label: label || '', guest: '', title: '', arc: '', tension: '',
+    fear: '', opportunity: '', wish: '', shape: '', summary: '', quotes: [] };
+  if (!text) return card;
+  var lines = String(text).split('\n');
+  var inQuotes = false;
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].trim();
+    if (!line) continue;
+    var m = line.match(/^([A-Z]+):\s*(.*)$/);
+    if (m) {
+      var key = m[1].toUpperCase(), val = m[2].trim();
+      inQuotes = (key === 'QUOTES');
+      if (key === 'GUEST') card.guest = val;
+      else if (key === 'TITLE') card.title = val;
+      else if (key === 'ARC') card.arc = val;
+      else if (key === 'TENSION') card.tension = val;
+      else if (key === 'FEAR') card.fear = val;
+      else if (key === 'OPPORTUNITY') card.opportunity = val;
+      else if (key === 'WISH') card.wish = val;
+      else if (key === 'SHAPE') card.shape = val;
+      else if (key === 'SUMMARY') card.summary = val;
+      continue;
+    }
+    if (inQuotes && (line.charAt(0) === '-' || line.charAt(0) === '•')) {
+      var q = line.replace(/^[-•]\s*/, ''), tc = '';
+      var qm = q.match(/^\[([^\]]*)\]\s*(.*)$/);
+      if (qm) { tc = qm[1].trim(); q = qm[2].trim(); }
+      if (q) card.quotes.push({ timecode: tc, quote: q });
+    }
+  }
+  return card;
+}
+
+// Distill one transcript into a card (one API call), store both, persist, re-render.
+async function characterizeRecording(transcript, label) {
+  var id = 'rec-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+  var resp = await fetch(PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON, 'apikey': SB_ANON },
+    body: JSON.stringify({
+      model: MODEL, max_tokens: 900,
+      system: 'You are Boo, a seasoned podcast floor director. Precise and evidence-based; you never fabricate or embellish beyond the transcript.',
+      messages: [{ role: 'user', content: buildCharacterizePrompt(transcript, label) }],
+    }),
+  });
+  var data = await resp.json();
+  if (data.error) throw new Error(data.error.message || 'API error');
+  var text = (data.content && data.content[0] && data.content[0].text) || '';
+  if (!text) throw new Error('Empty response from Boo');
+  var card = parseRecordingCard(text, id, label);
+  card.addedAt = new Date().toISOString();
+  if (!state.recordings) state.recordings = [];
+  state.recordings.push(card);
+  saveTranscript(id, transcript);
+  autoSave('recording characterized: ' + (card.guest || label || id));
+  renderRecordingsList();
+  return card;
+}
+
+function setRecProgress(msg) {
+  var el = document.getElementById('rec-progress');
+  if (el) el.textContent = msg || '';
+}
+function toggleRecordingPaste() {
+  var box = document.getElementById('rec-paste-box');
+  if (box) box.style.display = (box.style.display === 'none' || !box.style.display) ? 'block' : 'none';
+}
+async function submitPastedRecording() {
+  var textEl = document.getElementById('rec-paste-text');
+  var labelEl = document.getElementById('rec-paste-label');
+  var text = textEl ? textEl.value.trim() : '';
+  var label = labelEl ? labelEl.value.trim() : '';
+  if (!text) { setRecProgress('Paste a transcript first.'); return; }
+  setRecProgress('Boo is reading ' + (label || 'the recording') + '…');
+  try {
+    await characterizeRecording(text, label);
+    if (textEl) textEl.value = '';
+    if (labelEl) labelEl.value = '';
+    toggleRecordingPaste();
+    setRecProgress('');
+  } catch (e) { setRecProgress('Could not characterize — ' + (e.message || 'try again') + '.'); }
+}
+async function handleTranscriptFiles(files) {
+  var arr = Array.prototype.slice.call(files || []);
+  for (var i = 0; i < arr.length; i++) {
+    var f = arr[i];
+    setRecProgress('Reading ' + f.name + ' (' + (i + 1) + ' of ' + arr.length + ')…');
+    try {
+      var text = await f.text();
+      await characterizeRecording(text, f.name.replace(/\.[^.]+$/, ''));
+    } catch (e) { setRecProgress('Failed on ' + f.name + ' — ' + (e.message || 'error') + '.'); return; }
+  }
+  setRecProgress('');
+  var input = document.getElementById('rec-file-input');
+  if (input) input.value = '';
+}
+function deleteRecording(id) {
+  var card = (state.recordings || []).find(function(r) { return r.id === id; });
+  if (!card) return;
+  if (!confirm('Remove the card for "' + (card.guest || card.label || id) + '"? The transcript stays; only Boo\'s analysis card is removed.')) return;
+  state.recordings = (state.recordings || []).filter(function(r) { return r.id !== id; });
+  autoSave('recording card removed');
+  renderRecordingsList();
+}
+
+function renderRecordingsList() {
+  var el = document.getElementById('sv-recordings');
+  if (!el) return;
+  var recs = state.recordings || [];
+  var head = '<div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+    + '<span>RECORDINGS</span>'
+    + '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;">' + recs.length + ' imported · Boo distills each to a planning card</span>'
+    + '</div>';
+  var controls = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">'
+    + '<label class="action-btn" style="cursor:pointer;">＋ Add transcript files'
+    + '<input id="rec-file-input" type="file" accept=".txt,.md,.vtt,.srt" multiple style="display:none;" onchange="handleTranscriptFiles(this.files)"></label>'
+    + '<button class="action-btn" onclick="toggleRecordingPaste()">or paste one</button>'
+    + '<span id="rec-progress" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--teal);"></span>'
+    + '</div>'
+    + '<div id="rec-paste-box" style="display:none;margin-bottom:8px;">'
+    + '<input id="rec-paste-label" placeholder="Label (e.g. guest name)" style="width:100%;margin-bottom:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px;">'
+    + '<textarea id="rec-paste-text" placeholder="Paste one transcript here…" style="width:100%;min-height:120px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;font-family:\'DM Mono\',monospace;"></textarea>'
+    + '<button class="action-btn teal" style="margin-top:6px;" onclick="submitPastedRecording()">Characterize</button>'
+    + '</div>';
+  var cards = recs.length
+    ? '<div class="card-grid">' + recs.map(function(r) {
+        var quotes = (r.quotes || []).length;
+        return '<div class="guest-card" style="border:1px solid var(--border);">'
+          + '<div class="guest-card-header"><div style="flex:1;min-width:0;">'
+          + (r.shape ? '<div class="arc-beat rising" style="padding:2px 6px;font-size:9px;display:inline-block;margin-bottom:4px;">' + esc(r.shape.split(/[—:]/)[0].trim().slice(0, 28)) + '</div>' : '')
+          + '<div style="font-family:\'Syne\',sans-serif;font-size:15px;font-weight:700;color:#E8E8E6;line-height:1.2;">' + esc(r.guest || r.label || 'Untitled recording') + '</div>'
+          + (r.title ? '<div style="font-size:12px;color:var(--teal);line-height:1.4;">' + esc(r.title) + '</div>' : '')
+          + '</div>'
+          + '<button class="season-ep-delete" onclick="deleteRecording(\'' + r.id + '\')" title="Remove card">×</button>'
+          + '</div>'
+          + (r.tension ? '<div class="guest-why" style="margin-top:8px;">' + esc(r.tension) + '</div>' : '')
+          + '<div class="guest-unverified-note">' + quotes + ' pull-quote' + (quotes === 1 ? '' : 's') + ' captured · transcript stored</div>'
+          + '</div>';
+      }).join('') + '</div>'
+    : '<div style="font-size:12px;color:var(--muted);padding:4px 0 8px;">No recordings yet — add transcript files or paste one, and Boo will read each and file a card.</div>';
+  el.innerHTML = '<div class="season-arc-wrap">' + head + controls + cards + '</div>';
+}
+
 function renderSeasonView() {
   var season = state.currentSeason || (state.seasons && state.seasons[0]) || {};
   var num = season.number || 1;
@@ -5220,6 +5410,8 @@ function renderSeasonView() {
   var pct = count > 0 ? Math.round((started / count) * 100) : 0;
   document.getElementById('sv-progress-fill').style.width = pct + '%';
   document.getElementById('sv-progress-text').textContent = started + ' of ' + count + ' episode' + (count !== 1 ? 's' : '') + ' started';
+
+  renderRecordingsList();
 
   // ── Story Shape: selector + active arc strip + compare-in-frame ──
   var activeShape = activeStoryShape();
@@ -8297,6 +8489,7 @@ function buildSessionSnapshot() {
       seasons: JSON.parse(JSON.stringify(state.seasons)),
       currentSeason: JSON.parse(JSON.stringify(state.currentSeason)),
       currentEpisode: JSON.parse(JSON.stringify(state.currentEpisode)),
+      recordings: JSON.parse(JSON.stringify(state.recordings || [])),
     },
     conversationLog: activeEp().conversationLog.slice(-60), // for message count display on load
     meta: {
@@ -8648,6 +8841,7 @@ function applySession(data) {
   const s = data.state;
   if (s.seasons && s.seasons.length) state.seasons = s.seasons;
   if (s.currentSeason) state.currentSeason = s.currentSeason;
+  if (s.recordings) state.recordings = s.recordings;
   state.currentEpisode = s.currentEpisode || null;
 
   // Restore conversation from episodeStore (populated by patch before this call)
