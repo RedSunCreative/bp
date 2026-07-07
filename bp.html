@@ -2440,6 +2440,7 @@
     </div>
     <div class="season-view-body">
       <div id="sv-recordings"></div>
+      <div id="sv-archives"></div>
       <div class="season-progress-wrap">
         <div class="season-progress-label">
           <span>SEASON PROGRESS</span>
@@ -2448,7 +2449,7 @@
         <div class="season-progress-bar"><div class="season-progress-fill" id="sv-progress-fill" style="width:0%"></div></div>
       </div>
       <div class="season-arc-wrap">
-        <div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <div class="season-arc-label" style="display:none;align-items:center;gap:10px;flex-wrap:wrap;">
           <span>STORY SHAPE</span>
           <select id="sv-shape-select" onchange="setStoryShape(this.value)" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;cursor:pointer;"></select>
           <span id="sv-shape-source" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;"></span>
@@ -2929,6 +2930,7 @@ const state = {
   hostOutro: '',
   guestRepo: [],
   recordings: [],
+  arcArchives: [],
   showTemplate: [
     { id: 'st-1',  name: 'Cold Open',                     est: '< 10 sec', dur: '',    note: 'Cut in post — pull a charged moment from the interview',                                                                                                             default: true  },
     { id: 'st-2',  name: 'Introductions',                  est: '1–2 min',  dur: '2',   note: 'Host intro + guest intro — set the stakes before the conversation begins',                                                                                           default: true  },
@@ -5395,6 +5397,107 @@ function renderRecordingsList() {
   el.innerHTML = '<div class="season-arc-wrap">' + head + controls + cards + '</div>';
 }
 
+// ── SEASON ARCHIVES — durable named snapshots of the whole working season ──
+// "Archive all of this" — capture the full session under a name to retrieve or
+// model against later. Stored in state.arcArchives (persisted). Recursion guard:
+// an archive's stored snapshot has arcArchives stripped, so archives never nest.
+function archiveCurrentSeason(name) {
+  if (!state.arcArchives) state.arcArchives = [];
+  var snap = buildSessionSnapshot();
+  if (snap && snap.state) { try { delete snap.state.arcArchives; } catch (e) { snap.state.arcArchives = undefined; } }
+  var s0 = (snap.state && snap.state.seasons && snap.state.seasons[0]) || {};
+  var entry = {
+    id: 'arch-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+    name: name || ('Season snapshot ' + new Date().toLocaleString()),
+    savedAt: new Date().toISOString(),
+    theme: s0.theme || '',
+    episodeCount: (s0.episodes || []).length,
+    shape: activeStoryShapeId(),
+    snap: snap,
+  };
+  state.arcArchives.unshift(entry);
+  if (state.arcArchives.length > 10) state.arcArchives = state.arcArchives.slice(0, 10);
+  autoSave('season archived: ' + entry.name);
+  return entry;
+}
+
+function promptArchiveCurrentSeason() {
+  var def = ((state.currentSeason && state.currentSeason.theme) || 'Season') + ' — ' + new Date().toLocaleDateString();
+  var name = prompt('Name this archive (retrieve or model against it later):', def);
+  if (name === null) return;
+  archiveCurrentSeason(name.trim() || def);
+  renderArchivesList();
+  showToast('Archived — restore or view it anytime.');
+}
+
+// Read-only view: drop the archived arc's structure into chat (good for modeling/compare).
+function viewArcArchive(id) {
+  var a = (state.arcArchives || []).find(function(x) { return x.id === id; });
+  if (!a || !a.snap) return;
+  var s0 = (a.snap.state && a.snap.state.seasons && a.snap.state.seasons[0]) || {};
+  var eps = s0.episodes || [];
+  var html = '<strong>📦 Archived: ' + esc(a.name) + '</strong> <span style="opacity:0.6;">(' + new Date(a.savedAt).toLocaleString() + ')</span><br>'
+    + 'Theme: <em>' + esc(s0.theme || '—') + '</em> · ' + eps.length + ' episodes · shape: ' + esc(a.shape || 'plot-mountain') + '<br><br>'
+    + eps.map(function(e, i) {
+        var g = (e.guest && e.guest.name) ? e.guest.name : '';
+        return (e.number || (i + 1)) + '. ' + esc(e.title || 'TBD') + (g ? ' — ' + esc(g) : '');
+      }).join('<br>')
+    + '<br><br><em>Read-only view of an archived version. Your current season is unchanged.</em>';
+  setView('chat');
+  addMsg('boo', html);
+}
+
+// Restore is DESTRUCTIVE — replaces the current working season. Auto-archives the
+// current state first (so it stays reversible), confirms, then applies faithfully.
+function restoreArcArchive(id) {
+  var a = (state.arcArchives || []).find(function(x) { return x.id === id; });
+  if (!a || !a.snap) return;
+  if (!confirm('Restore "' + a.name + '"? This replaces your CURRENT season with the archived one. Your current season is archived first, so you can switch back.')) return;
+  archiveCurrentSeason('Auto-saved before restoring "' + a.name + '"');
+  try {
+    applySession(JSON.parse(JSON.stringify(a.snap)));
+  } catch (e) { showToast('Restore failed — ' + (e.message || 'error') + '. Nothing lost; current state was archived.'); return; }
+  autoSave('restored archive: ' + a.name);
+  if (typeof renderSeasonsList === 'function') renderSeasonsList();
+  setView('season');
+  renderSeasonView();
+  showToast('Restored "' + a.name + '". Previous state archived.');
+}
+
+function deleteArcArchive(id) {
+  var a = (state.arcArchives || []).find(function(x) { return x.id === id; });
+  if (!a) return;
+  if (!confirm('Delete the archive "' + a.name + '"? This cannot be undone.')) return;
+  state.arcArchives = (state.arcArchives || []).filter(function(x) { return x.id !== id; });
+  autoSave('archive deleted');
+  renderArchivesList();
+}
+
+function renderArchivesList() {
+  var el = document.getElementById('sv-archives');
+  if (!el) return;
+  var arr = state.arcArchives || [];
+  var head = '<div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+    + '<span>SEASON ARCHIVES</span>'
+    + '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;">' + arr.length + ' saved · snapshot the whole season to retrieve or model later</span>'
+    + '<button class="action-btn teal" style="margin-left:auto;" onclick="promptArchiveCurrentSeason()">⤓ Archive current season</button>'
+    + '</div>';
+  var list = arr.length
+    ? arr.map(function(a) {
+        return '<div style="display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;">'
+          + '<div style="flex:1;min-width:0;">'
+          + '<div style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;color:var(--text);">' + esc(a.name) + '</div>'
+          + '<div style="font-size:10px;color:var(--text-muted);font-family:\'DM Mono\',monospace;">' + new Date(a.savedAt).toLocaleString() + ' · ' + (a.episodeCount || 0) + ' eps · ' + esc(a.shape || '') + '</div>'
+          + '</div>'
+          + '<button class="action-btn" onclick="viewArcArchive(\'' + a.id + '\')">View</button>'
+          + '<button class="action-btn" onclick="restoreArcArchive(\'' + a.id + '\')">Restore</button>'
+          + '<button class="season-ep-delete" onclick="deleteArcArchive(\'' + a.id + '\')" title="Delete archive">×</button>'
+          + '</div>';
+      }).join('')
+    : '<div style="font-size:12px;color:var(--muted);padding:4px 0;">No archives yet — click "Archive current season" to snapshot everything exactly as it is now.</div>';
+  el.innerHTML = '<div class="season-arc-wrap">' + head + list + '</div>';
+}
+
 // Compact recording-card context injected into every Boo turn during planning,
 // so the cards travel with the conversation (not just the kickoff).
 function buildRecordingsContext() {
@@ -5458,6 +5561,7 @@ function renderSeasonView() {
   document.getElementById('sv-progress-text').textContent = started + ' of ' + count + ' episode' + (count !== 1 ? 's' : '') + ' started';
 
   renderRecordingsList();
+  renderArchivesList();
 
   // ── Story Shape: selector + active arc strip + compare-in-frame ──
   var activeShape = activeStoryShape();
@@ -8536,6 +8640,7 @@ function buildSessionSnapshot() {
       currentSeason: JSON.parse(JSON.stringify(state.currentSeason)),
       currentEpisode: JSON.parse(JSON.stringify(state.currentEpisode)),
       recordings: JSON.parse(JSON.stringify(state.recordings || [])),
+      arcArchives: JSON.parse(JSON.stringify(state.arcArchives || [])),
     },
     conversationLog: activeEp().conversationLog.slice(-60), // for message count display on load
     meta: {
@@ -8888,6 +8993,7 @@ function applySession(data) {
   if (s.seasons && s.seasons.length) state.seasons = s.seasons;
   if (s.currentSeason) state.currentSeason = s.currentSeason;
   if (s.recordings) state.recordings = s.recordings;
+  if (s.arcArchives) state.arcArchives = s.arcArchives;
   state.currentEpisode = s.currentEpisode || null;
 
   // Restore conversation from episodeStore (populated by patch before this call)

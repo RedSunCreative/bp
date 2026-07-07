@@ -556,6 +556,29 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 21 (behavioral): Season Archives (named full-season snapshots)
+# Drives the REAL archiveCurrentSeason / restoreArcArchive / renderSeasonView
+# in a vm sandbox. Proves archives capture the season, never nest (recursion
+# guard), persist through save/load, restore faithfully after auto-archiving
+# the current state, and that the Season view renders without throwing.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 21: Season Archives (snapshot / restore / no-nest) ---"
+T21_OUT=$(node test_archives.js 2>&1)
+T21_RC=$?
+T21_FAILS=$(printf '%s\n' "$T21_OUT" | grep -c 'FAIL')
+T21_PASSES=$(printf '%s\n' "$T21_OUT" | grep -c 'PASS')
+if [[ $T21_RC -eq 0 && $T21_FAILS -eq 0 && $T21_PASSES -gt 0 ]]; then
+  pass "archive/restore work; recursion-guarded; view renders ($T21_PASSES assertions)"
+elif [[ $T21_RC -eq 2 ]]; then
+  fail "archive test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T21_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "Season Archives broke ($T21_FAILS assertion(s) failed)"
+  printf '%s\n' "$T21_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
