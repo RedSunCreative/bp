@@ -2213,7 +2213,7 @@
   <div class="boo-avatar">🎬</div>
   <div class="header-info">
     <h1>BOO PRODUCER</h1>
-    <p>ANNO CODING PODCAST · RED SUN CREATIVE</p>
+    <p>K12 BOSS PODCAST · RED SUN CREATIVE</p>
   </div>
   <div class="header-actions">
 
@@ -2340,7 +2340,7 @@
     <div class="brief-header">
       <div>
         <div class="brief-title">MASTER CONTEXT BRIEF</div>
-        <div class="brief-subtitle">ANNO CODING PODCAST · BOO-GENERATED</div>
+        <div class="brief-subtitle">K12 BOSS PODCAST · BOO-GENERATED</div>
       </div>
       <div class="brief-header-btns">
         <button class="brief-btn" onclick="toggleFeedPanel()">+ Add to Brief</button>
@@ -2783,10 +2783,10 @@ const MODEL    = 'claude-sonnet-4-6';
 // ── SHOW REGISTRY — one entry per client show ──
 // To add a new show: add an entry here, create the Supabase row, share the code with the team.
 const SHOW_REGISTRY = {
-  'anno': {
+  'k12boss': {
     rowId: 98,
     config: {
-      showName: 'Anno Coding',
+      showName: 'K12 Boss',
       showTagline: 'K-12 CS Education in a Post-Coding Era',
       producerName: 'Mark Caddell',
       producerEmail: 'mark@redsuncreative.net',
@@ -2815,10 +2815,10 @@ const SHOW_REGISTRY = {
       slackCommunity: '',
     }
   },
-  'annotest1': {
+  'k12bosstest1': {
     rowId: 100,
     config: {
-      showName: 'Anno Coding',
+      showName: 'K12 Boss',
       showTagline: 'K-12 CS Education in a Post-Coding Era',
       producerName: 'Mark Caddell',
       producerEmail: 'mark@redsuncreative.net',
@@ -2831,10 +2831,10 @@ const SHOW_REGISTRY = {
       slackCommunity: '',
     }
   },
-  'annotest2': {
+  'k12bosstest2': {
     rowId: 101,
     config: {
-      showName: 'Anno Coding',
+      showName: 'K12 Boss',
       showTagline: 'K-12 CS Education in a Post-Coding Era',
       producerName: 'Mark Caddell',
       producerEmail: 'mark@redsuncreative.net',
@@ -2855,7 +2855,7 @@ function getShowRow() { return (SHOW_REGISTRY[currentShowCode] || {rowId: 98}).r
 
 // ── SHOW CONFIG — populated at login from SHOW_REGISTRY ──
 const SHOW_CONFIG = {
-  showName: 'Anno Coding',
+  showName: 'K12 Boss',
   showTagline: 'K-12 CS Education in a Post-Coding Era',
   producerName: 'Mark Caddell',
   producerEmail: 'mark@redsuncreative.net',
@@ -2929,8 +2929,8 @@ const state = {
     { id: 'st-1',  name: 'Cold Open',                     est: '< 10 sec', dur: '',    note: 'Cut in post — pull a charged moment from the interview',                                                                                                             default: true  },
     { id: 'st-2',  name: 'Introductions',                  est: '1–2 min',  dur: '2',   note: 'Host intro + guest intro — set the stakes before the conversation begins',                                                                                           default: true  },
     { id: 'st-5',  name: 'Guest Interview',                est: '25 min',   dur: '25',  note: 'Core conversation — closes with Fear / Opportunity / Wish',                                                                                                          default: true  },
-    { id: 'st-12', name: 'Close / Outro / CTA',            est: '1 min',    dur: '1',   note: 'Sign-off + where to find the guest. CTA: subscribe, share the episode, and join the community workshop in the Anno Pod on Slack',                                    default: true  },
-    { id: 'st-3',  name: 'Anno Community Workshop Update', est: '2–5 min',  dur: '3',   note: 'Brief update from the Slack community — experiments, listener submissions, what people are trying in their classrooms',                                              default: false },
+    { id: 'st-12', name: 'Close / Outro / CTA',            est: '1 min',    dur: '1',   note: 'Sign-off + where to find the guest. CTA: subscribe, share the episode, and join the community workshop in the K12 Boss Pod on Slack',                                    default: true  },
+    { id: 'st-3',  name: 'K12 Boss Community Workshop Update', est: '2–5 min',  dur: '3',   note: 'Brief update from the Slack community — experiments, listener submissions, what people are trying in their classrooms',                                              default: false },
     { id: 'st-4',  name: "What's for Lunch?",              est: '1.5 min',  dur: '1.5', note: '60-90 sec community UGC clip — a listener shares what\'s actually happening in their school right now',                                                              default: false },
     { id: 'st-6',  name: 'MoH Bridge',                    est: '30 sec',   dur: '0.5', note: 'Guest introduces A Moment of Hope in 2 sentences — their words, their voice, their hand-off',                                                                        default: false },
     { id: 'st-7',  name: 'A Moment of Hope',               est: '2–3 min',  dur: '2',   note: 'Documentary micro-feature shot separately — a student, graduate, teacher, or program in action. The emotional landing of the episode',                               default: false },
@@ -3059,7 +3059,7 @@ async function fetchRowRaw() {
 }
 
 const SHOW_CONTEXT = {
-  name: 'Anno Coding',
+  name: 'K12 Boss',
   tagline: 'K–12 Computer Science Education in a Post-Coding Era',
   hosts: ['Karttikeya Mangalam (AI researcher, former Google/Facebook, PhD UC Berkeley)', 'Matthew Callison PhD (Director of Innovation, South Fayette Township School District)'],
   audience: 'K-12 CS teachers, district leaders, curriculum directors, school administrators',
@@ -3398,10 +3398,10 @@ async function callBoo(userMsg) {
     ? _actions.map(function(a) { return '• [' + (a.owner||'?') + '] ' + a.text; }).join('\n')
     : 'None open.';
 
-  const systemPrompt = `You are Boo, a podcast producer for the Anno Coding Podcast. You work one task at a time and never skip ahead.
+  const systemPrompt = `You are Boo, a podcast producer for the K12 Boss Podcast. You work one task at a time and never skip ahead.
 
 SHOW CONTEXT:
-- Show: Anno Coding — K-12 Computer Science Education in a Post-Coding Era
+- Show: K12 Boss — K-12 Computer Science Education in a Post-Coding Era
 - Hosts: Karttikeya Mangalam (AI researcher, former Google/Facebook, PhD UC Berkeley) and Matthew Callison PhD (Director of Innovation, South Fayette Township School District)
 - Audience: K-12 CS teachers, district leaders, curriculum directors, school administrators
 - Mission: Asking the question — if AI can write the code, what are we teaching students?
@@ -4809,8 +4809,8 @@ function openKitEmail(name) {
   var url = generateGuestKitUrl(name);
   var firstName = (g.name || 'there').split(' ')[0];
   var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
-  var subject = encodeURIComponent('Anno Coding Podcast — Episode ' + epNum + ' Guest Guide');
-  var body = encodeURIComponent('Hi ' + firstName + ',\n\nYou\'re confirmed for Anno Coding Episode ' + epNum + '! Here\'s your guest guide with everything you need before we record:\n\n' + url + '\n\nLet me know if you have any questions.\n\nMark Caddell\nRed Sun Creative Studio');
+  var subject = encodeURIComponent('K12 Boss Podcast — Episode ' + epNum + ' Guest Guide');
+  var body = encodeURIComponent('Hi ' + firstName + ',\n\nYou\'re confirmed for K12 Boss Episode' + epNum + '! Here\'s your guest guide with everything you need before we record:\n\n' + url + '\n\nLet me know if you have any questions.\n\nMark Caddell\nRed Sun Creative Studio');
   window.open('https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(g.email) + '&su=' + subject + '&body=' + body, '_blank');
 }
 
@@ -4820,7 +4820,7 @@ function openKitSMS(name) {
   var url = generateGuestKitUrl(name);
   var firstName = (g.name || 'there').split(' ')[0];
   var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
-  var msg = 'Hi ' + firstName + '! Your Anno Coding Episode ' + epNum + ' guest guide is ready — everything you need before we record. View it here: ' + url;
+  var msg = 'Hi ' + firstName + '! Your K12 Boss Episode' + epNum + ' guest guide is ready — everything you need before we record. View it here: ' + url;
   window.open('sms:' + g.mobile + '?body=' + encodeURIComponent(msg), '_self');
 }
 
@@ -6318,7 +6318,7 @@ async function booGenerateHostOutro() {
   var prompt = 'You are Boo, the AI producer for ' + SHOW_CONFIG.showName + '.\n\n'
     + 'Show: ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
     + 'Hosts: ' + SHOW_CONFIG.host1 + ' and ' + SHOW_CONFIG.host2 + '\n\n'
-    + 'Write a 30-45 second show sign-off the hosts read to close every episode. Include a warm thank-you to the guest and a call to action: subscribe, share the episode, and join the community workshop in the Anno Pod on Slack. No stage directions. Prose only. Return ONLY the closing prose.';
+    + 'Write a 30-45 second show sign-off the hosts read to close every episode. Include a warm thank-you to the guest and a call to action: subscribe, share the episode, and join the community workshop in the K12 Boss Pod on Slack. No stage directions. Prose only. Return ONLY the closing prose.';
   try {
     var resp = await fetch(PROXY, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + SB_ANON, 'apikey': SB_ANON },
       body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 400,
@@ -7487,7 +7487,7 @@ function buildEpisodeBriefPrompt() {
   if (recentChat.length > 3000) recentChat = recentChat.slice(-3000);
   var masterFoundation = state.masterBriefContent
     ? 'MASTER BRIEF (show-level context — do not repeat this in the episode brief, just use it as foundation):\n' + state.masterBriefContent.slice(0, 1500)
-    : 'No master brief generated yet. Show: Anno Coding — K-12 CS Education in a Post-Coding Era.';
+    : 'No master brief generated yet. Show: K12 Boss — K-12 CS Education in a Post-Coding Era.';
 
   return 'You are Boo. Write the Episode Brief for ' + epRef + ' of ' + SHOW_CONFIG.showName + '.\n\n'
     + masterFoundation + '\n\n'
@@ -7774,7 +7774,7 @@ function exportBrief() {
   }
   const plain = state.masterBriefContent.replace(/\*\*(.*?)\*\*/g, '$1').replace(/\*(.*?)\*/g, '$1');
   const header = [
-    'ANNO CODING PODCAST',
+    'K12 BOSS PODCAST',
     'Master Context Brief',
     'Produced by our work here together. - Boo · ' + new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
     '='.repeat(60),
@@ -7784,7 +7784,7 @@ function exportBrief() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'anno-coding-master-brief-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.download = 'k12-boss-master-brief-' + new Date().toISOString().slice(0,10) + '.txt';
   a.click();
   URL.revokeObjectURL(url);
   showToast('✓ Master Brief exported');
@@ -8139,7 +8139,7 @@ function buildSessionSnapshot() {
       month: 'short', day: 'numeric', year: 'numeric',
       hour: 'numeric', minute: '2-digit', hour12: true
     }),
-    show: 'Anno Coding',
+    show: 'K12 Boss',
     // Deep-copy so the snapshot is a true point-in-time capture, not a live
     // reference. Storing live references made _lastSavedSnap and every history
     // entry mutate with current state (e.g. all history briefs looked identical),
@@ -8165,7 +8165,7 @@ function saveSession() {
   const epLabel = state.currentEpisode
     ? '-ep' + (state.currentEpisode.number || 'x')
     : '';
-  const filename = 'boo-anno-coding' + (epLabel) + '-' + (date) + '.json';
+  const filename = 'boo-k12-boss' + (epLabel) + '-' + (date) + '.json';
 
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

@@ -7,7 +7,7 @@
 # schedule it (cron / launchd) for automatic periodic backups.
 #
 # Usage:
-#   bash backup_bp.sh            # backs up the 'anno' row (98)
+#   bash backup_bp.sh            # backs up the 'k12boss' row (98)
 #   bash backup_bp.sh 97         # back up a specific row id (e.g. lbv = 97)
 #
 # Restore: the saved JSON is the row's {data, history}. To restore, PATCH it back:
