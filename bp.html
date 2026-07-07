@@ -4810,7 +4810,7 @@ function openKitEmail(name) {
   var firstName = (g.name || 'there').split(' ')[0];
   var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
   var subject = encodeURIComponent('K12 Boss Podcast — Episode ' + epNum + ' Guest Guide');
-  var body = encodeURIComponent('Hi ' + firstName + ',\n\nYou\'re confirmed for K12 Boss Episode' + epNum + '! Here\'s your guest guide with everything you need before we record:\n\n' + url + '\n\nLet me know if you have any questions.\n\nMark Caddell\nRed Sun Creative Studio');
+  var body = encodeURIComponent('Hi ' + firstName + ',\n\nYou\'re confirmed for K12 Boss Episode ' + epNum + '! Here\'s your guest guide with everything you need before we record:\n\n' + url + '\n\nLet me know if you have any questions.\n\nMark Caddell\nRed Sun Creative Studio');
   window.open('https://mail.google.com/mail/?view=cm&to=' + encodeURIComponent(g.email) + '&su=' + subject + '&body=' + body, '_blank');
 }
 
@@ -4820,7 +4820,7 @@ function openKitSMS(name) {
   var url = generateGuestKitUrl(name);
   var firstName = (g.name || 'there').split(' ')[0];
   var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
-  var msg = 'Hi ' + firstName + '! Your K12 Boss Episode' + epNum + ' guest guide is ready — everything you need before we record. View it here: ' + url;
+  var msg = 'Hi ' + firstName + '! Your K12 Boss Episode ' + epNum + ' guest guide is ready — everything you need before we record. View it here: ' + url;
   window.open('sms:' + g.mobile + '?body=' + encodeURIComponent(msg), '_self');
 }
 
