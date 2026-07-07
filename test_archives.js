@@ -171,8 +171,16 @@ function main() {
 
   // 6. Start Fresh zeroes episodes but PRESERVES guests (harvested to the repo).
   // Real episodeStore entries always carry conversationLog; mirror that here.
+  // Dominick carries the full research package (as in the real backup): guestIntro
+  // (written intro), description (bio/research), why, source, email, scheduling.
   episodeStore[1] = { conversationLog: [], considerations: [{ name: 'Kip Glazer', title: 'Principal, Mountain View HS' }] };
-  episodeStore[2] = { conversationLog: [], considerations: [{ name: 'Dominick Sanders', title: 'Director of Innovation' }] };
+  episodeStore[2] = { conversationLog: [], considerations: [{
+    name: 'Dominick Sanders', title: 'Director of Innovation',
+    guestIntro: 'Dominick has seen the access problem from every angle',
+    description: "Former SC's first CS Supervisor; invented Barbershop Computing",
+    why: 'the equity angle', source1: 'https://linkedin.com/in/dominick', email: 'dom@x.com',
+    day: 'Sunday, June 28, 2026', time: '5:30 - 7:00', timezone: 'ET',
+  }] };
   state.seasons[0].theme = 'What Do We Teach Now?';
   state.seasons[0].episodes = [{ number: 1, title: 'The Principal' }, { number: 2, title: 'Who Was Left Behind' }];
   state.seasons[0].seasonBrief = 'a long season brief that should be cleared';
@@ -187,6 +195,12 @@ function main() {
     'guests preserved in the repository (harvested from episodes)');
   ok(state.guestRepo.length >= 2 && state.guestRepo.every(function (g) { return !g.assignedTo; }), 'harvested guests are unassigned');
   ok((state.arcArchives || []).length === arcsBefore + 1, 'Start Fresh archived the previous season first');
+
+  // 7. The FULL guest package survives onto the repo guest, with correct field mapping.
+  const dom = state.guestRepo.find(function (g) { return g.name === 'Dominick Sanders'; });
+  ok(!!dom && dom.intro === 'Dominick has seen the access problem from every angle', 'written intro (guestIntro) mapped to repo intro field');
+  ok(!!dom && dom.description === "Former SC's first CS Supervisor; invented Barbershop Computing" && dom.why === 'the equity angle', 'research (description) + why preserved');
+  ok(!!dom && dom.source1 === 'https://linkedin.com/in/dominick' && dom.email === 'dom@x.com' && dom.timezone === 'ET', 'source, email, and scheduling preserved');
 
   console.log('');
   console.log(FAIL === 0 ? ('All ' + PASS + ' archive assertions passed.') : (FAIL + ' assertion(s) failed.'));

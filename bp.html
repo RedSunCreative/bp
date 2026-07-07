@@ -5489,6 +5489,9 @@ function startFreshSeason() {
     var g = {};
     for (var f in c) if (Object.prototype.hasOwnProperty.call(c, f)) g[f] = c[f];
     g.assignedTo = '';
+    // The episode stores the written intro as "guestIntro"; the repository shows
+    // it as "intro" (Pod Intro). Map it so the intro surfaces, not just persists.
+    if (!g.intro && g.guestIntro) g.intro = g.guestIntro;
     byName[key] = g;
     state.guestRepo.push(g);
   }
