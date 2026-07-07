@@ -509,6 +509,29 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 19 (behavioral): Story Shapes — pluggable season arc models
+# Drives the REAL getEpArcBeat / setStoryShape from bp.html in a vm
+# sandbox. Proves Plot Mountain's per-episode mapping is unchanged by
+# the rewire, the shape lens switches (Man in Hole), and the choice
+# persists on the durable season record + currentSeason.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 19: Story Shapes (pluggable arc models, Plot Mountain unchanged) ---"
+T19_OUT=$(node test_storyshapes.js 2>&1)
+T19_RC=$?
+T19_FAILS=$(printf '%s\n' "$T19_OUT" | grep -c 'FAIL')
+T19_PASSES=$(printf '%s\n' "$T19_OUT" | grep -c 'PASS')
+if [[ $T19_RC -eq 0 && $T19_FAILS -eq 0 && $T19_PASSES -gt 0 ]]; then
+  pass "Plot Mountain preserved; shape switches + persists ($T19_PASSES assertions)"
+elif [[ $T19_RC -eq 2 ]]; then
+  fail "story-shapes test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T19_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "Story Shapes broke ($T19_FAILS assertion(s) failed)"
+  printf '%s\n' "$T19_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then

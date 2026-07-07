@@ -1656,6 +1656,9 @@
   .arc-beat.climax      { background:rgba(255,107,107,0.15); color:#ff6b6b; }
   .arc-beat.resolution  { background:rgba(74,222,128,0.15);  color:var(--green); }
   .arc-beat.denouement  { background:rgba(167,139,250,0.15); color:#a78bfa; }
+  .arc-beat.comfortable { background:rgba(74,222,128,0.15);  color:var(--green); }
+  .arc-beat.hole        { background:rgba(255,107,107,0.15); color:#ff6b6b; }
+  .arc-beat.climbout    { background:rgba(245,208,58,0.15);  color:var(--gold); }
   .season-ep-label { font-family:'DM Mono',monospace; font-size:12px; color:var(--text-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:8px; }
   .season-ep-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:7px; border:1px solid var(--border); margin-bottom:7px; cursor:pointer; transition:background 0.12s, border-color 0.12s; background:var(--surface); }
   .season-ep-row:hover { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.12); }
@@ -2444,15 +2447,14 @@
         <div class="season-progress-bar"><div class="season-progress-fill" id="sv-progress-fill" style="width:0%"></div></div>
       </div>
       <div class="season-arc-wrap">
-        <div class="season-arc-label">SEASON ARC — PLOT MOUNTAIN <span class="tip-q" data-tip="Plot Mountain maps your season like a story. Exposition opens the world, Conflict names the tension, Rising Action escalates it, Climax breaks something open, Resolution answers it, Denouement is the emotional echo that stays with the audience." onclick="event.stopPropagation()">?</span></div>
-        <div class="season-arc-beats">
-          <div class="arc-beat exposition" data-tip="Opens the world and establishes the central tension. The audience learns what's at stake and why this show exists.">EXPOSITION<br><span style="opacity:0.6;font-weight:400;">Eps 1–2</span></div>
-          <div class="arc-beat conflict" data-tip="The problem comes into focus. Guests push back, ideas clash, and the tension that drives the season becomes undeniable.">CONFLICT<br><span style="opacity:0.6;font-weight:400;">Eps 3–4</span></div>
-          <div class="arc-beat rising" data-tip="Stakes escalate. Each episode builds on the last — the audience feels the pressure mounting toward something that must break.">RISING ACTION<br><span style="opacity:0.6;font-weight:400;">Eps 5–6</span></div>
-          <div class="arc-beat climax" data-tip="The turning point. Everything collides here — the episode that changes the frame and makes what follows feel earned.">CLIMAX<br><span style="opacity:0.6;font-weight:400;">Ep 7</span></div>
-          <div class="arc-beat resolution" data-tip="The season's answer. Not a tidy bow — a hard-won landing that honors the tension established in Episode 1.">RESOLUTION<br><span style="opacity:0.6;font-weight:400;">Ep 8</span></div>
-          <div class="arc-beat denouement" data-tip="The emotional echo. What stays with the audience after the season ends — the human moment that makes it all real.">DENOUEMENT<br><span style="opacity:0.6;font-weight:400;">Ep 9+</span></div>
+        <div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <span>STORY SHAPE</span>
+          <select id="sv-shape-select" onchange="setStoryShape(this.value)" style="background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:5px;font-family:'DM Mono',monospace;font-size:11px;letter-spacing:0.06em;text-transform:uppercase;padding:3px 8px;cursor:pointer;"></select>
+          <span id="sv-shape-source" style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;"></span>
+          <button id="sv-compare-btn" onclick="toggleShapeCompare()" style="margin-left:auto;background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:5px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;padding:3px 10px;cursor:pointer;">⇄ Compare shapes</button>
         </div>
+        <div id="sv-arc-beats"></div>
+        <div id="sv-shape-compare" style="display:none;"></div>
       </div>
       <div class="sv-ep-header">
         <div class="sv-h-drag"></div>
@@ -4925,13 +4927,112 @@ var EP_STATUS_PCT = { 'not-started': 0, 'planning': 20, 'ready-to-record': 40, '
 var EP_STATUS_LABELS = { 'not-started': 'Not Started', 'planning': 'Planning', 'ready-to-record': 'Ready to Record', 'recorded': 'Recorded', 'edited': 'Edited', 'published': 'Published' };
 var EP_STATUS_COLORS = { 'not-started': 'rgba(255,255,255,0.2)', 'planning': '#3BB8C9', 'ready-to-record': '#F5D03A', 'recorded': '#FF8B3D', 'edited': '#a78bfa', 'published': '#4ADE80' };
 
+// ── STORY SHAPES — pluggable season narrative models (data-driven) ──
+// Each shape maps episodes onto a fortune curve via ordered beats. A beat's
+// `span` is a [start,end) fraction of the season; `fortune` is its height on
+// Vonnegut's good/ill-fortune axis (used to draw the curve). Add a new shape by
+// adding an entry here — only the active shape ID (currentSeason.storyShape) is
+// persisted, so shapes stay code while the choice is data. A shape declares its
+// `level`: 'season' (arc across episodes) — 'episode' recipes are a later tier.
+const STORY_SHAPES = {
+  'plot-mountain': {
+    id: 'plot-mountain',
+    name: 'Plot Mountain',
+    source: 'Freytag — classic dramatic arc',
+    level: 'season',
+    blurb: 'Exposition opens the world, tension rises to a climax, then resolves.',
+    beats: [
+      { label: 'Exposition', cls: 'exposition', fortune: 0,  span: [0, 0.25],    tip: 'Opens the world and establishes the central tension. The audience learns what\'s at stake and why this show exists.' },
+      { label: 'Conflict',   cls: 'conflict',   fortune: -1, span: [0.25, 0.5],   tip: 'The problem comes into focus. Guests push back, ideas clash, and the tension that drives the season becomes undeniable.' },
+      { label: 'Rising',     cls: 'rising',     fortune: 1,  span: [0.5, 0.75],   tip: 'Stakes escalate. Each episode builds on the last — the audience feels the pressure mounting toward something that must break.' },
+      { label: 'Climax',     cls: 'climax',     fortune: 3,  span: [0.75, 0.875], tip: 'The turning point. Everything collides here — the episode that changes the frame and makes what follows feel earned.' },
+      { label: 'Resolution', cls: 'resolution', fortune: 1,  span: [0.875, 1.0],  tip: 'The season\'s answer. Not a tidy bow — a hard-won landing that honors the tension established in Episode 1.' },
+      { label: 'Denouement', cls: 'denouement', fortune: 0,  span: [1.0, 1.0001], tip: 'The emotional echo. What stays with the audience after the season ends — the human moment that makes it all real.' },
+    ],
+  },
+  'man-in-hole': {
+    id: 'man-in-hole',
+    name: 'Man in Hole',
+    source: 'Vonnegut — "Shapes of Stories"',
+    level: 'season',
+    blurb: 'Someone comfortable falls into deep trouble, then climbs out — changed, not fully restored.',
+    beats: [
+      { label: 'Comfortable',  cls: 'comfortable', fortune: 2,  span: [0, 0.34],    tip: 'A settled starting place — the opportunity, the promise, life as it should be.' },
+      { label: 'In the Hole',  cls: 'hole',        fortune: -3, span: [0.34, 0.67],  tip: 'The fall into deep trouble — the systemic barriers that stand in the way.' },
+      { label: 'Climbing Out', cls: 'climbout',    fortune: 1,  span: [0.67, 1.0001],tip: 'Better, changed, not fully restored — the practitioners who found a way through.' },
+    ],
+  },
+};
+
+function activeStoryShapeId() {
+  return (state.currentSeason && state.currentSeason.storyShape)
+      || (state.seasons && state.seasons[0] && state.seasons[0].storyShape)
+      || 'plot-mountain';
+}
+function activeStoryShape() {
+  return STORY_SHAPES[activeStoryShapeId()] || STORY_SHAPES['plot-mountain'];
+}
+function seasonEpisodeCount() {
+  var s = state.currentSeason || (state.seasons && state.seasons[0]) || {};
+  return s.episodeCount || 8;
+}
+// Which beat does episode n (1-based) of `count` episodes fall into, for a shape?
+// Uses the episode's center position; the [0,0.25) span for 8 eps reproduces the
+// legacy Plot Mountain mapping exactly (E1-2 Exposition … E7 Climax, E8 Resolution).
+function beatForEpisode(shape, n, count) {
+  count = count || seasonEpisodeCount();
+  var p = (n - 0.5) / count;
+  for (var i = 0; i < shape.beats.length; i++) {
+    var b = shape.beats[i];
+    if (p >= b.span[0] && p < b.span[1]) return b;
+  }
+  return shape.beats[shape.beats.length - 1];
+}
 function getEpArcBeat(n) {
-  if (n <= 2) return { label: 'Exposition', cls: 'exposition', tip: 'Opens the world and establishes the central tension. The audience learns what\'s at stake and why this show exists.' };
-  if (n <= 4) return { label: 'Conflict',   cls: 'conflict',   tip: 'The problem comes into focus. Guests push back, ideas clash, and the tension that drives the season becomes undeniable.' };
-  if (n <= 6) return { label: 'Rising',     cls: 'rising',     tip: 'Stakes escalate. Each episode builds on the last — the audience feels the pressure mounting toward something that must break.' };
-  if (n === 7) return { label: 'Climax',   cls: 'climax',     tip: 'The turning point. Everything collides here — the episode that changes the frame and makes what follows feel earned.' };
-  if (n === 8) return { label: 'Resolution',cls: 'resolution', tip: 'The season\'s answer. Not a tidy bow — a hard-won landing that honors the tension established in Episode 1.' };
-  return               { label: 'Denouement',cls: 'denouement', tip: 'The emotional echo. What stays with the audience after the season ends — the human moment that makes it all real.' };
+  var b = beatForEpisode(activeStoryShape(), n);
+  return { label: b.label, cls: b.cls, tip: b.tip };
+}
+// Switch the active season's shape. Writes to BOTH currentSeason and the durable
+// state.seasons record so selectSeason() (which reassigns currentSeason from
+// state.seasons) keeps the choice. Non-destructive: episode content never moves.
+function setStoryShape(id) {
+  if (!STORY_SHAPES[id]) return;
+  if (state.currentSeason) state.currentSeason.storyShape = id;
+  var num = state.currentSeason ? state.currentSeason.number : 1;
+  var srec = (state.seasons || []).find(function(s){ return s.number === num; });
+  if (srec) srec.storyShape = id;
+  else if (state.seasons && state.seasons[0]) state.seasons[0].storyShape = id;
+  renderSeasonView();
+  autoSave('Story shape -> ' + id);
+}
+var _shapeCompareOpen = false;
+function toggleShapeCompare() { _shapeCompareOpen = !_shapeCompareOpen; renderSeasonView(); }
+
+// Render one shape over `count` episodes: labelled beat pills + a fortune curve
+// (Vonnegut's vertical axis). Reused by the active arc panel and the compare view.
+function renderShapeStrip(shape, count) {
+  count = count || seasonEpisodeCount();
+  var W = 100, H = 34, maxF = 3, minF = -3;
+  function yFor(f) { return (H - ((f - minF) / (maxF - minF)) * H); }
+  var pts = [];
+  for (var n = 1; n <= count; n++) {
+    var b = beatForEpisode(shape, n, count);
+    pts.push([((n - 0.5) / count) * W, yFor(b.fortune)]);
+  }
+  var poly = pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+  var dots = pts.map(function(p, i){ return '<circle cx="' + p[0].toFixed(1) + '" cy="' + p[1].toFixed(1) + '" r="1.6" fill="var(--teal)"><title>E' + (i+1) + '</title></circle>'; }).join('');
+  var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:52px;display:block;margin-top:6px;">'
+    + '<line x1="0" y1="' + yFor(0).toFixed(1) + '" x2="' + W + '" y2="' + yFor(0).toFixed(1) + '" stroke="rgba(255,255,255,0.12)" stroke-width="0.4" stroke-dasharray="2 2"/>'
+    + '<polyline points="' + poly + '" fill="none" stroke="var(--gold)" stroke-width="1.2" stroke-linejoin="round"/>'
+    + dots + '</svg>';
+  var pills = shape.beats.map(function(b){
+    var eps = [];
+    for (var n = 1; n <= count; n++) { if (beatForEpisode(shape, n, count) === b) eps.push(n); }
+    if (!eps.length) return '';
+    var range = eps.length === 1 ? ('Ep ' + eps[0]) : ('Eps ' + eps[0] + '–' + eps[eps.length - 1]);
+    return '<div class="arc-beat ' + b.cls + '" data-tip="' + esc(b.tip) + '">' + esc(b.label) + '<br><span style="opacity:0.6;font-weight:400;">' + range + '</span></div>';
+  }).join('');
+  return '<div class="season-arc-beats">' + pills + '</div>' + svg;
 }
 
 function getEpStatus(epNum) {
@@ -5119,6 +5220,46 @@ function renderSeasonView() {
   var pct = count > 0 ? Math.round((started / count) * 100) : 0;
   document.getElementById('sv-progress-fill').style.width = pct + '%';
   document.getElementById('sv-progress-text').textContent = started + ' of ' + count + ' episode' + (count !== 1 ? 's' : '') + ' started';
+
+  // ── Story Shape: selector + active arc strip + compare-in-frame ──
+  var activeShape = activeStoryShape();
+  var shapeSel = document.getElementById('sv-shape-select');
+  if (shapeSel) {
+    shapeSel.innerHTML = Object.keys(STORY_SHAPES).map(function(id){
+      return '<option value="' + id + '"' + (id === activeShape.id ? ' selected' : '') + '>' + esc(STORY_SHAPES[id].name) + '</option>';
+    }).join('');
+    shapeSel.value = activeShape.id;
+  }
+  var srcEl = document.getElementById('sv-shape-source');
+  if (srcEl) srcEl.textContent = activeShape.source ? ('— ' + activeShape.source) : '';
+  var beatsEl = document.getElementById('sv-arc-beats');
+  if (beatsEl) beatsEl.innerHTML = renderShapeStrip(activeShape, count);
+  var cmpEl = document.getElementById('sv-shape-compare');
+  var cmpBtn = document.getElementById('sv-compare-btn');
+  if (cmpEl) {
+    if (_shapeCompareOpen) {
+      cmpEl.style.display = 'block';
+      cmpEl.innerHTML = '<div style="font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);margin:12px 0 6px;">Comparing all shapes over ' + count + ' episodes</div>'
+        + Object.keys(STORY_SHAPES).map(function(id){
+            var sh = STORY_SHAPES[id];
+            var isActive = (id === activeShape.id);
+            return '<div style="border:1px solid ' + (isActive ? 'var(--teal)' : 'var(--border)') + ';border-radius:8px;padding:10px 12px;margin-bottom:8px;">'
+              + '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:4px;">'
+              + '<span style="font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;color:var(--text);">' + esc(sh.name)
+              + (isActive ? ' <span style="color:var(--teal);font-size:9px;font-family:\'DM Mono\',monospace;letter-spacing:0.08em;">ACTIVE</span>' : '') + '</span>'
+              + (isActive ? '' : '<button onclick="setStoryShape(\'' + id + '\')" style="background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:4px;font-family:\'DM Mono\',monospace;font-size:9px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;cursor:pointer;white-space:nowrap;">Use this</button>')
+              + '</div>'
+              + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">' + esc(sh.blurb || '') + '</div>'
+              + renderShapeStrip(sh, count)
+              + '</div>';
+          }).join('');
+      if (cmpBtn) cmpBtn.textContent = '⇄ Hide compare';
+    } else {
+      cmpEl.style.display = 'none';
+      cmpEl.innerHTML = '';
+      if (cmpBtn) cmpBtn.textContent = '⇄ Compare shapes';
+    }
+  }
 
   // Unassigned guest pool for inline selects
   var unassignedGuests = (state.guestRepo || []).filter(function(g) { return !g.assignedTo; });
