@@ -3826,8 +3826,16 @@ function parseReply(text) {
   if (cleanedText.toUpperCase().includes('OPENING') && cleanedText.toUpperCase().includes('OUTRO')) {
     return formatScript(cleanedText);
   }
-  // Detect guest suggestions — pipe lines without time patterns
-  const guestLines = cleanedText.split('\n').filter(l => l.includes('|') && l.split('|').length >= 3 && !/\d+:\d+/.test(l));
+  // Detect guest suggestions — pipe lines matching the documented guest format,
+  // which always ends with "Tier: Spotlight/Rising/Discovery" (see system prompt).
+  // Requiring the Tier marker is what keeps markdown tables, season-arc tables, and
+  // other pipe-using prose from being hijacked into guest cards rendered inside chat.
+  const guestLines = cleanedText.split('\n').filter(l =>
+    l.includes('|')
+    && l.split('|').length >= 3
+    && !/\d+:\d+/.test(l)
+    && /\btier:\s*(spotlight|rising|discovery)\b/i.test(l)
+  );
   if (guestLines.length >= 2) {
     return formatGuestSuggestions(cleanedText);
   }

@@ -486,6 +486,29 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 18 (behavioral): parseReply content routing — no card hijack
+# Drives the REAL parseReply from bp.html in a vm sandbox. Proves a
+# season-arc / markdown table is NOT rendered as interactive guest
+# cards in chat, while a real guest reply (with "Tier:") still is.
+# Bug 2026-07-06: pipe-line count alone routed any table into cards.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 18: parseReply routing (tables not hijacked into guest cards) ---"
+T18_OUT=$(node test_parsereply.js 2>&1)
+T18_RC=$?
+T18_FAILS=$(printf '%s\n' "$T18_OUT" | grep -c 'FAIL')
+T18_PASSES=$(printf '%s\n' "$T18_OUT" | grep -c 'PASS')
+if [[ $T18_RC -eq 0 && $T18_FAILS -eq 0 && $T18_PASSES -gt 0 ]]; then
+  pass "tables render as text; real guest replies still render as cards ($T18_PASSES assertions)"
+elif [[ $T18_RC -eq 2 ]]; then
+  fail "parseReply test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T18_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "parseReply routing broke ($T18_FAILS assertion(s) failed)"
+  printf '%s\n' "$T18_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # BREAK-TEST CLEANUP
 # ──────────────────────────────────────────────────────────────
 if [[ "$BREAK_MODE" == "--break" ]]; then
