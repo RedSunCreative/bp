@@ -107,6 +107,7 @@ function buildSandboxAndLoad(scriptSrc) {
   try { globalThis.__state = state; } catch(e){ globalThis.__e5 = String(e); }
   try { globalThis.__buildPlan = buildSeasonPlanPrompt; } catch(e){ globalThis.__e6 = String(e); }
   try { globalThis.__recCtx = buildRecordingsContext; } catch(e){ globalThis.__e7 = String(e); }
+  try { globalThis.__seasonState = buildSeasonStateContext; } catch(e){ globalThis.__e8 = String(e); }
 })();
 `;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename: 'bp.html#inline-script', timeout: 20000 });
@@ -196,6 +197,23 @@ function main() {
   // 6. Recording context (injected into every planning turn) lists the cards.
   const rc = buildRecordingsContext(); // state.recordings holds the restored Dominick card from step 4
   ok(rc.indexOf('Dr. Dominick Sanders') !== -1 && /Man in Hole/.test(rc), 'recordings context lists guest + candidate shape');
+
+  // 7. Season-state context reflects real state — no resurrected old plan when blank.
+  const buildSeasonStateContext = sb.__seasonState;
+  // Start Fresh clears BOTH currentSeason and seasons[0]; mirror that.
+  if (state.currentSeason) state.currentSeason.theme = '';
+  state.seasons[0].theme = '';
+  state.seasons[0].episodes = [];
+  state.recordings = [{ id: 'r', guest: 'X' }];
+  const blank = buildSeasonStateContext();
+  ok(/NOT YET PLANNED/.test(blank) && blank.indexOf('What Do We Teach Now') === -1 && blank.indexOf('Plot Mountain') === -1,
+    'blank season -> "not yet planned", no resurrected old theme/arc');
+  ok(blank.indexOf('1 recording') !== -1, 'blank season context notes the imported recordings');
+  if (state.currentSeason) state.currentSeason.theme = 'A Fresh Theme';
+  state.seasons[0].theme = 'A Fresh Theme';
+  state.seasons[0].episodes = [{ number: 1 }];
+  const planned = buildSeasonStateContext();
+  ok(/CURRENT STATE/.test(planned) && planned.indexOf('A Fresh Theme') !== -1, 'themed season -> current-state context with the real theme');
 
   console.log('');
   console.log(FAIL === 0 ? ('All ' + PASS + ' recording assertions passed.') : (FAIL + ' assertion(s) failed.'));

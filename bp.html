@@ -3429,36 +3429,11 @@ These go at the end of every guest interview, before the guest's MoH Bridge.
 EPISODE CUE LIST (this episode's run of show — ${(activeEp().cues || []).length} cues):
 ${(activeEp().cues || []).length > 0 ? (activeEp().cues || []).map((c, i) => (i+1) + '. ' + c.name + (c.duration ? ' (' + c.duration + ')' : '')).join('\n') : 'Not yet built — user can click Load from Template in the Cue List panel'}
 
-SEASON 1 — ALREADY DECIDED (do not re-ask these):
-- Theme: "What Do We Teach Now?"
-- Episodes: 8, launching mid-August
-- Season arc: Plot Mountain — Exposition (eps 1-2), Conflict (3-4), Rising Action (5-6), Climax (ep 7), Resolution (ep 8)
-- Every episode ALSO has its own mini Plot Mountain: opens in tension → interview digs into conflict → lands with A Moment of Hope
-- Audience arrives anxious. Honor that. End every episode with hope.
-- A Moment of Hope: 2-minute documentary micro-feature, shot separately from the interview, narrated (sometimes by Matt or Kartik), centers on a real person or program — student, graduate, teacher, intern. It is a separate production element. Flag it in every run of show. Stories are TBD and will be sourced as we go.
-- When building episode arcs, sequence them intentionally so tension builds across the season and Episode 8's Moment of Hope lands with full weight.
-
-EPISODE 1 — IN PROGRESS (do not re-ask what is already known):
-- Arc role: Exposition — open the crisis, establish the tension, invite both audiences in
-- Core tension: Matt holds the educational ideal (what students should become); Kartik holds the economic reality (what the market rewards, what AI replaces). Neither is wrong. That tension IS the show.
-- Dual audience: K-12 CS teachers/administrators AND tech managers who hire these students and could influence curriculum
-- Think after: "Thank god — there is a conversation like this. A resource to listen, influence, and play in the sandbox."
-- Remember/Do: Join the Slack community, Patreon, or subscribe. This is not just talk — it is action. Weekly experiments listeners can try. Community work gets featured on the podcast.
-- Feel after: TBD — still need answer from Matt/Kartik. Options discussed: relief, urgency, curiosity, belonging, courage.
-- Ecosystem: Podcast + Slack community (hosted by Matt and Kartik, workshops and projects) + weekly experiments + community work featured on show + Patreon subscription layer
-- CTA dependency: Slack community AND Patreon must both be built and live before Episode 1 launches. Flag in every production checklist.
-- Episode 1 title: TBD — waiting on emotional landing decision before naming
-- Next step for Episode 1: Get the emotional landing answer, then move to guest selection
-
-THE BROADER ECOSYSTEM (always keep in mind):
-- This podcast is part of a larger movement — not just content
-- The audience can become the content (community projects featured on show)
-- The feedback loop: podcast → community → experiments → featured back on podcast
-- This creates ongoing relevance and audience investment beyond passive listening
+${buildSeasonStateContext()}
 
 CURRENT STATE:
 - Working on: S${_sNum}-E${_epNum}
-- Season theme: "${(state.currentSeason && state.currentSeason.theme) || 'What Do We Teach Now?'}"
+- Season theme: "${(state.currentSeason && state.currentSeason.theme) || 'not set'}"
 - Episode title: "${getEpTitle(_epNum) || 'TBD'}"
 - Episode arc position: ${getEpArcBeat(_epNum).label}
 - Booked guest: ${activeEp().guest ? (activeEp().guest.name + (activeEp().guest.title ? ', ' + activeEp().guest.title : '')) : 'None booked yet'}
@@ -5562,6 +5537,29 @@ function renderArchivesList() {
       }).join('')
     : '<div style="font-size:12px;color:var(--muted);padding:4px 0;">No archives yet — click "Archive current season" to snapshot everything exactly as it is now.</div>';
   el.innerHTML = '<div class="season-arc-wrap">' + head + list + '</div>';
+}
+
+// Dynamic season-state context for Boo's chat. Replaces the old hardcoded
+// "SEASON 1 — ALREADY DECIDED / EPISODE 1 — IN PROGRESS" blocks so Boo never
+// resurrects a prior season's theme/arc after Start Fresh — it reflects the
+// ACTUAL current state (blank when freshly cleared).
+function buildSeasonStateContext() {
+  var s = state.currentSeason || (state.seasons && state.seasons[0]) || {};
+  var eps = (state.seasons && state.seasons[0] && state.seasons[0].episodes) || [];
+  var recCount = (state.recordings || []).length;
+  var theme = (s.theme || '').trim();
+  if (!theme && !eps.length) {
+    return 'SEASON — NOT YET PLANNED:\n'
+      + '- No theme, episodes, or story arc are decided yet. Do NOT assume any prior theme, episode list, or arc — treat this as a blank season and never resurrect an earlier season\'s plan.\n'
+      + (recCount
+          ? ('- ' + recCount + ' recording(s) are imported (see SEASON RECORDINGS below). When asked to plan or map the season, work ONLY from these recordings and what they contain.')
+          : '- No recordings imported yet.');
+  }
+  return 'SEASON ' + (s.number || 1) + ' — CURRENT STATE:\n'
+    + '- Theme: ' + (theme ? ('"' + theme + '"') : 'not set') + '\n'
+    + '- Episodes: ' + eps.length + (s.launchTarget ? (', launching ' + s.launchTarget) : '') + '\n'
+    + '- Story shape: ' + (seasonShapeChosen() ? activeStoryShape().name : 'not yet chosen') + '\n'
+    + '- ' + recCount + ' recording(s) imported.';
 }
 
 // Compact recording-card context injected into every Boo turn during planning,
