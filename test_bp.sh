@@ -189,7 +189,7 @@ const fs = require('fs');
 const src = fs.readFileSync('bp.html', 'utf8');
 
 // Extract default state.seasons initializer
-const seasonsMatch = src.match(/seasons:\s*\[\s*\{\s*\n\s*number:\s*(\d+)[^}]*?theme:\s*'([^']+)'/s);
+const seasonsMatch = src.match(/seasons:\s*\[\s*\{\s*\n\s*number:\s*(\d+)[^}]*?theme:\s*'([^']*)'/s);
 if (!seasonsMatch) { console.log('FAIL: could not locate state.seasons initializer'); process.exit(0); }
 
 const state = {
@@ -576,6 +576,50 @@ elif [[ $T21_RC -eq 2 ]]; then
 else
   fail "Season Archives broke ($T21_FAILS assertion(s) failed)"
   printf '%s\n' "$T21_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
+# TEST 22 (source guard): no stale old-season content; narrative ethos present
+# Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
+# gone from greetings, the arc review, and the brief prompts, and Boo's prompt
+# must carry the multi-shape narrative ethos so it never defaults to one arc.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 22: no stale old-season content; narrative ethos present ---"
+T22_FAILS=0
+# Stale strings that must NOT appear anywhere in the app
+for stale in \
+  "What Do We Teach Now?" \
+  "launching mid-August" \
+  "Matt holds the educational ideal" \
+  "movement, not just a podcast" \
+  "Episode 1 is in progress" \
+  "Season arc (Plot Mountain): Exposition" \
+  "consistent with Plot Mountain" \
+  "fit Plot Mountain" \
+  "visual Plot Mountain arc"; do
+  if grep -qF "$stale" "$BP"; then
+    fail "stale content still present: \"$stale\""
+    T22_FAILS=$((T22_FAILS+1))
+  fi
+done
+# Ethos strings that MUST appear
+for needed in \
+  "NARRATIVE STRUCTURE — HOW THIS SHOW SHAPES STORIES" \
+  "never assume a single default arc" \
+  "CANDIDATE SHAPE"; do
+  if ! grep -qF "$needed" "$BP"; then
+    fail "narrative ethos missing: \"$needed\""
+    T22_FAILS=$((T22_FAILS+1))
+  fi
+done
+# booGreet must no longer wire the retired Episode-1 buttons
+if grep -qE "finishEp1\(\)|workOnHope\(\)" "$BP"; then
+  fail "retired booGreet actions (finishEp1/workOnHope) still referenced"
+  T22_FAILS=$((T22_FAILS+1))
+fi
+if [[ $T22_FAILS -eq 0 ]]; then
+  pass "no stale old-season content; narrative ethos present (13 checks)"
 fi
 
 # ──────────────────────────────────────────────────────────────

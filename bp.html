@@ -2434,7 +2434,7 @@
     <div class="season-view-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <div>
         <div class="season-view-title" id="sv-title">SEASON 1</div>
-        <div class="season-view-sub" id="sv-sub">WHAT DO WE TEACH NOW? · 8 EPISODES · MID-AUGUST</div>
+        <div class="season-view-sub" id="sv-sub"></div>
       </div>
       <button class="sv-map-btn" onclick="booMapSeason()">✦ Boo: Map Season</button>
     </div>
@@ -2444,7 +2444,7 @@
       <div class="season-progress-wrap">
         <div class="season-progress-label">
           <span>SEASON PROGRESS</span>
-          <span id="sv-progress-text">0 of 8 episodes started</span>
+          <span id="sv-progress-text"></span>
         </div>
         <div class="season-progress-bar"><div class="season-progress-fill" id="sv-progress-fill" style="width:0%"></div></div>
       </div>
@@ -2889,22 +2889,22 @@ function applyShowConfig() {
 const state = {
   seasons: [{
     number: 1,
-    theme: 'What Do We Teach Now?',
+    theme: '',
     episodeCount: 8,
     launchTarget: 'Mid-August',
     episodes: [{
       number: 1,
-      title: 'TBD — pending emotional landing decision',
+      title: 'TBD',
       status: 'planning',
-      arcRole: 'Exposition — open the crisis, establish the tension',
-      centralTension: 'Matt holds the educational ideal; Kartik holds the economic reality. Neither is wrong.',
+      arcRole: '',
+      centralTension: '',
       audience: 'K-12 CS teachers AND tech managers/leaders who hire these students',
-      thinkAfter: 'Thank god — there is a conversation like this. A resource to listen, influence, and play in the sandbox.',
-      feelAfter: 'TBD — pending answer from hosts',
-      rememberDo: 'Join the community (Slack, Patreon, subscribe). This is not just talk — it is action.',
-      ecosystem: 'Podcast + Slack community + weekly experiments + community work featured on show + Patreon',
-      cta: 'Join Slack community and/or Patreon — both being built, must be live before launch',
-      productionDeps: ['Slack community live', 'Patreon set up'],
+      thinkAfter: '',
+      feelAfter: '',
+      rememberDo: '',
+      ecosystem: '',
+      cta: '',
+      productionDeps: [],
       guest: null,
       script: null,
       ros: null,
@@ -2913,7 +2913,7 @@ const state = {
   }],
   currentSeason: {
     number: 1,
-    theme: 'What Do We Teach Now?',
+    theme: '',
     episodeCount: 8,
     launchTarget: 'Mid-August',
   },
@@ -3064,38 +3064,10 @@ async function fetchRowRaw() {
   } catch (e) { return null; }
 }
 
-const SHOW_CONTEXT = {
-  name: 'K12 Boss',
-  tagline: 'K–12 Computer Science Education in a Post-Coding Era',
-  hosts: ['Karttikeya Mangalam (AI researcher, former Google/Facebook, PhD UC Berkeley)', 'Matthew Callison PhD (Director of Innovation, South Fayette Township School District)'],
-  audience: 'K-12 CS teachers, district leaders, curriculum directors, school administrators',
-  mission: 'Asking the question: If AI can write the code, what are we teaching students?',
-  format: 'Audio-first, video recorded for shorts. Records on Riverside (remote) and sometimes in-person.',
-  segments: ['Interview', 'Question of the Week', 'A Moment of Hope', 'AI News Minute', 'Am I Human?'],
-  season1: {
-    number: 1,
-    theme: 'What Do We Teach Now?',
-    episodeCount: 8,
-    launchTarget: 'Mid-August',
-    arc: 'Plot Mountain — both at the season level AND within each individual episode',
-    seasonArc: {
-      exposition: 'Episodes 1-2: Set the stage — what is the crisis in CS education?',
-      conflict: 'Episodes 3-4: Tension deepens — competing philosophies, real classroom stakes',
-      risingAction: 'Episodes 5-6: People trying things, experiments, hard questions',
-      climax: 'Episode 7: The sharpest, most urgent moment of the season',
-      resolution: 'Episode 8: Where do we land? What do we do now?',
-    },
-    episodeArc: 'Every episode has its own mini Plot Mountain: opens into tension listeners already feel, digs into conflict through the interview, lands with A Moment of Hope',
-    audienceEmotionalState: 'Listeners arrive anxious — that is why they are listening. Each episode honors that anxiety then gives them something to hold onto.',
-    momentOfHope: {
-      format: '2-minute documentary micro-feature. Shot separately, narrated, edited independently from the main interview.',
-      style: 'Documentary — may have Matt or Kartik narrating but centers on the subject: a program in action, a recent graduate, a current college student, or a grade-school student starting their journey.',
-      purpose: 'The denouement of every episode. Human, specific, shareable. The thing that makes someone cry on their commute.',
-      productionNote: 'Flag in every run of show as a separate production element — not captured during the main Riverside recording.',
-      storiesStatus: 'TBD — to be sourced from South Fayette programs, Kartik company interns, students, recent graduates.',
-    },
-  },
-};
+// (Former SHOW_CONTEXT const removed — it hardcoded a single Season 1 theme,
+//  Plot Mountain arc, and ecosystem that no longer apply. Show identity now
+//  lives in SHOW_CONFIG; live season state comes from buildSeasonStateContext()
+//  and the imported recordings.)
 
 // ROS timer state
 let rosTimerInterval = null;
@@ -3116,17 +3088,23 @@ async function initApp() {
 }
 
 function booGreet() {
-  addMsg('boo', `Hey — welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.
-
-<strong>Season 1: "What Do We Teach Now?"</strong> — 8 episodes, launching mid-August.
-
-<strong>Episode 1 is in progress.</strong> We have the tension, the dual audience, and the ecosystem nailed. One thing still open: <em>what should a listener feel at the end of Episode 1?</em> Once we land that, we can name the episode and find the guest.
-
-What do you want to work on?`, [
-    { label: '🎤 Finish Episode 1 intent', action: () => finishEp1() },
-    { label: '🔍 Find a guest', action: () => findGuest() },
-    { label: '🌅 Work on A Moment of Hope', action: () => workOnHope() },
-    { label: '📋 Open Master Brief', action: () => setView('brief') },
+  var recs = (state.recordings || []).length;
+  var eps = ((state.seasons[0] && state.seasons[0].episodes) || []).length;
+  var theme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
+  var msg;
+  if (!theme && !eps) {
+    msg = `Hey — welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.\n\n`
+      + (recs
+          ? `You have <strong>${recs} recording${recs === 1 ? '' : 's'}</strong> imported. When you're ready, open the Season tab and hit <strong>✦ Plan Season</strong> — I'll work the arc out from the recordings themselves, picking the narrative shape that fits rather than assuming one.`
+          : `The season is a blank slate. Import your recordings on the Season tab and I'll distill each into a planning card — then we shape the season together from what the material actually supports.`)
+      + `\n\nWhat do you want to work on?`;
+  } else {
+    msg = `Hey — welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.\n\n`
+      + `Season ${(state.currentSeason && state.currentSeason.number) || 1}${theme ? `: <strong>"${theme}"</strong>` : ''} — ${eps} episode${eps === 1 ? '' : 's'}.\n\nWhat do you want to work on?`;
+  }
+  addMsg('boo', msg, [
+    { label: '📥 Season tab', action: () => setView('season') },
+    { label: '📋 Master Brief', action: () => setView('brief') },
   ]);
 }
 
@@ -3169,81 +3147,16 @@ Once I understand what you want listeners to think, feel, and walk away with, we
 }
 
 // ── GUEST FINDING ──
-function finishEp1() {
-  addMsg('user', 'Finish Episode 1 intent.');
-  addMsg('boo', `Perfect — we left off on one question. We have the tension, the dual audience, the ecosystem, the CTA plan, and the think/remember/do all locked.
-
-The one thing still open: <strong>What should a listener feel at the end of Episode 1?</strong>
-
-You gave me options last time — pick one or mix them:
-<strong>Relief</strong> — someone finally gets it
-<strong>Urgency</strong> — I need to act now
-<strong>Curiosity</strong> — I can't wait for Episode 2
-<strong>Belonging</strong> — I found my people
-<strong>Courage</strong> — I can try something different next week
-
-What's the emotional landing?`, [
-    { label: '😮‍💨 Relief', action: () => setEp1Feel('Relief — someone finally gets it') },
-    { label: '⚡ Urgency', action: () => setEp1Feel('Urgency — I need to act now') },
-    { label: '🤝 Belonging', action: () => setEp1Feel('Belonging — I found my people') },
-    { label: '💪 Courage', action: () => setEp1Feel('Courage — I can try something different') },
-    { label: '🎯 Mix of these', action: () => setEp1Feel('Mix: Relief + Belonging + Curiosity') },
-  ]);
-}
-
-function setEp1Feel(feel) {
-  state.seasons[0].episodes[0].feelAfter = feel;
-  state.currentEpisode = state.seasons[0].episodes[0];
-  addMsg('user', feel);
-  addMsg('boo', `<strong>${feel}</strong> — that's the landing. Locked.
-
-Here's what we now have for Episode 1:
-
-<strong>Tension:</strong> Matt's educational ideal vs. Kartik's economic reality
-<strong>Audience:</strong> CS teachers AND tech managers
-<strong>Think:</strong> Thank god — there's a conversation like this
-<strong>Feel:</strong> ${feel}
-<strong>Do:</strong> Join the Slack community and/or Patreon
-<strong>CTA deps:</strong> Slack + Patreon live before launch
-
-Episode 1 intent is complete. Ready to find a guest?`, [
-    { label: '🔍 Find a guest for Episode 1', action: () => findGuest() },
-    { label: '📋 Open Master Brief', action: () => setView('brief') },
-  ]);
-  autoSave('Episode 1 intent complete');
-}
-
-function workOnHope() {
-  addMsg('user', 'Work on A Moment of Hope.');
-  addMsg('boo', `Good — let's source a <em>Moment of Hope</em>. These are 2-minute documentary micro-features shot separately from the interview.
-
-The best ones center on a <strong>specific person or program</strong>: a student starting their journey, a recent graduate, a current college student, a teacher running something remarkable, or an intern at Kartik's company.
-
-Do you have anyone or any program in mind? Even a rough lead — a name, a school, a story you heard — is enough to start. Or tell me which episode number this is for and I'll suggest what kind of story would fit that moment in the season arc.`);
-}
-
 function reviewSeasonArc() {
-  addMsg('user', 'Review the Season 1 arc.');
-  addMsg('boo', `Here's Season 1: <strong>"What Do We Teach Now?"</strong> mapped across 8 episodes:
-
-<strong>Exposition — Episodes 1–2</strong>
-Set the stage. What is the crisis in CS education? Listeners already feel the anxiety — validate it. Establish the central question.
-
-<strong>Conflict — Episodes 3–4</strong>
-Tension deepens. Competing philosophies. Real classroom stakes. Guests who disagree with each other (even if not in the same room).
-
-<strong>Rising Action — Episodes 5–6</strong>
-People trying things. Experiments in the field. Hard questions without clean answers. The messy middle.
-
-<strong>Climax — Episode 7</strong>
-The sharpest, most urgent moment of the season. The guest or conversation that names the thing everyone has been circling.
-
-<strong>Resolution — Episode 8</strong>
-Where do we land? Not a tidy answer — but a direction. This episode's Moment of Hope carries the full weight of the journey.
-
-Every episode has its own mini version of this arc, closing with a Moment of Hope.
-
-Which episode slot do you want to fill first?`);
+  var eps = (state.seasons[0] && state.seasons[0].episodes) || [];
+  if (!eps.length) {
+    addMsg('user', 'Review the season arc.');
+    addMsg('boo', `There's no season arc yet — it's a blank slate. Import your recordings on the Season tab and hit ✦ Plan Season, and I'll build the arc from them, choosing the shape that fits the material.`);
+    return;
+  }
+  setView('chat');
+  triggerBooDirectly('Review the current Season ' + ((state.currentSeason && state.currentSeason.number) || 1) + ' arc',
+    'Review the current season arc exactly as it stands in your context (CURRENT STATE and SEASON RECORDINGS). For each episode, note its position, guest, and the narrative shape it is using, and flag anything weak, thin, or missing. Do not invent a theme, episodes, or an arc that are not in the state.');
 }
 
 function findGuest(context) {
@@ -3431,6 +3344,11 @@ ${(activeEp().cues || []).length > 0 ? (activeEp().cues || []).map((c, i) => (i+
 
 ${buildSeasonStateContext()}
 
+===== NARRATIVE STRUCTURE — HOW THIS SHOW SHAPES STORIES =====
+This show does NOT use one fixed arc. Each episode — and the season overall — takes the narrative shape that best fits the actual material, chosen deliberately. Do not force a default like Plot Mountain, and never say a season shape is "already decided."
+Palette to draw from: Man in Hole (comfortable → trouble → changed), Cinderella (rise/fall/rise), Hero's Journey (call → trials → return), In Medias Res (open in the middle), Frame Narrative (hosts frame a question, guest answers, hosts close), Socratic (open a question, complicate it, end on a sharper one), Petrie Dish / This-American-Life (one theme, several short stories), plus character shapes like Redemption, Underdog, and Seesaw / Unresolved Tension.
+Each imported recording carries a CANDIDATE SHAPE (see SEASON RECORDINGS below). USE those — build each episode and the season from the shapes the material supports, and reuse the specific shape you identified for each guest rather than falling back to a generic Exposition → Conflict → Climax arc.
+
 CURRENT STATE:
 - Working on: S${_sNum}-E${_epNum}
 - Season theme: "${(state.currentSeason && state.currentSeason.theme) || 'not set'}"
@@ -3529,7 +3447,7 @@ PANELS IN THE RIGHT SIDEBAR (episode-level):
 - Context Brief: a Boo-generated living document that orients new collaborators
 
 LEFT SIDEBAR — SEASON LEVEL:
-- Season Arc view: visual Plot Mountain arc showing all episodes, their arc position (Exposition/Conflict/Rising Action/Climax/Resolution/Denouement), assigned guests, and episode status (not-started → planning → ready-to-record → recorded → edited → published). Has ✦ Boo: Map Season button. Guests can be dragged from the repository onto episode rows.
+- Season Arc view: a visual arc showing all episodes in the season's chosen narrative shape (you pick the shape that fits the material — not always Plot Mountain), each episode's position within that shape, assigned guests, and episode status (not-started → planning → ready-to-record → recorded → edited → published). Has ✦ Boo: Map Season button. Guests can be dragged from the repository onto episode rows.
 - Guest Repository: show-level pool of ALL potential guests regardless of episode assignment. Each entry has: First, Last, Name, Title, Email, Location, Day, Time, Time Zone, Description, Source 1 (profile URL), Source 2, Why, Pod Intro, producer notes, and an → ASSIGN dropdown to place them into an episode. Guests are draggable to the season arc.
 
 WHEN THE USER REFERENCES A PANEL OR FIELD:
@@ -4680,7 +4598,7 @@ function booPostImportNotice(added) {
   addMsg('boo',
     added + ' guest' + (added !== 1 ? 's' : '') + ' are now in the repository. '
     + 'I can study the group and suggest how they map to Season ' + sNum + epPhrase
-    + ' — matching each guest to the episode where their angle fits the arc best, and drafting episode titles consistent with Plot Mountain.'
+    + ' — matching each guest to the episode where their angle fits best, and drafting episode titles consistent with the narrative shape each episode calls for.'
     + '<br><br><button onclick="booMapSeason()" style="margin-top:4px;padding:6px 14px;background:rgba(59,184,201,0.15);border:1px solid rgba(59,184,201,0.4);border-radius:4px;color:#3BB8C9;font-family:\'DM Mono\',monospace;font-size:11px;font-weight:700;letter-spacing:0.06em;cursor:pointer;">✦ Map to Season Arc</button>'
   );
 }
@@ -6102,7 +6020,7 @@ function renderShowPanel(content) {
     + '<div class="rp-section-body">'
     + '<div style="font-family:Syne,sans-serif;font-size:15px;font-weight:700;color:var(--text);margin-bottom:4px;">' + SHOW_CONFIG.showName.toUpperCase() + '</div>'
     + '<div style="font-family:DM Mono,monospace;font-size:11px;color:var(--text-muted);margin-bottom:2px;letter-spacing:0.03em;">Season ' + (season.number || 1) + ' · ' + ((state.currentSeason && state.currentSeason.theme) || season.theme || '') + '</div>'
-    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">' + epCount + ' episodes · Plot Mountain arc</div>'
+    + '<div style="font-size:11px;color:var(--text-muted);margin-bottom:14px;">' + epCount + ' episodes' + (seasonShapeChosen() ? ' · ' + activeStoryShape().name + ' arc' : '') + '</div>'
     + '<div style="font-family:DM Mono,monospace;font-size:10px;color:var(--gold);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">EP PROGRESS</div>'
     + '<div class="show-progress-track">' + segments + '</div>'
     + '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;">Ep ' + recordedCount + ' of ' + epCount + ' recorded</div>'
@@ -7983,30 +7901,14 @@ function buildMasterBriefPrompt() {
 
   return 'You are Boo, the production assistant for the ' + SHOW_CONFIG.showName + ' Podcast. Write the Master Context Brief. This is NOT episode-specific. It covers what this show is, how it works, and how every episode is built. Write in confident prose with section headers. Do not write a preamble, byline, or any introductory sentence before the first section header — start directly with the content.\n\n'
     + 'SHOW:\n'
-    + '- ' + SHOW_CONFIG.showName + ' — ' + SHOW_CONFIG.showTagline + '\n'
-    + '- Mission: If AI can write the code, what are we teaching students?\n'
-    + '- Core tension: Matt holds the educational ideal. Kartik holds the economic reality. Neither is wrong. That tension is the show.\n'
-    + '- Hosts: ' + SHOW_CONFIG.host1 + ' (AI researcher, former Google/Facebook, PhD UC Berkeley) and ' + SHOW_CONFIG.host2 + ' (Director of Innovation, South Fayette Township School District)\n'
-    + '- Dual audience: K-12 CS teachers and administrators AND tech managers who hire these students\n'
-    + '- Format: Audio-first. Video recorded for shorts. Riverside (remote) and in-person.\n\n'
-    + 'ECOSYSTEM:\n'
-    + '- This is a movement, not just a podcast\n'
-    + '- Slack community: Matt and Kartik host workshops and projects — listeners become contributors\n'
-    + '- Weekly experiments listeners can try; their work gets featured on the show\n'
-    + '- Patreon/subscription layer for deeper engagement\n'
-    + '- Feedback loop: Podcast → Community → Experiments → Featured on podcast → Repeat\n'
-    + '- Slack and Patreon must both be live before Episode 1 launches\n\n'
-    + 'SEASON 1:\n'
-    + '- Theme: "What Do We Teach Now?"\n'
-    + '- 8 episodes, launching mid-August\n'
-    + '- Season arc (Plot Mountain): Exposition (eps 1-2) → Conflict (3-4) → Rising Action (5-6) → Climax (7) → Resolution (8)\n'
-    + '- Every episode also has its own mini Plot Mountain: opens in tension, interview digs in, closes with A Moment of Hope\n'
-    + '- Audience arrives anxious. Honor that. End every episode with hope.\n\n'
-    + 'A MOMENT OF HOPE:\n'
-    + '- 2-minute documentary micro-feature, shot separately, edited independently\n'
-    + '- Centers on a real person or program: student, graduate, teacher, intern\n'
-    + '- The denouement of every episode. Human, specific, shareable.\n'
-    + '- Stories sourced as we go — South Fayette, Kartik\'s network, graduates, students\n\n'
+    + '- ' + SHOW_CONFIG.showName + ' — ' + (SHOW_CONFIG.showTagline || '') + '\n'
+    + '- Hosts: ' + SHOW_CONFIG.host1 + ' and ' + SHOW_CONFIG.host2 + '\n'
+    + '- Format: Audio-first. Video recorded for shorts. Records on ' + (SHOW_CONFIG.defaultLocation || 'Riverside') + ' (remote) and sometimes in-person.\n\n'
+    + buildSeasonStateContext() + '\n\n'
+    + 'NARRATIVE STRUCTURE:\n'
+    + 'This show does not use one fixed arc — each episode and the season take the shape that fits the material (Man in Hole, Cinderella, Hero\'s Journey, In Medias Res, Frame, Socratic, Petrie Dish, Redemption, Underdog, Seesaw/Unresolved, etc.). Build from the shapes the recordings support; never assume a single default arc, and do not claim a season plan is already decided.\n\n'
+    + 'SEASON RECORDINGS (the material to build from):\n'
+    + buildRecordingsContext() + '\n\n'
     + 'STANDARD EPISODE STRUCTURE (applies to every episode):\n'
     + templateStr + '\n\n'
     + 'THREE THROUGH-LINE QUESTIONS (close every guest interview, same every episode — verbatim):\n'
@@ -9418,7 +9320,7 @@ async function researchRepoGuest(name) {
     + 'Based on everything above, provide:\n'
     + '1. PODCAST BIO (2–3 sentences): who they are + what makes their perspective distinct for our audience\n'
     + '2. THEIR ANGLE: the specific question their work helps answer for this show\n'
-    + '3. EPISODE TOPICS (2–3): concrete episode concepts that fit Plot Mountain — problem, rising tension, resolution\n'
+    + '3. EPISODE TOPICS (2–3): concrete episode concepts with a clear arc — tension, development, and a resolution that earns its ending\n'
     + '4. SEASON FIT: why they belong in Season ' + sNum + (epNum ? ', Episode ' + epNum : '') + '\n'
     + '5. SOURCES: any confirmed URLs worth saving (LinkedIn, site, notable articles)\n\n'
     + 'Be direct. No hedging. Labeled sections. If data is thin, say what\'s missing and what you can reasonably infer.';
