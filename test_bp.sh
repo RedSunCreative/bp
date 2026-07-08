@@ -579,6 +579,30 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 23 (behavioral): durable transcript store
+# Drives the REAL saveTranscript / pushTranscript / hydrateTranscripts against a
+# fake in-memory Supabase. Proves transcripts persist server-side (so they reach
+# other devices + collaborators), respect the load gate, and that hydrate pulls
+# shared copies in and backfills local-only ones (the localStorage->Supabase
+# migration Matt & Kartik depend on).
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 23: durable transcript store (Supabase + local cache + backfill) ---"
+T23_OUT=$(node test_transcript_sync.js 2>&1)
+T23_RC=$?
+T23_FAILS=$(printf '%s\n' "$T23_OUT" | grep -c 'FAIL')
+T23_PASSES=$(printf '%s\n' "$T23_OUT" | grep -c 'PASS')
+if [[ $T23_RC -eq 0 && $T23_FAILS -eq 0 && $T23_PASSES -gt 0 ]]; then
+  pass "transcripts persist to Supabase; load-gated; hydrate pulls + backfills ($T23_PASSES assertions)"
+elif [[ $T23_RC -eq 2 ]]; then
+  fail "transcript-sync test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T23_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "durable transcript store broke ($T23_FAILS assertion(s) failed)"
+  printf '%s\n' "$T23_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt

@@ -3080,6 +3080,7 @@ async function initApp() {
   loadUserPrefs();
   await loadFromSupabase();
   _supabaseLoaded = true;        // load+apply done — Supabase writes are now safe
+  hydrateTranscripts();          // pull shared transcripts in + backfill local-only (async, non-blocking)
   renderSeasonsList();
   booGreet();
   if (!userPrefs.gmail) {
@@ -5112,18 +5113,74 @@ function deleteEpisodeFromSeason(epNum) {
 // ── SEASON PLANNING: recording import + characterize ──
 // Each imported transcript is distilled to a compact "recording card" (small,
 // persisted in the session snapshot). The full transcript is kept OUT of the
-// autosave snapshot — held in memory + mirrored to localStorage — because it's
-// bulky and re-importable source material, not authored data. saveTranscript/
-// loadTranscript are the seam; a durable server-side store can swap in later.
+// autosave snapshot (bulky, re-importable source material) but IS stored durably
+// server-side in the `builder_transcripts` Supabase table, keyed by (show_code,
+// recording_id), so transcripts survive across devices and reach collaborators —
+// not just the browser that imported them. Three layers, fastest first:
+//   _transcriptStore (in-memory) → localStorage (per-browser cache) → Supabase
+//   (durable, shared). saveTranscript writes all three; loadTranscript reads the
+//   fast layers (hydrated from Supabase on load); hydrateTranscripts() pulls the
+//   shared copy in and backfills any transcript that exists only locally.
 var _transcriptStore = {};
+const SB_TX = `${SB_URL}/rest/v1/builder_transcripts`;
+function _sbTxHeaders(extra) {
+  return Object.assign({ 'apikey': SB_ANON, 'Authorization': `Bearer ${SB_ANON}`, 'Content-Type': 'application/json' }, extra || {});
+}
 function _transcriptKey(id) { return 'boo_tx_' + (currentShowCode || 'x') + '_' + id; }
+
 function saveTranscript(id, text) {
   _transcriptStore[id] = text;
   try { localStorage.setItem(_transcriptKey(id), text); } catch (e) {}
+  pushTranscript(id, text);   // durable, server-side (fire-and-forget)
 }
+
+// Upsert one transcript to Supabase. Fire-and-forget: the local layers already
+// hold the copy, so a failed/offline push never loses data — hydrate backfills.
+async function pushTranscript(id, text) {
+  if (!_supabaseLoaded) return;          // respect the load gate (no pre-load writes)
+  try {
+    await fetch(SB_TX, {
+      method: 'POST',
+      headers: _sbTxHeaders({ 'Prefer': 'resolution=merge-duplicates' }),
+      body: JSON.stringify({ show_code: (currentShowCode || 'x'), recording_id: String(id), transcript: (text == null ? '' : text) }),
+    });
+  } catch (e) { /* offline / transient — local copy stands; hydrate will backfill */ }
+}
+
+// Synchronous read of the fast layers (memory → localStorage). Populated for the
+// current device by import, and for other devices by hydrateTranscripts() on load.
 function loadTranscript(id) {
   if (_transcriptStore[id] != null) return _transcriptStore[id];
   try { return localStorage.getItem(_transcriptKey(id)); } catch (e) { return null; }
+}
+
+// On load: pull every server transcript for this show into the fast layers, then
+// backfill any transcript that exists only locally (imported before this store
+// existed, or while offline). Idempotent — safe to run on every load.
+async function hydrateTranscripts() {
+  var code = currentShowCode || 'x';
+  var server = {};
+  try {
+    var r = await fetch(SB_TX + '?show_code=eq.' + encodeURIComponent(code) + '&select=recording_id,transcript', { headers: _sbTxHeaders() });
+    if (r && r.ok) {
+      var rows = await r.json();
+      (rows || []).forEach(function(row) {
+        server[row.recording_id] = true;
+        if (row.transcript != null && row.transcript !== '') {
+          _transcriptStore[row.recording_id] = row.transcript;
+          try { localStorage.setItem(_transcriptKey(row.recording_id), row.transcript); } catch (e) {}
+        }
+      });
+    }
+  } catch (e) { /* offline — fall back to local copies */ }
+  // Backfill: any recording whose transcript is local-only → push to server.
+  var recs = (state.recordings || []);
+  for (var i = 0; i < recs.length; i++) {
+    var id = recs[i] && recs[i].id;
+    if (!id || server[id]) continue;
+    var local = loadTranscript(id);
+    if (local != null && local !== '') { await pushTranscript(id, local); }
+  }
 }
 
 // Build the prompt that turns one raw transcript into a labeled recording card.
