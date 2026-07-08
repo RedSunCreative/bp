@@ -603,6 +603,29 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 24 (behavioral): Boo actually receives full transcripts on demand
+# Drives the REAL callBoo() with a fetch stub that captures the request body,
+# proving that booReadRecording()'s active transcript is embedded verbatim in
+# the system prompt (with header, guest label, timecodes) — and absent when no
+# transcript is active. Fixes "Boo says he can't read the transcripts."
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 24: Boo receives full transcripts on demand (callBoo prompt) ---"
+T24_OUT=$(node test_boo_reads_transcript.js 2>&1)
+T24_RC=$?
+T24_FAILS=$(printf '%s\n' "$T24_OUT" | grep -c 'FAIL')
+T24_PASSES=$(printf '%s\n' "$T24_OUT" | grep -c 'PASS')
+if [[ $T24_RC -eq 0 && $T24_FAILS -eq 0 && $T24_PASSES -gt 0 ]]; then
+  pass "active transcript is embedded verbatim in Boo's prompt; absent otherwise ($T24_PASSES assertions)"
+elif [[ $T24_RC -eq 2 ]]; then
+  fail "boo-reads-transcript test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T24_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "Boo transcript access broke ($T24_FAILS assertion(s) failed)"
+  printf '%s\n' "$T24_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt

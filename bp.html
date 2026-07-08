@@ -3315,6 +3315,29 @@ async function callBoo(userMsg) {
   // Season recordings (imported transcript cards) — travels with every planning turn
   var _recCtx = buildRecordingsContext();
 
+  // Focused FULL transcripts — only the recordings the user asked Boo to READ.
+  // Cards travel every turn (cheap); full transcripts are huge, so they load on
+  // demand via booReadRecording() and stay in context until cleared. Capped so a
+  // few long transcripts can't blow the context window.
+  var _txCtx = '';
+  if (_activeTranscriptIds && _activeTranscriptIds.length) {
+    var _txBudget = 320000; // ~80k tokens of transcript text, total
+    var _txParts = [];
+    _activeTranscriptIds.forEach(function(id) {
+      var rec = (state.recordings || []).find(function(r) { return r.id === id; });
+      var t = loadTranscript(id);
+      if (!t) return;
+      if (t.length > _txBudget) t = t.slice(0, _txBudget) + '\n…[transcript truncated to fit context]';
+      _txBudget -= t.length;
+      _txParts.push('--- FULL TRANSCRIPT: ' + ((rec && (rec.guest || rec.label)) || id) + ' ---\n' + t);
+    });
+    if (_txParts.length) {
+      _txCtx = '\n\n===== FOCUSED TRANSCRIPTS (full verbatim text — READ THESE DIRECTLY) =====\n'
+        + 'The user loaded these complete transcripts into your context. You CAN read them — quote and reason from the actual words, with timecodes where present. Do not say you lack the transcript.\n\n'
+        + _txParts.join('\n\n');
+    }
+  }
+
   // Action items
   var _actions = (state.actionItems || []).filter(function(a) { return !a.done; });
   var _actCtx  = _actions.length
@@ -3374,6 +3397,7 @@ ${_epGuestList}
 ===== SEASON RECORDINGS — ${(state.recordings || []).length} imported =====
 Interviews recorded for this season, each distilled to a planning card. Use these when planning or ordering the season; cite the actual guests and quotes, never invent.
 ${_recCtx}
+${_txCtx}
 
 ===== MANDATORY PRE-PRODUCTION WORKFLOW =====
 Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
@@ -5318,6 +5342,32 @@ function deleteRecording(id) {
 
 var _recCollapsed = true;   // recording-card list collapsed by default — keeps the Season view compact
 function toggleRecordingsCollapsed() { _recCollapsed = !_recCollapsed; renderRecordingsList(); }
+
+// Recordings whose FULL transcript is loaded into Boo's chat context. Cards travel
+// every turn (cheap); full transcripts load on demand here (large) and stay until
+// cleared. Read by callBoo() to build the FOCUSED TRANSCRIPTS block.
+var _activeTranscriptIds = [];
+function booReadRecording(id) {
+  var rec = (state.recordings || []).find(function(r) { return r.id === id; });
+  var name = (rec && (rec.guest || rec.label)) || 'this recording';
+  var tx = loadTranscript(id);
+  if (!tx) {
+    setView('chat');
+    addMsg('boo', "I don't have " + esc(name) + "'s transcript in front of me yet — it's syncing from the server. Give it a few seconds and click again.");
+    if (typeof hydrateTranscripts === 'function') hydrateTranscripts();
+    return;
+  }
+  if (_activeTranscriptIds.indexOf(id) === -1) _activeTranscriptIds.push(id);
+  renderRecordingsList();
+  setView('chat');
+  triggerBooDirectly('Read ' + name + "'s full transcript",
+    "I've loaded " + name + "'s FULL transcript into your context (see FOCUSED TRANSCRIPTS). Read the actual words — not just the card. Give me your honest read: the real arc, the two or three strongest moments with timecodes, and anything the card missed or got wrong. Then ask me ONE question about what I want to do with it.");
+}
+function clearActiveTranscripts() {
+  _activeTranscriptIds = [];
+  renderRecordingsList();
+  addMsg('boo', 'Cleared the loaded transcripts from my working context — back to the summary cards.');
+}
 function renderRecordingsList() {
   var el = document.getElementById('sv-recordings');
   if (!el) return;
@@ -5352,6 +5402,8 @@ function renderRecordingsList() {
           + '</div>'
           + (r.tension ? '<div class="guest-why" style="margin-top:8px;">' + esc(r.tension) + '</div>' : '')
           + '<div class="guest-unverified-note">' + quotes + ' pull-quote' + (quotes === 1 ? '' : 's') + ' captured · transcript stored</div>'
+          + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')">'
+          + (_activeTranscriptIds.indexOf(r.id) !== -1 ? '✓ Boo is reading this' : '✦ Have Boo read this') + '</button>'
           + '</div>';
       }).join('') + '</div>'
     : '<div style="font-size:12px;color:var(--muted);padding:4px 0 8px;">No recordings yet — add transcript files or paste one, and Boo will read each and file a card.</div>';
