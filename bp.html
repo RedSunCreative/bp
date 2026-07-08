@@ -2439,8 +2439,6 @@
       <button class="sv-map-btn" onclick="booMapSeason()">✦ Boo: Map Season</button>
     </div>
     <div class="season-view-body">
-      <div id="sv-recordings"></div>
-      <div id="sv-archives"></div>
       <div class="season-progress-wrap">
         <div class="season-progress-label">
           <span>SEASON PROGRESS</span>
@@ -2469,6 +2467,8 @@
       <div style="font-family:'DM Mono',monospace;font-size:7px;color:rgba(59,184,201,0.45);letter-spacing:0.12em;text-transform:uppercase;padding:0 14px 4px 54px;">Guests — drag from repository or use dropdown to assign</div>
       <div id="sv-episode-list"></div>
       <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ Add Episode</button>
+      <div id="sv-recordings"></div>
+      <div id="sv-archives"></div>
       <div class="sv-brief-section">
         <div class="sv-brief-label">
           SEASON CONTEXT BRIEF
@@ -5316,13 +5316,16 @@ function deleteRecording(id) {
   renderRecordingsList();
 }
 
+var _recCollapsed = true;   // recording-card list collapsed by default — keeps the Season view compact
+function toggleRecordingsCollapsed() { _recCollapsed = !_recCollapsed; renderRecordingsList(); }
 function renderRecordingsList() {
   var el = document.getElementById('sv-recordings');
   if (!el) return;
   var recs = state.recordings || [];
-  var head = '<div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
-    + '<span>RECORDINGS</span>'
-    + '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;">' + recs.length + ' imported · Boo distills each to a planning card</span>'
+  var caret = _recCollapsed ? '▸' : '▾';
+  var head = '<div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;cursor:pointer;user-select:none;" onclick="toggleRecordingsCollapsed()" title="Show or hide the recording cards">'
+    + '<span>' + caret + ' RECORDINGS</span>'
+    + '<span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);font-size:10px;">' + recs.length + ' imported · Boo distills each to a planning card' + (_recCollapsed && recs.length ? ' · click to expand' : '') + '</span>'
     + '</div>';
   var controls = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">'
     + '<label class="action-btn" style="cursor:pointer;">＋ Add transcript files'
@@ -5352,7 +5355,7 @@ function renderRecordingsList() {
           + '</div>';
       }).join('') + '</div>'
     : '<div style="font-size:12px;color:var(--muted);padding:4px 0 8px;">No recordings yet — add transcript files or paste one, and Boo will read each and file a card.</div>';
-  el.innerHTML = '<div class="season-arc-wrap">' + head + controls + cards + '</div>';
+  el.innerHTML = '<div class="season-arc-wrap">' + head + controls + (_recCollapsed ? '' : cards) + '</div>';
 }
 
 // ── SEASON ARCHIVES — durable named snapshots of the whole working season ──
