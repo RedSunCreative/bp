@@ -2264,6 +2264,9 @@
       <span class="ep-header-text" id="ctxEpisode">Episode —</span>
     </div>
 
+    <!-- Loaded-transcript chip (always shown while a transcript is loaded) -->
+    <div id="tx-chip" style="display:none;align-items:center;gap:10px;padding:6px 14px;background:rgba(59,184,201,0.12);border-bottom:1px solid rgba(59,184,201,0.3);font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);"></div>
+
     <!-- Messages -->
     <div class="messages" id="messages"></div>
 
@@ -3246,6 +3249,7 @@ async function triggerBooDirectly(displayText, apiPrompt) {
     const parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply); // pass original reply for clean API context
     autoSave('conversation updated', true);
+    maybeOfferTranscriptUnloadTip();
   } catch (err) {
     activeEp().conversationLog.push({ role: 'user', text: displayText, rawText: apiPrompt });
     hideTyping();
@@ -3671,6 +3675,7 @@ async function sendMessage() {
     const parsed = parseReply(reply);
     addMsg('boo', parsed, null, reply); // pass original reply for clean API context
     autoSave('conversation updated', true);
+    maybeOfferTranscriptUnloadTip();
   } catch (err) {
     hideTyping();
     addMsg('boo', 'Hmm, I hit a snag: <em>' + (err.message) + '</em>. Try again?');
@@ -5348,6 +5353,8 @@ function toggleRecordingsCollapsed() { _recCollapsed = !_recCollapsed; renderRec
 // every turn (cheap); full transcripts load on demand here (large) and stay until
 // cleared. Read by callBoo() to build the FOCUSED TRANSCRIPTS block.
 var _activeTranscriptIds = [];
+var _txTurns = 0;         // Boo turns since a transcript was loaded (drives the one-time token tip)
+var _txTipShown = false;  // whether the "unload to save tokens" tip has fired for the current load
 function booReadRecording(id) {
   var rec = (state.recordings || []).find(function(r) { return r.id === id; });
   var name = (rec && (rec.guest || rec.label)) || 'this recording';
@@ -5359,15 +5366,48 @@ function booReadRecording(id) {
     return;
   }
   if (_activeTranscriptIds.indexOf(id) === -1) _activeTranscriptIds.push(id);
+  _txTurns = 0; _txTipShown = false;   // fresh load — restart the tip clock
   renderRecordingsList();
   setView('chat');
+  renderTranscriptChip();
   triggerBooDirectly('Read ' + name + "'s full transcript",
     "I've loaded " + name + "'s FULL transcript into your context (see FOCUSED TRANSCRIPTS). Read the actual words — not just the card. Give me your honest read: the real arc, the two or three strongest moments with timecodes, and anything the card missed or got wrong. Then ask me ONE question about what I want to do with it.");
 }
 function clearActiveTranscripts() {
   _activeTranscriptIds = [];
+  _txTurns = 0; _txTipShown = false;
   renderRecordingsList();
+  renderTranscriptChip();
   addMsg('boo', 'Cleared the loaded transcripts from my working context — back to the summary cards.');
+}
+// Always-on chip at the top of the chat while any transcript is loaded — shows what
+// Boo is reading + a one-tap Unload. Re-rendered whenever the active set changes.
+function renderTranscriptChip() {
+  var el = document.getElementById('tx-chip');
+  if (!el) return;
+  var ids = _activeTranscriptIds || [];
+  if (!ids.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  var names = ids.map(function(id) {
+    var r = (state.recordings || []).find(function(x) { return x.id === id; });
+    return (r && (r.guest || r.label)) || 'a transcript';
+  });
+  el.style.display = 'flex';
+  el.innerHTML = '<span style="flex:1;">✓ Boo is reading: ' + esc(names.join(', ')) + '</span>'
+    + '<button onclick="clearActiveTranscripts()" title="Unload to save tokens" style="background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:4px;padding:2px 10px;font-family:inherit;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;">Unload</button>';
+}
+// After a Boo turn, if a transcript has been loaded for a few turns, offer ONCE to
+// unload it to save tokens. Boo can't self-execute — the user taps to confirm, and
+// the tap runs clearActiveTranscripts().
+function maybeOfferTranscriptUnloadTip() {
+  if (!_activeTranscriptIds || !_activeTranscriptIds.length) return;
+  _txTurns++;
+  if (_txTurns >= 3 && !_txTipShown) {
+    _txTipShown = true;
+    addMsg('boo', '💡 <strong>Token tip:</strong> the transcript has been loaded for a few turns. Want me to unload it to save tokens? You can reload it from the card anytime.', [
+      { label: '📤 Unload transcript', action: function() { clearActiveTranscripts(); } },
+      { label: '📌 Keep it loaded', action: function() { addMsg('boo', 'Keeping it loaded.'); } },
+    ]);
+  }
 }
 function renderRecordingsList() {
   var el = document.getElementById('sv-recordings');

@@ -626,6 +626,27 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 25 (behavioral): one-time "unload to save tokens" tip + unload action
+# Drives the REAL maybeOfferTranscriptUnloadTip / clearActiveTranscripts with a
+# spied addMsg: no tip before turn 3, fires once, never again, Unload clears.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 25: transcript unload tip (one-shot) + unload action ---"
+T25_OUT=$(node test_transcript_tip.js 2>&1)
+T25_RC=$?
+T25_FAILS=$(printf '%s\n' "$T25_OUT" | grep -c 'FAIL')
+T25_PASSES=$(printf '%s\n' "$T25_OUT" | grep -c 'PASS')
+if [[ $T25_RC -eq 0 && $T25_FAILS -eq 0 && $T25_PASSES -gt 0 ]]; then
+  pass "unload tip fires once at turn 3 then never again; Unload clears the transcript ($T25_PASSES assertions)"
+elif [[ $T25_RC -eq 2 ]]; then
+  fail "unload-tip test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T25_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "transcript unload tip broke ($T25_FAILS assertion(s) failed)"
+  printf '%s\n' "$T25_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt
