@@ -3247,7 +3247,7 @@ async function triggerBooDirectly(displayText, apiPrompt) {
     activeEp().conversationLog.push({ role: 'user', text: displayText, rawText: apiPrompt });
     hideTyping();
     const parsed = parseReply(reply);
-    addMsg('boo', parsed, null, reply); // pass original reply for clean API context
+    addMsg('boo', parsed, buildTranscriptLoadActions(), reply); // load-transcript button(s) if Boo asked; original reply for clean API context
     autoSave('conversation updated', true);
     maybeOfferTranscriptUnloadTip();
   } catch (err) {
@@ -3400,7 +3400,10 @@ ${_epGuestList}
 
 ===== SEASON RECORDINGS — ${(state.recordings || []).length} imported =====
 Interviews recorded for this season, each distilled to a planning card. Use these when planning or ordering the season; cite the actual guests and quotes, never invent.
-You have each recording's PLANNING CARD by default (below). You do NOT have the raw transcript text unless a block of full transcript text is present in your context. If the user asks you to read or quote from a raw transcript and no such block is present, do NOT claim the transcript is unavailable or that it lives in Riverside or elsewhere — it is stored and retrievable. Tell them to open the Season tab, expand RECORDINGS, and click "✦ Have Boo read this" on that recording's card, which loads the full transcript straight into your context.
+IMPORTANT — know what you actually have: each entry below is a COMPACT CARD, a summary — NOT the full interview. The complete verbatim transcript of every recording is STORED and loadable on demand, but you have NOT read it unless it appears in a FOCUSED TRANSCRIPTS block above. Do not act as if the card is the whole conversation or that you remember everything that was said — the card deliberately omits most of the interview.
+When the user asks for details, exact wording, specific quotes, a full list, or anything beyond what the card plainly contains, do NOT guess, pad, or answer from the card as if it were complete. Instead: say briefly that the answer is in the full transcript, which you haven't read yet, and emit a line exactly like this (on its own line):
+LOAD-TRANSCRIPT: <exact guest name as it appears in SEASON RECORDINGS>
+The app turns that line into a one-tap "Load transcript" button for the user. Only emit it for a guest listed in SEASON RECORDINGS, and only when that transcript isn't already loaded.
 ${_recCtx}
 ${_txCtx}
 
@@ -3673,7 +3676,7 @@ async function sendMessage() {
     hideTyping();
     // Parse reply for special content types
     const parsed = parseReply(reply);
-    addMsg('boo', parsed, null, reply); // pass original reply for clean API context
+    addMsg('boo', parsed, buildTranscriptLoadActions(), reply); // load-transcript button(s) if Boo asked; original reply for clean API context
     autoSave('conversation updated', true);
     maybeOfferTranscriptUnloadTip();
   } catch (err) {
@@ -3687,6 +3690,7 @@ async function sendMessage() {
 
 function parseReply(text) {
   // Extract and remove ACTION: lines before rendering
+  _pendingLoadTargets = [];   // reset per turn; filled by LOAD-TRANSCRIPT: directives below
   const actionLines = [];
   const podIntros = [];
   const cleanedLines = text.split('\n').filter(line => {
@@ -3719,6 +3723,11 @@ function parseReply(text) {
           return false; // strip from visible chat
         }
       }
+    }
+    // Match: LOAD-TRANSCRIPT: Guest Name  (Boo asks to load a full transcript → one-tap button)
+    if (/^LOAD-TRANSCRIPT:/i.test(trimmed)) {
+      var _ln = trimmed.replace(/^LOAD-TRANSCRIPT:\s*/i, '').trim();
+      if (_ln) { _pendingLoadTargets.push(_ln); return false; } // strip the directive from chat
     }
     return true;
   });
@@ -5355,6 +5364,38 @@ function toggleRecordingsCollapsed() { _recCollapsed = !_recCollapsed; renderRec
 var _activeTranscriptIds = [];
 var _txTurns = 0;         // Boo turns since a transcript was loaded (drives the one-time token tip)
 var _txTipShown = false;  // whether the "unload to save tokens" tip has fired for the current load
+var _pendingLoadTargets = [];  // guest names Boo asked to load this turn (from LOAD-TRANSCRIPT: directives)
+
+// Resolve a guest name to its RICHEST recording (skips thin retake fragments) and load it.
+function booReadRecordingByName(name) {
+  var lc = String(name || '').toLowerCase().trim();
+  var matches = (state.recordings || []).filter(function(r) {
+    var g = (r.guest || r.label || '').toLowerCase();
+    return g && (g === lc || g.indexOf(lc) !== -1 || lc.indexOf(g) !== -1);
+  });
+  if (!matches.length) { addMsg('boo', "I couldn't find a recording for \"" + esc(name) + "\" to load."); return; }
+  matches.sort(function(a, b) { return (loadTranscript(b.id) || '').length - (loadTranscript(a.id) || '').length; });
+  booReadRecording(matches[0].id);
+}
+// Turn any LOAD-TRANSCRIPT directives Boo emitted this turn into one-tap load buttons,
+// skipping guests with no recording or whose transcript is already loaded. null if none.
+function buildTranscriptLoadActions() {
+  if (!_pendingLoadTargets || !_pendingLoadTargets.length) return null;
+  var seen = {}, actions = [];
+  _pendingLoadTargets.forEach(function(name) {
+    var lc = name.toLowerCase();
+    if (seen[lc]) return; seen[lc] = true;
+    var matches = (state.recordings || []).filter(function(r) {
+      var g = (r.guest || r.label || '').toLowerCase();
+      return g && (g === lc || g.indexOf(lc) !== -1 || lc.indexOf(g) !== -1);
+    });
+    if (!matches.length) return;
+    if (matches.some(function(r) { return _activeTranscriptIds.indexOf(r.id) !== -1; })) return; // already loaded
+    actions.push({ label: "✦ Load " + name + "'s transcript",
+      action: (function(n) { return function() { booReadRecordingByName(n); }; })(name) });
+  });
+  return actions.length ? actions : null;
+}
 function booReadRecording(id) {
   var rec = (state.recordings || []).find(function(r) { return r.id === id; });
   var name = (rec && (rec.guest || rec.label)) || 'this recording';

@@ -647,6 +647,28 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 26 (behavioral): Boo prompts to LOAD a transcript (one-tap button)
+# Drives the REAL parseReply / buildTranscriptLoadActions / booReadRecordingByName:
+# LOAD-TRANSCRIPT directive is stripped + recorded, becomes one load action, loads
+# the richest matching recording, and yields no button when already loaded.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 26: Boo prompts to load a transcript (LOAD-TRANSCRIPT -> one-tap) ---"
+T26_OUT=$(node test_transcript_prompt.js 2>&1)
+T26_RC=$?
+T26_FAILS=$(printf '%s\n' "$T26_OUT" | grep -c 'FAIL')
+T26_PASSES=$(printf '%s\n' "$T26_OUT" | grep -c 'PASS')
+if [[ $T26_RC -eq 0 && $T26_FAILS -eq 0 && $T26_PASSES -gt 0 ]]; then
+  pass "LOAD-TRANSCRIPT becomes a one-tap load of the richest recording; stripped from chat ($T26_PASSES assertions)"
+elif [[ $T26_RC -eq 2 ]]; then
+  fail "load-prompt test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T26_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "Boo load-transcript prompt broke ($T26_FAILS assertion(s) failed)"
+  printf '%s\n' "$T26_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt
