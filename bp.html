@@ -3325,7 +3325,7 @@ async function callBoo(userMsg) {
   // few long transcripts can't blow the context window.
   var _txCtx = '';
   if (_activeTranscriptIds && _activeTranscriptIds.length) {
-    var _txBudget = 320000; // ~80k tokens of transcript text, total
+    var _txBudget = 1500000; // ~375k tokens — holds all recordings at once for a full-season read (Sonnet 4.6 has the window); still a backstop against runaway size
     var _txParts = [];
     _activeTranscriptIds.forEach(function(id) {
       var rec = (state.recordings || []).find(function(r) { return r.id === id; });
@@ -3404,6 +3404,9 @@ IMPORTANT — know what you actually have: each entry below is a COMPACT CARD, a
 When the user asks for details, exact wording, specific quotes, a full list, or anything beyond what the card plainly contains, do NOT guess, pad, or answer from the card as if it were complete. Instead: say briefly that the answer is in the full transcript, which you haven't read yet, and emit a line exactly like this (on its own line):
 LOAD-TRANSCRIPT: <exact guest name as it appears in SEASON RECORDINGS>
 The app turns that line into a one-tap "Load transcript" button for the user. Only emit it for a guest listed in SEASON RECORDINGS, and only when that transcript isn't already loaded.
+For a WHOLE-SEASON or cross-recording decision (design the season, ordering, who anchors which episode, where the energy is): first give your best structure FROM THE CARDS and say plainly it's provisional. Then — your call — verify it against the real interviews: either recommend a FEW targeted loads (one LOAD-TRANSCRIPT: line per guest for the close calls), or, when the decision really needs the full picture, load everything at once with a single line:
+LOAD-TRANSCRIPT: ALL
+(the app turns it into a one-tap "Load all transcripts" button). Once the transcripts you asked for are loaded, revisit and finalize from the actual interviews — don't present a cross-recording plan as final while it still rests only on the cards.
 ${_recCtx}
 ${_txCtx}
 
@@ -5381,6 +5384,12 @@ function booReadRecordingByName(name) {
 // skipping guests with no recording or whose transcript is already loaded. null if none.
 function buildTranscriptLoadActions() {
   if (!_pendingLoadTargets || !_pendingLoadTargets.length) return null;
+  if (_pendingLoadTargets.some(function(n) { return /^all$/i.test(String(n).trim()); })) {
+    var withTx = (state.recordings || []).filter(function(r) { return (loadTranscript(r.id) || '').length > 0; });
+    if (!withTx.length) return null;
+    if (withTx.every(function(r) { return _activeTranscriptIds.indexOf(r.id) !== -1; })) return null; // all already loaded
+    return [{ label: "✦ Load all " + withTx.length + " transcripts", action: function() { booReadAllRecordings(); } }];
+  }
   var seen = {}, actions = [];
   _pendingLoadTargets.forEach(function(name) {
     var lc = name.toLowerCase();
@@ -5421,6 +5430,19 @@ function clearActiveTranscripts() {
   renderTranscriptChip();
   addMsg('boo', 'Cleared the loaded transcripts from my working context — back to the summary cards.');
 }
+// Load EVERY stored transcript at once (Boo's "load all" for a full-season read) and
+// ask him to finalize from the actual interviews.
+function booReadAllRecordings() {
+  var withTx = (state.recordings || []).filter(function(r) { return (loadTranscript(r.id) || '').length > 0; });
+  if (!withTx.length) { setView('chat'); addMsg('boo', 'There are no stored transcripts to load yet.'); return; }
+  withTx.forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
+  _txTurns = 0; _txTipShown = false;
+  renderRecordingsList();
+  setView('chat');
+  renderTranscriptChip();
+  triggerBooDirectly('Read all ' + withTx.length + ' transcripts',
+    "I've loaded ALL " + withTx.length + " full transcripts into your context (see FOCUSED TRANSCRIPTS). Read them and give me your best, fully-informed season design: the order, which guest anchors which episode, the shape of each, and where the real energy is — grounded in the actual interviews with timecoded moments. Call out anything the cards got wrong.");
+}
 // Always-on chip at the top of the chat while any transcript is loaded — shows what
 // Boo is reading + a one-tap Unload. Re-rendered whenever the active set changes.
 function renderTranscriptChip() {
@@ -5433,7 +5455,8 @@ function renderTranscriptChip() {
     return (r && (r.guest || r.label)) || 'a transcript';
   });
   el.style.display = 'flex';
-  el.innerHTML = '<span style="flex:1;">✓ Boo is reading: ' + esc(names.join(', ')) + '</span>'
+  var _lbl = names.length <= 2 ? names.join(', ') : (names.length + ' transcripts');
+  el.innerHTML = '<span style="flex:1;">✓ Boo is reading: ' + esc(_lbl) + '</span>'
     + '<button onclick="clearActiveTranscripts()" title="Unload to save tokens" style="background:transparent;border:1px solid var(--teal);color:var(--teal);border-radius:4px;padding:2px 10px;font-family:inherit;font-size:10px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;">Unload</button>';
 }
 // After a Boo turn, if a transcript has been loaded for a few turns, offer ONCE to
