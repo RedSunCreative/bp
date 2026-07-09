@@ -194,9 +194,19 @@ function main() {
   ok(/not propose an ordering or a story shape yet/i.test(plan), 'plan prompt withholds ordering/shape until answered');
   ok(/guest-gap/i.test(plan) && /host-gap/i.test(plan), 'plan prompt distinguishes guest-gaps from host-gaps');
 
-  // 6. Recording context (injected into every planning turn) lists the cards.
-  const rc = buildRecordingsContext(); // state.recordings holds the restored Dominick card from step 4
+  // 6. Recording context (injected into every planning turn) surfaces the WHOLE card,
+  //    not just shape/tension/arc + 2 quotes. Distinctive values + a 3rd quote so the
+  //    check discriminates the richer output from the old throttled one.
+  state.recordings = [{ id: 'rec-rc', guest: 'Dr. Dominick Sanders', title: 'Director', shape: 'Man in Hole',
+    arc: 'ARCVAL_z', tension: 'TENSIONVAL_z', fear: 'FEARVAL_z', opportunity: 'OPPVAL_z', wish: 'WISHVAL_z',
+    summary: 'SUMMARYVAL_z', quotes: [{ timecode: '05:01', quote: 'Q1' }, { timecode: '39:58', quote: 'Q2' }, { timecode: '24:56', quote: 'Q3' }] }];
+  const rc = buildRecordingsContext();
   ok(rc.indexOf('Dr. Dominick Sanders') !== -1 && /Man in Hole/.test(rc), 'recordings context lists guest + candidate shape');
+  ok(rc.indexOf('FEARVAL_z') !== -1, 'recordings context surfaces Fear');
+  ok(rc.indexOf('OPPVAL_z') !== -1, 'recordings context surfaces Opportunity');
+  ok(rc.indexOf('WISHVAL_z') !== -1, 'recordings context surfaces Wish');
+  ok(rc.indexOf('SUMMARYVAL_z') !== -1, 'recordings context surfaces the Summary');
+  ok(rc.indexOf('[24:56]') !== -1, 'recordings context surfaces ALL quotes with timecodes (3rd present, not capped at 2)');
 
   // 7. Season-state context reflects real state — no resurrected old plan when blank.
   const buildSeasonStateContext = sb.__seasonState;

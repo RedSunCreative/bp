@@ -5600,11 +5600,15 @@ function buildRecordingsContext() {
   if (!recs.length) return 'No recordings imported yet.';
   return recs.map(function(r, i) {
     var line = (i + 1) + '. ' + (r.guest || r.label || 'Untitled recording') + (r.title ? ' — ' + r.title : '');
-    if (r.shape) line += '\n   Candidate shape: ' + r.shape;
-    if (r.tension) line += '\n   Tension: ' + r.tension;
-    if (r.arc) line += '\n   Arc: ' + r.arc;
-    var q = (r.quotes || []).slice(0, 2).map(function(x) { return '"' + x.quote + '"' + (x.timecode ? ' [' + x.timecode + ']' : ''); });
-    if (q.length) line += '\n   Quotes: ' + q.join('  |  ');
+    if (r.shape)       line += '\n   Candidate shape: ' + r.shape;
+    if (r.arc)         line += '\n   Arc: ' + r.arc;
+    if (r.tension)     line += '\n   Central tension: ' + r.tension;
+    if (r.fear)        line += '\n   Fear: ' + r.fear;
+    if (r.opportunity) line += '\n   Opportunity: ' + r.opportunity;
+    if (r.wish)        line += '\n   Wish: ' + r.wish;
+    if (r.summary)     line += '\n   Summary: ' + r.summary;
+    var q = (r.quotes || []).map(function(x) { return '     "' + x.quote + '"' + (x.timecode ? ' [' + x.timecode + ']' : ''); });
+    if (q.length) line += '\n   Pull-quotes:\n' + q.join('\n');
     return line;
   }).join('\n\n');
 }
