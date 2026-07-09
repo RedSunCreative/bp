@@ -113,7 +113,7 @@ async function main() {
   captured = null;
   await callBoo('hi');
   ok(!!captured && typeof captured.system === 'string', 'callBoo sent a system prompt');
-  ok(captured.system.indexOf('FOCUSED TRANSCRIPTS') === -1, 'no active transcript → no FOCUSED TRANSCRIPTS block');
+  ok(captured.system.indexOf('READ THESE DIRECTLY') === -1, 'no active transcript → no FOCUSED TRANSCRIPTS block injected');
   ok(captured.system.indexOf('UNIQUE_MARKER_9x7') === -1, 'no active transcript → verbatim text NOT in prompt');
   ok(captured.system.indexOf('Dominick Sanders') !== -1, 'card summary (guest name) still travels every turn');
 
@@ -121,7 +121,7 @@ async function main() {
   sb.__setActive(['r1']);
   captured = null;
   await callBoo('read Dominick');
-  ok(captured.system.indexOf('FOCUSED TRANSCRIPTS') !== -1, 'active transcript → FOCUSED TRANSCRIPTS block present');
+  ok(captured.system.indexOf('READ THESE DIRECTLY') !== -1, 'active transcript → FOCUSED TRANSCRIPTS block present');
   ok(captured.system.indexOf('UNIQUE_MARKER_9x7') !== -1, 'active transcript → verbatim transcript text embedded in prompt');
   ok(captured.system.indexOf('[05:01]') !== -1, 'active transcript → timecodes preserved for Boo to cite');
   ok(captured.system.indexOf('FULL TRANSCRIPT: Dominick Sanders') !== -1, 'active transcript → labeled with the guest name');
@@ -131,7 +131,7 @@ async function main() {
   sb.__setActive(['does-not-exist']);
   captured = null;
   await callBoo('read ghost');
-  ok(captured.system.indexOf('FOCUSED TRANSCRIPTS') === -1, 'active id with no cached transcript → no block (skipped safely)');
+  ok(captured.system.indexOf('READ THESE DIRECTLY') === -1, 'active id with no cached transcript → no block (skipped safely)');
 
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
   process.exit(FAIL === 0 ? 0 : 1);
