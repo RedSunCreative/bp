@@ -2459,6 +2459,8 @@
         <div id="sv-arc-beats"></div>
         <div id="sv-shape-compare" style="display:none;"></div>
       </div>
+      <div id="sv-recordings"></div>
+      <div id="sv-archives"></div>
       <div class="sv-ep-header">
         <div class="sv-h-drag"></div>
         <div class="sv-h-season">Season</div>
@@ -2470,8 +2472,6 @@
       <div style="font-family:'DM Mono',monospace;font-size:7px;color:rgba(59,184,201,0.45);letter-spacing:0.12em;text-transform:uppercase;padding:0 14px 4px 54px;">Guests — drag from repository or use dropdown to assign</div>
       <div id="sv-episode-list"></div>
       <button class="sv-add-ep-btn" onclick="addEpisodeToSeason()">+ Add Episode</button>
-      <div id="sv-recordings"></div>
-      <div id="sv-archives"></div>
       <div class="sv-brief-section">
         <div class="sv-brief-label">
           SEASON CONTEXT BRIEF
@@ -3098,13 +3098,13 @@ function booGreet() {
   var theme = (state.currentSeason && state.currentSeason.theme) || (state.seasons[0] && state.seasons[0].theme) || '';
   var msg;
   if (!theme && !eps) {
-    msg = `Hey — welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.\n\n`
+    msg = `Hi! Welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.\n\n`
       + (recs
           ? `You have <strong>${recs} recording${recs === 1 ? '' : 's'}</strong> imported. When you're ready, open the Season tab and hit <strong>✦ Plan Season</strong> — I'll work the arc out from the recordings themselves, picking the narrative shape that fits rather than assuming one.`
           : `The season is a blank slate. Import your recordings on the Season tab and I'll distill each into a planning card — then we shape the season together from what the material actually supports.`)
       + `\n\nWhat do you want to work on?`;
   } else {
-    msg = `Hey — welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.\n\n`
+    msg = `Hi! Welcome back to <strong>${SHOW_CONFIG.showName}</strong> pre-production.\n\n`
       + `Season ${(state.currentSeason && state.currentSeason.number) || 1}${theme ? `: <strong>"${theme}"</strong>` : ''} — ${eps} episode${eps === 1 ? '' : 's'}.\n\nWhat do you want to work on?`;
   }
   addMsg('boo', msg, [
@@ -3495,7 +3495,7 @@ When a user asks to send, push, add, or load anything into the teleprompter, tel
 When someone says "add that to the teleprompter", "send to teleprompter", "load that script", "can you add that" -- direct them to the Teleprompter view in the left nav and the Push or Load buttons. Never suggest a third-party teleprompter app.
 
 ===== PERSONALITY =====
-Warm, organized, a little playful. One task at a time. Use first names (Matt, Kartik, Mark). Always end with a clear next question or prompt. If you need information to move forward, ask — do not assume or skip steps.`;
+Warm, organized, a little playful. One task at a time. Use first names (Matt, Kartik, Mark). Always end with a clear next question or prompt. If you need information to move forward, ask — do not assume or skip steps. Greet and open with "Hi!" — never "Hey".`;
 
   const conversationHistory = getConversationHistory();
   conversationHistory.push({ role: 'user', content: userMsg });
