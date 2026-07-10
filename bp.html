@@ -8801,6 +8801,8 @@ applySession = function(data) {
 
 let pendingSessionData = null;
 var autoSaveTimeout = null;
+var _unsynced = false;        // true when the last server save failed — work is in localStorage only
+var _syncRetryTimer = null;   // pending auto-retry of a failed server save
 var _seasonBriefAutoGen = false;
 var sessionHistory = [];
 var _lastSavedSnap = null;
@@ -8969,7 +8971,14 @@ function autoSave(reason, immediate) {
           if (sessionHistory.length > 30) sessionHistory.pop();
         }
       }
-      await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}`, {
+      // KEEP THE BODY SMALL. Full-session history snapshots are large; an oversized
+      // {data,history} PATCH was being REJECTED by the server — and, before the res.ok
+      // check below, that rejection was SILENT, stranding work in localStorage
+      // (incident 2026-07). Trim oldest rollback points until history fits a safe
+      // budget. Data stays small on its own (transcripts live in their own table).
+      var _HIST_BUDGET = 2500000; // ~2.5MB
+      while (sessionHistory.length > 1 && JSON.stringify(sessionHistory).length > _HIST_BUDGET) sessionHistory.pop();
+      const _res = await fetch(`${SB_URL}/rest/v1/builder_state?id=eq.${getShowRow()}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -8979,12 +8988,26 @@ function autoSave(reason, immediate) {
         },
         body: JSON.stringify({ data: snapshot, history: sessionHistory }),
       });
+      // NEVER claim success on a non-2xx. fetch() only rejects on network errors, so an
+      // HTTP 4xx/5xx (e.g. payload too large) would otherwise sail through as "saved".
+      if (!_res.ok) {
+        var _errTxt = ''; try { _errTxt = await _res.text(); } catch (e2) {}
+        throw new Error('server rejected save (HTTP ' + _res.status + ')' + (_errTxt ? ': ' + _errTxt.slice(0, 140) : ''));
+      }
       _lastSavedSnap = snapshot;
+      _unsynced = false;
+      clearTimeout(_syncRetryTimer);
       setSaveBadge('● SAVED', '#4FC3F7');
       showToast('✓ Auto-saved (' + reason + ')');
     } catch(e) {
-      setSaveBadge('● LOCAL ⚠', '#E8431A');
-      showToast('⚠ Supabase unreachable — saved locally. Refresh may lose changes.');
+      // LOUD + PERSISTENT + RETRIED. Work is safe in localStorage; keep trying so it
+      // isn't stranded there, and surface the failure instead of a false "saved".
+      _unsynced = true;
+      setSaveBadge('● UNSYNCED ⚠', '#E8431A');
+      showToast('⚠ NOT saved to server — kept on this device, retrying… (' + (e.message || 'error') + ')');
+      console.error('[bp] Supabase save FAILED (reason: ' + reason + '):', e);
+      clearTimeout(_syncRetryTimer);
+      _syncRetryTimer = setTimeout(function() { autoSave('auto-retry sync', true); }, 15000);
     }
   }, immediate ? 50 : 1500);
 }

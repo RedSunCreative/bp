@@ -690,6 +690,28 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 28 (behavioral): save-path hardening (no silent save loss)
+# Drives the REAL autoSave with a rejectable fake Supabase. Proves a non-2xx is
+# NOT a false success (flips _unsynced, server unchanged), a later save recovers,
+# and an oversized rollback history is trimmed under budget so the body lands.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 28: save-path hardening (res.ok honored, history trimmed, retry) ---"
+T28_OUT=$(node test_savepath.js 2>&1)
+T28_RC=$?
+T28_FAILS=$(printf '%s\n' "$T28_OUT" | grep -c 'FAIL')
+T28_PASSES=$(printf '%s\n' "$T28_OUT" | grep -c 'PASS')
+if [[ $T28_RC -eq 0 && $T28_FAILS -eq 0 && $T28_PASSES -gt 0 ]]; then
+  pass "non-2xx is not false-success; oversized history trimmed; recovery on next save ($T28_PASSES assertions)"
+elif [[ $T28_RC -eq 2 ]]; then
+  fail "save-path test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T28_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "save-path hardening broke ($T28_FAILS assertion(s) failed)"
+  printf '%s\n' "$T28_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt
