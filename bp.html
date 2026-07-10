@@ -5426,7 +5426,7 @@ function deleteRecording(id) {
   renderRecordingsList();
 }
 
-var _recCollapsed = true;   // recording-card list collapsed by default — keeps the Season view compact
+var _recCollapsed = false;  // recording cards VISIBLE by default (visible-during-planning); toggle to compact
 function toggleRecordingsCollapsed() { _recCollapsed = !_recCollapsed; renderRecordingsList(); }
 
 // Recordings whose FULL transcript is loaded into Boo's chat context. Cards travel
