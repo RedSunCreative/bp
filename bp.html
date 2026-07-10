@@ -2497,6 +2497,7 @@
           <button class="settings-gear" onclick="openSessionHistory()" title="Restore from history" style="font-size:14px;">&#x21BA;</button>
           <button class="settings-gear" onclick="saveSession()" title="Export a full backup file to your computer" style="font-size:14px;">⬇</button>
           <button class="settings-gear" onclick="openShowInfo()" title="Show info">⚙</button>
+          <span id="cost-meter" title="Approximate Claude spend this session (resets on refresh)" style="font-family:'DM Mono',monospace;font-size:0.66rem;color:var(--text-muted);letter-spacing:0.1em;white-space:nowrap;">~$0.00</span>
           <button class="save-badge" id="save-badge" onclick="autoSave('manual')" title="Click to save now">● READY</button>
         </div>
       </div>
@@ -3408,7 +3409,6 @@ For a WHOLE-SEASON or cross-recording decision (design the season, ordering, who
 LOAD-TRANSCRIPT: ALL
 (the app turns it into a one-tap "Load all transcripts" button). Once the transcripts you asked for are loaded, revisit and finalize from the actual interviews — don't present a cross-recording plan as final while it still rests only on the cards.
 ${_recCtx}
-${_txCtx}
 
 ===== MANDATORY PRE-PRODUCTION WORKFLOW =====
 Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
@@ -3515,7 +3515,15 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 2000,
-        system: systemPrompt,
+        // Loaded transcripts ride in a SEPARATE leading block marked for prompt
+        // caching, so re-sending them each turn costs ~1/10th (cache read) instead
+        // of full price. The volatile main prompt follows, uncached.
+        system: _txCtx
+          ? [
+              { type: 'text', text: 'REFERENCE — FULL TRANSCRIPTS the user loaded (read them; usage instructions follow):\n' + _txCtx, cache_control: { type: 'ephemeral' } },
+              { type: 'text', text: systemPrompt },
+            ]
+          : systemPrompt,
         messages: conversationHistory,
       }),
     });
@@ -3526,6 +3534,7 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
   const data = await res.json();
   if (data.error) throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'API error'));
   if (!data.content?.[0]?.text) throw new Error('Empty response from API');
+  trackUsage(data, systemPrompt.length + _txCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
   return data.content[0].text;
 }
 
@@ -8052,6 +8061,33 @@ function rpNewEpisode() {
   addNewEpisode();
 }
 
+// ── SESSION COST METER (approximate) ──
+// Accumulates estimated Claude spend for this browser session (resets on refresh).
+// Uses the response's real usage when the proxy returns it (so it reflects prompt
+// caching); falls back to a ~4-chars/token estimate otherwise.
+var _sessionCostUSD = 0;
+var _PRICE = { in: 3, out: 15, cacheWrite: 3.75, cacheRead: 0.30 }; // Sonnet 4.6, USD per 1M tokens
+function trackUsage(data, estInputChars, outputText) {
+  var cost = 0;
+  var u = data && data.usage;
+  if (u && (u.input_tokens != null || u.output_tokens != null || u.cache_read_input_tokens != null || u.cache_creation_input_tokens != null)) {
+    cost = ((u.input_tokens || 0) * _PRICE.in
+          + (u.output_tokens || 0) * _PRICE.out
+          + (u.cache_creation_input_tokens || 0) * _PRICE.cacheWrite
+          + (u.cache_read_input_tokens || 0) * _PRICE.cacheRead) / 1e6;
+  } else {
+    var inTok = Math.ceil((estInputChars || 0) / 4);
+    var outTok = Math.ceil(((outputText || '').length) / 4);
+    cost = (inTok * _PRICE.in + outTok * _PRICE.out) / 1e6;
+  }
+  _sessionCostUSD += cost;
+  renderCostMeter();
+  return cost;
+}
+function renderCostMeter() {
+  var el = document.getElementById('cost-meter');
+  if (el) el.textContent = '~$' + _sessionCostUSD.toFixed(2);
+}
 function setSaveBadge(text, color) {
   var el = document.getElementById('save-badge');
   if (el) { el.textContent = text; el.style.color = color || ''; }

@@ -669,6 +669,27 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 27 (behavioral): approximate session cost meter (trackUsage)
+# Prices real usage (input/output/cache-write/cache-read), proves cache reads are
+# ~1/10th, accumulates across turns, and falls back to a char estimate w/o usage.
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 27: session cost meter (usage pricing + cache savings + fallback) ---"
+T27_OUT=$(node test_cost_meter.js 2>&1)
+T27_RC=$?
+T27_FAILS=$(printf '%s\n' "$T27_OUT" | grep -c 'FAIL')
+T27_PASSES=$(printf '%s\n' "$T27_OUT" | grep -c 'PASS')
+if [[ $T27_RC -eq 0 && $T27_FAILS -eq 0 && $T27_PASSES -gt 0 ]]; then
+  pass "cost meter prices usage + cache correctly; accumulates; estimates without usage ($T27_PASSES assertions)"
+elif [[ $T27_RC -eq 2 ]]; then
+  fail "cost-meter test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T27_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "session cost meter broke ($T27_FAILS assertion(s) failed)"
+  printf '%s\n' "$T27_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt

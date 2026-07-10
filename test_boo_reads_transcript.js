@@ -121,11 +121,14 @@ async function main() {
   sb.__setActive(['r1']);
   captured = null;
   await callBoo('read Dominick');
-  ok(captured.system.indexOf('READ THESE DIRECTLY') !== -1, 'active transcript → FOCUSED TRANSCRIPTS block present');
-  ok(captured.system.indexOf('UNIQUE_MARKER_9x7') !== -1, 'active transcript → verbatim transcript text embedded in prompt');
-  ok(captured.system.indexOf('[05:01]') !== -1, 'active transcript → timecodes preserved for Boo to cite');
-  ok(captured.system.indexOf('FULL TRANSCRIPT: Dominick Sanders') !== -1, 'active transcript → labeled with the guest name');
-  ok(/READ THESE DIRECTLY/i.test(captured.system), 'active transcript → instruction telling Boo he can read them');
+  const sys2 = Array.isArray(captured.system) ? captured.system.map(function(b){ return b.text; }).join('\n') : String(captured.system);
+  ok(Array.isArray(captured.system), 'active transcript → system sent as blocks (enables prompt caching)');
+  ok(!!(captured.system[0] && captured.system[0].cache_control && captured.system[0].cache_control.type === 'ephemeral'), 'active transcript → transcript block marked cache_control: ephemeral');
+  ok(sys2.indexOf('READ THESE DIRECTLY') !== -1, 'active transcript → FOCUSED TRANSCRIPTS block present');
+  ok(sys2.indexOf('UNIQUE_MARKER_9x7') !== -1, 'active transcript → verbatim transcript text embedded in prompt');
+  ok(sys2.indexOf('[05:01]') !== -1, 'active transcript → timecodes preserved for Boo to cite');
+  ok(sys2.indexOf('FULL TRANSCRIPT: Dominick Sanders') !== -1, 'active transcript → labeled with the guest name');
+  ok(/READ THESE DIRECTLY/i.test(sys2), 'active transcript → instruction telling Boo he can read them');
 
   // 3. Missing cache entry is skipped gracefully (no crash, no empty block noise).
   sb.__setActive(['does-not-exist']);
