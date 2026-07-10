@@ -712,6 +712,28 @@ else
 fi
 
 # ──────────────────────────────────────────────────────────────
+# TEST 29 (behavioral): callBoo auto-retries transient overloads
+# Drives the REAL callBoo with a controllable fetch: overload-then-success retries
+# + shows the patience note; clean success doesn't; persistent overload gives up
+# after MAX_TRIES; a real API error is surfaced immediately (no retry).
+# ──────────────────────────────────────────────────────────────
+echo ""
+echo "--- Test 29: callBoo auto-retry on transient overload ---"
+T29_OUT=$(node test_retry.js 2>&1)
+T29_RC=$?
+T29_FAILS=$(printf '%s\n' "$T29_OUT" | grep -c 'FAIL')
+T29_PASSES=$(printf '%s\n' "$T29_OUT" | grep -c 'PASS')
+if [[ $T29_RC -eq 0 && $T29_FAILS -eq 0 && $T29_PASSES -gt 0 ]]; then
+  pass "overloads retried with a patience note; recovers; gives up cleanly; real errors not retried ($T29_PASSES assertions)"
+elif [[ $T29_RC -eq 2 ]]; then
+  fail "retry test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T29_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "callBoo auto-retry broke ($T29_FAILS assertion(s) failed)"
+  printf '%s\n' "$T29_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
+# ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay
 # gone from greetings, the arc review, and the brief prompts, and Boo's prompt

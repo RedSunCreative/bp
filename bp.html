@@ -3500,42 +3500,69 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
   const conversationHistory = getConversationHistory();
   conversationHistory.push({ role: 'user', content: userMsg });
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60000);
-  let res;
-  try {
-    res = await fetch(PROXY, {
-      method: 'POST',
-      signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SB_ANON}`,
-        'apikey': SB_ANON,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 2000,
-        // Loaded transcripts ride in a SEPARATE leading block marked for prompt
-        // caching, so re-sending them each turn costs ~1/10th (cache read) instead
-        // of full price. The volatile main prompt follows, uncached.
-        system: _txCtx
-          ? [
-              { type: 'text', text: 'REFERENCE — FULL TRANSCRIPTS the user loaded (read them; usage instructions follow):\n' + _txCtx, cache_control: { type: 'ephemeral' } },
-              { type: 'text', text: systemPrompt },
-            ]
-          : systemPrompt,
-        messages: conversationHistory,
-      }),
-    });
-  } finally {
-    clearTimeout(timer);
-  }
+  // Build the request body once (identical across retries). Loaded transcripts ride
+  // in a SEPARATE leading block marked for prompt caching, so re-sending them each
+  // turn costs ~1/10th (cache read); the volatile main prompt follows, uncached.
+  const _reqBody = JSON.stringify({
+    model: MODEL,
+    max_tokens: 2000,
+    system: _txCtx
+      ? [
+          { type: 'text', text: 'REFERENCE — FULL TRANSCRIPTS the user loaded (read them; usage instructions follow):\n' + _txCtx, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: systemPrompt },
+        ]
+      : systemPrompt,
+    messages: conversationHistory,
+  });
 
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'API error'));
-  if (!data.content?.[0]?.text) throw new Error('Empty response from API');
-  trackUsage(data, systemPrompt.length + _txCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
-  return data.content[0].text;
+  // Auto-retry transient overloads / rate limits — Anthropic 429/529/5xx are usually
+  // momentary. The user sees a patience note and Boo tries again, instead of a dead end.
+  const MAX_TRIES = 4;
+  let _lastErr = null;
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 60000);
+      let res;
+      try {
+        res = await fetch(PROXY, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_ANON}`, 'apikey': SB_ANON },
+          body: _reqBody,
+        });
+      } finally { clearTimeout(timer); }
+
+      const data = await res.json();
+      // Busy server → flag transient so the catch retries.
+      if (res.status === 429 || res.status === 529 || (res.status >= 500 && res.status <= 599)) {
+        throw Object.assign(new Error('overloaded (HTTP ' + res.status + ')'), { __transient: true });
+      }
+      if (data.error) {
+        const _et = ((data.error.type || '') + ' ' + (data.error.message || '')).toLowerCase();
+        if (/overload|rate.?limit|temporar|try again|too many|529/.test(_et)) {
+          throw Object.assign(new Error(data.error.message || 'overloaded'), { __transient: true });
+        }
+        throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'API error'));
+      }
+      if (!data.content?.[0]?.text) throw new Error('Empty response from API');
+      trackUsage(data, systemPrompt.length + _txCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
+      return data.content[0].text;
+    } catch (e) {
+      _lastErr = e;
+      // Retry only transient failures (flagged overloads, or a raw network TypeError).
+      // A 60s AbortError (timeout) or a real API error is surfaced immediately.
+      const transient = !!(e && (e.__transient || e.name === 'TypeError'));
+      if (transient && attempt < MAX_TRIES) {
+        showToast('Anthropic servers currently overloaded. Trying again for you in a few moments. Thank you for your patience!');
+        await new Promise(function(r) { setTimeout(r, attempt * 1500); });
+        continue;
+      }
+      if (e && e.__transient) throw new Error("Anthropic's servers are overloaded right now — give it a minute and try again. Thanks for your patience!");
+      throw e;
+    }
+  }
+  throw _lastErr;
 }
 
 // ── CONVERSATION HISTORY ──
