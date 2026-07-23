@@ -187,12 +187,14 @@ function main() {
     && state.recordings[0].quotes[0].timecode === '12:03',
     'recordings survive snapshot -> applySession round-trip');
 
-  // 5. Plan-Season kickoff is container-first and holds the one-question discipline.
+  // 5. Plan-Season kickoff launches the hypothesis-driven interrogation (Movement 1),
+  //    stakes-first, one question — NOT the old container-first framing.
   const plan = buildSeasonPlanPrompt();
-  ok(/CONTAINER/.test(plan), 'plan prompt leads with the production container');
-  ok(/ONE question/.test(plan) && /recombine/i.test(plan) && /bookend/i.test(plan), 'plan prompt asks the single upstream container question (recombine / bookends)');
-  ok(/not propose an ordering or a story shape yet/i.test(plan), 'plan prompt withholds ordering/shape until answered');
-  ok(/guest-gap/i.test(plan) && /host-gap/i.test(plan), 'plan prompt distinguishes guest-gaps from host-gaps');
+  ok(/MOVEMENT 1/.test(plan) && /interrogate the story/i.test(plan), 'plan prompt launches Movement 1 (interrogate the story)');
+  ok(/CONFLICT\/PROBLEM/.test(plan) && /stakes-first/i.test(plan), 'plan prompt opens with the stakes-first Conflict/Problem question');
+  ok(/exactly ONE question/i.test(plan) && /never give me a menu/i.test(plan), 'plan prompt holds the one-question discipline (no menu)');
+  ok(!/PRODUCTION CONTAINER/.test(plan) && !/recombine/i.test(plan), 'plan prompt dropped the old container-first framing');
+  ok(/confirm or correct/i.test(plan), 'plan prompt frames later questions as propose-then-confirm (hypothesis-driven)');
 
   // 6. Recording context (injected into every planning turn) surfaces the WHOLE card,
   //    not just shape/tension/arc + 2 quotes. Distinctive values + a 3rd quote so the

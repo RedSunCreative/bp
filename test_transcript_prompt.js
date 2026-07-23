@@ -82,6 +82,7 @@ function buildSandbox(scriptSrc) {
   try { globalThis.__state = state; } catch(e){ globalThis.__e8 = String(e); }
   try { globalThis.__setTrigger = function(fn){ triggerBooDirectly = fn; }; } catch(e){ globalThis.__e9 = String(e); }
   try { globalThis.__getActive = function(){ return _activeTranscriptIds; }; } catch(e){ globalThis.__e10 = String(e); }
+  try { globalThis.__setSaveBrief = function(fn){ saveSeasonBriefText = fn; }; } catch(e){ globalThis.__e11 = String(e); }
 })();`;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename:'bp.html#inline', timeout:20000 });
   return sandbox;
@@ -147,6 +148,14 @@ function main() {
   ok(active.indexOf('d1') !== -1 && active.indexOf('d2') !== -1, 'load-all action loads every recording at once');
   parseReply('LOAD-TRANSCRIPT: ALL');
   ok(buildActions() === null, 'no load-all button when everything is already loaded');
+
+  // SEASON-BRIEF: directive routes the consolidated foundation into the existing brief field.
+  let savedBrief = null;
+  sb.__setSaveBrief(function(t){ savedBrief = t; });
+  const sbReply = parseReply('Here is the season foundation.\nSEASON-BRIEF:\nThe season is about EQUITY_MARK. Stakes are steep.');
+  ok(savedBrief && /The season is about EQUITY_MARK/.test(savedBrief), 'SEASON-BRIEF: routes the foundation text to the Season Context Brief');
+  ok(sbReply.indexOf('SEASON-BRIEF:') === -1, 'SEASON-BRIEF: marker stripped from the visible reply');
+  ok(sbReply.indexOf('EQUITY_MARK') !== -1, 'foundation prose stays visible in chat');
 
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
   process.exit(FAIL === 0 ? 0 : 1);

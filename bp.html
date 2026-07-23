@@ -3444,7 +3444,25 @@ LOAD-TRANSCRIPT: ALL
 (the app turns it into a one-tap "Load all transcripts" button). Once the transcripts you asked for are loaded, revisit and finalize from the actual interviews — don't present a cross-recording plan as final while it still rests only on the cards.
 ${_recCtx}
 
-===== MANDATORY PRE-PRODUCTION WORKFLOW =====
+===== SEASON PLANNING METHODOLOGY (how you plan a whole season) =====
+When the user plans a season (e.g. ✦ Plan Season), THIS is your producing method. Always follow the dialogue pattern: hypothesis → exactly ONE question → withhold. Be HYPOTHESIS-DRIVEN: for anything you can ground in the recordings' cards/transcripts, PROPOSE the answer and ask the user only to confirm or correct — genuinely ASK only about what the material cannot tell you. Asking about things the transcripts already answer signals you didn't read them; don't.
+
+MOVEMENT 1 — INTERROGATE THE STORY (six questions, stakes-first, ONE per turn):
+1. CONFLICT/PROBLEM (always first) — largely the user's judgment, not in the material, so interrogate it for real: what happens if we DON'T solve it? the cascading consequences (personal and global)? is it worth the time/energy/money/lost opportunity? how would we know we solved it?
+2. WHO — every who, upstream and downstream: audience, speakers, major and minor actors, champion, adversary. PROPOSE from the recordings; ask only to fill gaps.
+3. WHAT — the current situation + BOTH endings: the negative denouement and the positive denouement. PROPOSE from the material; confirm.
+4. WHERE — every venue the story lives (classrooms, boardrooms, bedrooms, online, YouTube). PROPOSE from the material.
+5. WHEN — dramatic time: how long has this been brewing, when was it born, what died to give rise to it, when must the resolution land before chaos. PROPOSE what the material implies; ask for the rest.
+6. WHY — the grand, small, and personal whys of hosts, guests, and listeners, and "why does this matter to ANYONE?" Like Conflict, largely the user's judgment — interrogate it.
+Ground every proposal in specific guests/quotes; never invent. At the END of Movement 1, consolidate the answers into the season foundation and save it to the existing Season Context Brief by emitting, on its own line, "SEASON-BRIEF:" followed by the consolidated foundation prose (the app writes it into the Season Context Brief field for you).
+
+MOVEMENT 2 — PROPOSE & TEST THE ARC:
+From the interrogation, propose a SEASON shape and per-episode shapes, chosen deliberately and with cited evidence, from: the seven season-architecture shapes (The Mountain, The Question, The Braid, The Descent & Return, The Turn, Vignettes-on-a-Spine, The Pressure Cooker); Kartik's "recipe" (up → all the way down → up but not all the way); and the per-guest character shapes each recording carries. Then MAP the recordings into the arc — which recording feeds which episode/beat, where the hosts carry alone (host-gap), where a guest still needs research (guest-gap). Then a LIGHT test: name what the arc is trying to make the listener feel and whether it lands. (The full pressure-test — against a simulated target listener and the great storytellers — comes in a later step.)
+
+HONESTY GUARDRAIL (load-bearing — this is what makes your positive proposals trustworthy):
+Only propose shapes and arcs the material actually supports. If the recordings do not form an arc, say so plainly. If a guest has no usable shape, say so and cite why. NEVER shape-fit; NEVER fabricate an arc onto material that doesn't have one. "These recordings don't cohere into a season yet — here's exactly what's missing" is a valid and valuable answer.
+
+===== MANDATORY PRE-PRODUCTION WORKFLOW (per-episode, AFTER the season arc is agreed) =====
 Follow this order strictly. Do NOT jump to scripts or run of show until earlier steps are done.
 
 STEP 1 — EPISODE INTENT (always first)
@@ -3764,6 +3782,14 @@ async function sendMessage() {
 function parseReply(text) {
   // Extract and remove ACTION: lines before rendering
   _pendingLoadTargets = [];   // reset per turn; filled by LOAD-TRANSCRIPT: directives below
+  // SEASON-BRIEF: <consolidated foundation> — Boo closing Movement 1 by writing the season
+  // foundation into the EXISTING Season Context Brief field. Save it, strip only the marker
+  // token, and leave the prose visible in chat.
+  var _sbIdx = text.search(/^SEASON-BRIEF:/m);
+  if (_sbIdx !== -1) {
+    var _sbText = text.slice(_sbIdx).replace(/^SEASON-BRIEF:[ \t]*/, '').trim();
+    if (_sbText) { saveSeasonBriefText(_sbText); text = text.slice(0, _sbIdx) + _sbText; }
+  }
   const actionLines = [];
   const podIntros = [];
   const cleanedLines = text.split('\n').filter(line => {
@@ -5790,11 +5816,10 @@ function buildRecordingsContext() {
 function buildSeasonPlanPrompt() {
   var n = (state.recordings || []).length;
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
-  return 'We are planning Season ' + sNum + ' from the ' + n + ' recordings in your context (see SEASON RECORDINGS). '
-    + 'Think like a seasoned floor director and follow the Boo dialogue pattern exactly.\n\n'
-    + 'FIRST, resolve the PRODUCTION CONTAINER before any story-shape talk. In 2-3 confident sentences, give your hypothesis grounded in SPECIFIC evidence from the cards: which recordings overlap enough to merge (name them and the shared ground), and whether the season is missing a front door or a close (a premise-setting opener, a hosts-only finale). Cite the actual guests and quotes — never invent.\n\n'
-    + 'THEN ask exactly ONE question — the single most upstream one: are these finished episodes to sequence as-is, or raw material to recombine into fewer, with new bookend recordings to complete the season? Do NOT propose an ordering or a story shape yet — that comes only after I answer.\n\n'
-    + 'When relevant, distinguish guest-gaps (need a new interviewee) from host-gaps (Matt & Kartik can carry alone). Keep it to the hypothesis plus the one question.';
+  return 'We are planning Season ' + sNum + ' from the ' + n + ' recordings in your context (see SEASON RECORDINGS, and any FOCUSED TRANSCRIPTS). '
+    + 'Run the SEASON PLANNING METHODOLOGY from your instructions, and follow the Boo dialogue pattern exactly.\n\n'
+    + 'Begin MOVEMENT 1 — interrogate the story, hypothesis-driven. Open with CONFLICT/PROBLEM, the stakes-first question. This one is largely my judgment, not something the recordings can answer, so genuinely interrogate me: in 2-3 confident sentences give your best hypothesis for the season\'s central problem, grounded in specific evidence from the cards/transcripts (cite the actual guests and quotes, never invent) — then ask me exactly ONE question that sharpens the stakes (what happens if we DON\'T solve it, the cascading consequences, whether it is worth the cost, or how we would know we solved it).\n\n'
+    + 'Do NOT run the other questions yet, do NOT propose an arc yet, and never give me a menu — one question. On later turns you will move to Who/What/Where/When, where you should mostly PROPOSE the answer from the recordings and ask me only to confirm or correct.';
 }
 
 // Button handler: kick off season planning in the chat, over the cards.
@@ -6980,6 +7005,22 @@ function renderGuestIntroField() {
 function getHostIntro() { return state.hostIntro || SHOW_CONFIG.hostIntro || ''; }
 function getHostOutro() { return state.hostOutro || SHOW_CONFIG.hostOutro || ''; }
 
+// Save/append text into the EXISTING Season Context Brief field (state.seasons[0].seasonBrief).
+// Reused by the "→ season brief" chat button and by Boo's SEASON-BRIEF: directive. No new
+// data structure — this only populates a field that already exists.
+function saveSeasonBriefText(text) {
+  if (!text) return;
+  var s = state.seasons[0] || (state.seasons[0] = {});
+  if (s.seasonBrief && s.seasonBrief.trim()) {
+    s.seasonBrief = s.seasonBrief.trim() + '\n\n— — —\n\n' + text;   // append under a divider; never clobber
+    showToast('Added to Season Context Brief.');
+  } else {
+    s.seasonBrief = text;
+    showToast('Saved to Season Context Brief.');
+  }
+  autoSave('season brief saved', true);
+  renderSeasonView();
+}
 function saveFromChat(btn, field) {
   var bubble = btn.closest('.msg-body').querySelector('.msg-bubble');
   var text = bubble ? (bubble.innerText || bubble.textContent || '').trim() : '';
@@ -6995,17 +7036,7 @@ function saveFromChat(btn, field) {
     renderScriptFields();
     showToast('Host outro saved to Show Scripts.');
   } else if (field === 'seasonBrief') {
-    var s = state.seasons[0] || (state.seasons[0] = {});
-    if (s.seasonBrief && s.seasonBrief.trim()) {
-      // Append under a divider so an existing brief isn't clobbered
-      s.seasonBrief = s.seasonBrief.trim() + '\n\n— — —\n\n' + text;
-      showToast('Added to Season Context Brief.');
-    } else {
-      s.seasonBrief = text;
-      showToast('Saved to Season Context Brief.');
-    }
-    autoSave('season brief saved from chat', true);
-    renderSeasonView();
+    saveSeasonBriefText(text);
   }
   btn.textContent = '✓ saved';
   btn.style.color = 'var(--teal)';

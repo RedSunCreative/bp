@@ -762,7 +762,14 @@ done
 for needed in \
   "NARRATIVE STRUCTURE — HOW THIS SHOW SHAPES STORIES" \
   "never assume a single default arc" \
-  "CANDIDATE SHAPE"; do
+  "CANDIDATE SHAPE" \
+  "SEASON PLANNING METHODOLOGY" \
+  "MOVEMENT 1 — INTERROGATE THE STORY" \
+  "HONESTY GUARDRAIL" \
+  "fabricate an arc" \
+  "The Braid" \
+  "Kartik" \
+  "SEASON-BRIEF:"; do
   if ! grep -qF "$needed" "$BP"; then
     fail "narrative ethos missing: \"$needed\""
     T22_FAILS=$((T22_FAILS+1))
@@ -774,7 +781,7 @@ if grep -qE "finishEp1\(\)|workOnHope\(\)" "$BP"; then
   T22_FAILS=$((T22_FAILS+1))
 fi
 if [[ $T22_FAILS -eq 0 ]]; then
-  pass "no stale old-season content; narrative ethos present (13 checks)"
+  pass "no stale old-season content; ethos + season-planning methodology present (19 checks)"
 fi
 
 # ──────────────────────────────────────────────────────────────
