@@ -3,7 +3,7 @@
 # Usage:  bash test_bp.sh            (normal run)
 #         bash test_bp.sh --break    (inject failures to verify tests catch them)
 
-BP="bp.html"
+BP="${BP:-bp.html}"
 PASS=0; FAIL=0
 BREAK_MODE="${1:-}"
 
@@ -752,7 +752,8 @@ for stale in \
   "Season arc (Plot Mountain): Exposition" \
   "consistent with Plot Mountain" \
   "fit Plot Mountain" \
-  "visual Plot Mountain arc"; do
+  "visual Plot Mountain arc" \
+  "up → all the way down → up but not all the way"; do
   if grep -qF "$stale" "$BP"; then
     fail "stale content still present: \"$stale\""
     T22_FAILS=$((T22_FAILS+1))
@@ -767,10 +768,22 @@ for needed in \
   "MOVEMENT 1 — INTERROGATE THE STORY" \
   "HONESTY GUARDRAIL" \
   "fabricate an arc" \
-  "The Braid" \
+  "THE BRAID" \
   "Kartik" \
   "SEASON-BRIEF:" \
-  "CLOSE CALLS → ONE-TAP LOAD"; do
+  "CLOSE CALLS → ONE-TAP LOAD" \
+  "SHAPE LIBRARY" \
+  "The question handed back, sharper" \
+  "Convergence — the threads revealed as one story" \
+  "The turn — X collapses" \
+  "landing below the opening height" \
+  "Release / the thing they came to say" \
+  "makes you feel seen before it makes you feel instructed" \
+  "A question that pulls" \
+  "Change, not coverage" \
+  "Best when there's a genuine building conflict" \
+  "unless the chosen shape literally IS The Mountain" \
+  "Kartik's variant"; do
   if ! grep -qF "$needed" "$BP"; then
     fail "narrative ethos missing: \"$needed\""
     T22_FAILS=$((T22_FAILS+1))
@@ -782,7 +795,7 @@ if grep -qE "finishEp1\(\)|workOnHope\(\)" "$BP"; then
   T22_FAILS=$((T22_FAILS+1))
 fi
 if [[ $T22_FAILS -eq 0 ]]; then
-  pass "no stale old-season content; ethos + season-planning methodology present (20 checks)"
+  pass "no stale content; ethos + methodology + shape beats/principles/criteria/rule present (33 checks)"
 fi
 
 # ──────────────────────────────────────────────────────────────
