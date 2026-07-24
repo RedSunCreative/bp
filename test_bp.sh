@@ -769,7 +769,8 @@ for needed in \
   "fabricate an arc" \
   "The Braid" \
   "Kartik" \
-  "SEASON-BRIEF:"; do
+  "SEASON-BRIEF:" \
+  "CLOSE CALLS → ONE-TAP LOAD"; do
   if ! grep -qF "$needed" "$BP"; then
     fail "narrative ethos missing: \"$needed\""
     T22_FAILS=$((T22_FAILS+1))
@@ -781,7 +782,7 @@ if grep -qE "finishEp1\(\)|workOnHope\(\)" "$BP"; then
   T22_FAILS=$((T22_FAILS+1))
 fi
 if [[ $T22_FAILS -eq 0 ]]; then
-  pass "no stale old-season content; ethos + season-planning methodology present (19 checks)"
+  pass "no stale old-season content; ethos + season-planning methodology present (20 checks)"
 fi
 
 # ──────────────────────────────────────────────────────────────
