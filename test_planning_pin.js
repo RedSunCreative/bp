@@ -86,6 +86,8 @@ function buildSandbox(scriptSrc) {
   try { globalThis.__removePin = removePlanningPin; } catch(e){ globalThis.__e8 = String(e); }
   try { globalThis.__pins = seasonPins; } catch(e){ globalThis.__e9 = String(e); }
   try { globalThis.__cap = _PLANNING_CAP; } catch(e){ globalThis.__e10 = String(e); }
+  try { globalThis.__pinRec = pinRecordingTranscript; } catch(e){ globalThis.__e11 = String(e); }
+  try { globalThis.__setTx = function(id,t){ _transcriptStore[id] = t; }; } catch(e){ globalThis.__e12 = String(e); }
 })();`;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename:'bp.html#inline', timeout:20000 });
   return sandbox;
@@ -153,6 +155,27 @@ async function main() {
   ok(sb.__pin(big, 'big') === true && sb.__pins().length === 1, 'a pin under the cap is accepted');
   const over = 'y'.repeat(2000);     // 149000 + 2000 = 151000 > cap
   ok(sb.__pin(over, 'over') === false && sb.__pins().length === 1, 'a pin that would blow the cap is refused (not silently truncated)');
+
+  // ---- 6. card-level: Pin transcript button pins a recording's FULL transcript by id (toggle) ----
+  sb.__pins().length = 0;
+  state.recordings = [{ id:'rec-1', guest:'Dora Palfi', tension:'candidate' }];
+  const FULL = 'FULL_DORA_TRANSCRIPT_MARKER_88 ' + 'word '.repeat(80);
+  sb.__setTx('rec-1', FULL);
+  sb.__pinRec('rec-1');
+  ok(sb.__pins().length === 1 && sb.__pins()[0].recId === 'rec-1', 'Pin transcript pins by recording id (card knows which)');
+  ok(sb.__pins()[0].text === FULL.trim(), 'it pins the FULL transcript text, not the card summary');
+  ok(/Dora Palfi/.test(sb.__pins()[0].label), 'the pin is labeled with the guest name');
+  sb.__pinRec('rec-1');              // click again → toggle off
+  ok(sb.__pins().length === 0, 'clicking Pin transcript again unpins (toggle)');
+
+  // ---- 7. a card pin actually reaches Boo, keyed to its recId ----
+  sb.__pins().length = 0;
+  sb.__setTx('rec-1', FULL);
+  sb.__pinRec('rec-1');
+  sb.__setLoaded(true);
+  cap.body = null;
+  await sb.__callBoo(sb.__planPrompt());
+  ok(sysText(cap.body).indexOf('FULL_DORA_TRANSCRIPT_MARKER_88') !== -1, 'a transcript pinned from its card reaches the callBoo request');
 
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
   process.exit(FAIL === 0 ? 0 : 1);

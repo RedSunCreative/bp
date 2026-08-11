@@ -5614,18 +5614,39 @@ function buildPlanningContext() {
   if (!pins.length) return '';
   return pins.map(function(p, i) { return '--- PINNED [' + (p.label || ('Pin ' + (i + 1))) + '] ---\n' + (p.text || ''); }).join('\n\n');
 }
-function pinToPlanningContext(text, label) {
+function pinToPlanningContext(text, label, recId) {
   text = (text || '').trim(); if (!text) return false;
   if (planningPinsChars() + text.length > _PLANNING_CAP) {
     showToast('⚠ Planning context is full (' + _PLANNING_CAP.toLocaleString() + '-char cap). Remove a pin before adding more.');
     return false;
   }
   var pins = seasonPins();
-  pins.push({ id: 'pin-' + Date.now() + '-' + Math.floor(Math.random() * 1000), label: (label || '').trim() || ('Pin ' + (pins.length + 1)), text: text, addedAt: new Date().toISOString() });
+  pins.push({ id: 'pin-' + Date.now() + '-' + Math.floor(Math.random() * 1000), label: (label || '').trim() || ('Pin ' + (pins.length + 1)), text: text, addedAt: new Date().toISOString(), recId: recId || null });
   autoSave('planning context pinned', true);
   renderPlanningContext();
   showToast('📌 Pinned — Boo keeps this every turn now.');
   return true;
+}
+// Pin a recording's FULL transcript straight from its card (toggle: click again to unpin).
+// This is the "Pin = keep every turn" verb, distinct from "Read = load for this session".
+function pinRecordingTranscript(id) {
+  var rec = (state.recordings || []).find(function (r) { return r.id === id; });
+  var name = (rec && (rec.guest || rec.label)) || 'this recording';
+  var existing = seasonPins().find(function (p) { return p.recId === id; });
+  if (existing) {                                   // already pinned → unpin
+    removePlanningPin(existing.id);
+    renderRecordingsList();
+    showToast('📌 Unpinned ' + name + " — no longer in every turn.");
+    return;
+  }
+  var tx = loadTranscript(id);
+  if (!tx) {                                        // not synced yet — don't pin a blank
+    if (typeof setView === 'function') setView('chat');
+    addMsg('boo', "I don't have " + esc(name) + "'s transcript in front of me yet — it's syncing from the server. Give it a few seconds and click Pin again.");
+    if (typeof hydrateTranscripts === 'function') hydrateTranscripts();
+    return;
+  }
+  if (pinToPlanningContext(tx, name + ' — full transcript', id)) renderRecordingsList();
 }
 function removePlanningPin(id) {
   var s = state.seasons[0] || {};
@@ -5707,8 +5728,10 @@ function renderRecordingsList() {
           + '</div>'
           + (r.tension ? '<div class="guest-why" style="margin-top:8px;">' + esc(r.tension) + '</div>' : '')
           + '<div class="guest-unverified-note">' + quotes + ' pull-quote' + (quotes === 1 ? '' : 's') + ' captured · transcript stored</div>'
-          + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')">'
+          + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')" title="Load this transcript for the current session (cleared on refresh, costs tokens only while loaded)">'
           + (_activeTranscriptIds.indexOf(r.id) !== -1 ? '✓ Boo is reading this' : '✦ Have Boo read this') + '</button>'
+          + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'border-color:var(--teal);color:var(--teal);' : '') + '" onclick="pinRecordingTranscript(\'' + r.id + '\')" title="' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'Pinned — Boo keeps this full transcript on every turn. Click to unpin.' : 'Pin the FULL transcript so Boo keeps it on every turn (durable, rides every turn)') + '">'
+          + (seasonPins().some(function(p){ return p.recId === r.id; }) ? '✓ Pinned every turn' : '📌 Pin transcript') + '</button>'
           + '</div>';
       }).join('') + '</div>'
     : '<div style="font-size:12px;color:var(--muted);padding:4px 0 8px;">No recordings yet — add transcript files or paste one, and Boo will read each and file a card.</div>';
