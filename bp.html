@@ -2474,6 +2474,9 @@
       <!-- Recording / guest cards + transcript import (planning material) -->
       <div id="sv-recordings"></div>
 
+      <!-- Pinned planning context — durable channel that rides every Boo turn -->
+      <div id="sv-planning-context"></div>
+
       <!-- Episode list -->
       <div id="sv-ep-table">
         <div class="sv-ep-header">
@@ -3376,6 +3379,7 @@ async function callBoo(userMsg) {
         + _txParts.join('\n\n');
     }
   }
+  var _pinCtx = buildPlanningContext();  // pinned planning context — injected EVERY turn, survives the 14-message window
 
   // Action items
   var _actions = (state.actionItems || []).filter(function(a) { return !a.done; });
@@ -3445,7 +3449,7 @@ LOAD-TRANSCRIPT: ALL
 ${_recCtx}
 
 ===== SEASON PLANNING METHODOLOGY (how you plan a whole season) =====
-When the user plans a season (e.g. ✦ Plan Season), THIS is your producing method. Always follow the dialogue pattern: hypothesis → exactly ONE question → withhold. Be HYPOTHESIS-DRIVEN: for anything you can ground in the recordings' cards/transcripts, PROPOSE the answer and ask the user only to confirm or correct — genuinely ASK only about what the material cannot tell you. Asking about things the transcripts already answer signals you didn't read them; don't.
+When the user plans a season (e.g. ✦ Plan Season), THIS is your producing method. Always follow the dialogue pattern: hypothesis → exactly ONE question → withhold. Be HYPOTHESIS-DRIVEN: for anything you can ground in the recordings' cards/transcripts, PROPOSE the answer and ask the user only to confirm or correct — genuinely ASK only about what the material cannot tell you. Asking about things the transcripts already answer signals you didn't read them; don't. If a PINNED PLANNING CONTEXT block is present above, treat it as authoritative user input — draw on it directly and never re-ask what it already answers.
 
 THREE PRINCIPLES UNDER EVERYTHING (judgment, not just labels — the beats tell you how to talk about a shape; these tell you how to think):
 - Tension before information. Withhold, then deliver. Every great long-form thing makes you feel seen before it makes you feel instructed. Boo's first instinct on any arc question: what's the tension here, and am I releasing it too early?
@@ -3570,15 +3574,20 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
   const conversationHistory = getConversationHistory();
   conversationHistory.push({ role: 'user', content: userMsg });
 
-  // Build the request body once (identical across retries). Loaded transcripts ride
-  // in a SEPARATE leading block marked for prompt caching, so re-sending them each
-  // turn costs ~1/10th (cache read); the volatile main prompt follows, uncached.
+  // Build the request body once (identical across retries). Pinned planning context
+  // + loaded transcripts ride in a SEPARATE leading block marked for prompt caching,
+  // so re-sending them each turn costs ~1/10th (cache read); the volatile main prompt
+  // follows, uncached. The pin block is the durable channel that never ages out of the
+  // 14-message window — it is present on EVERY turn a season has pins.
+  var _cachedLead = '';
+  if (_pinCtx) _cachedLead += '===== PINNED PLANNING CONTEXT (the user pinned these — authoritative direction and answers; always keep them in mind while planning, and never re-ask what they already answer) =====\n' + _pinCtx + '\n\n';
+  if (_txCtx) _cachedLead += 'REFERENCE — FULL TRANSCRIPTS the user loaded (read them; usage instructions follow):\n' + _txCtx;
   const _reqBody = JSON.stringify({
     model: MODEL,
     max_tokens: 2000,
-    system: _txCtx
+    system: _cachedLead
       ? [
-          { type: 'text', text: 'REFERENCE — FULL TRANSCRIPTS the user loaded (read them; usage instructions follow):\n' + _txCtx, cache_control: { type: 'ephemeral' } },
+          { type: 'text', text: _cachedLead, cache_control: { type: 'ephemeral' } },
           { type: 'text', text: systemPrompt },
         ]
       : systemPrompt,
@@ -3616,7 +3625,7 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
         throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'API error'));
       }
       if (!data.content?.[0]?.text) throw new Error('Empty response from API');
-      trackUsage(data, systemPrompt.length + _txCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
+      trackUsage(data, systemPrompt.length + _txCtx.length + _pinCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
       return data.content[0].text;
     } catch (e) {
       _lastErr = e;
@@ -3672,8 +3681,11 @@ function addMsg(role, html, actions, rawText) {
         <button onclick="saveFromChat(this,'hostIntro')">← host intro</button>
         <button onclick="saveFromChat(this,'hostOutro')">← host outro</button>
         <button onclick="saveFromChat(this,'seasonBrief')">→ season brief</button>
+        <button onclick="pinFromChat(this)" title="Pin this to planning context — Boo keeps it every turn">📌 pin</button>
       </div>`
-    : '';
+    : `<div class="msg-footer">
+        <button onclick="pinFromChat(this)" title="Pin this to planning context — Boo keeps it every turn (great for a pasted transcript)">📌 pin</button>
+      </div>`;
   div.innerHTML = `
     <div class="msg-avatar">${avatarText}</div>
     <div class="msg-body">
@@ -5585,6 +5597,83 @@ function maybeOfferTranscriptUnloadTip() {
     ]);
   }
 }
+// ── PLANNING CONTEXT PINS ──────────────────────────────────────────────────
+// An explicit, durable channel: content the user pins rides EVERY Boo turn (in the
+// cached leading system block), so it never falls out of the last-14-message chat
+// window. Stored on the season record (state.seasons[0].planningContext) so it
+// archives and restores WITH the season, exactly like the Season Context Brief.
+var _PLANNING_CAP = 150000; // char cap — pins ride every turn (~37k tokens); prompt caching keeps re-sends cheap
+function seasonPins() {
+  var s = state.seasons[0] || (state.seasons[0] = {});
+  if (!Array.isArray(s.planningContext)) s.planningContext = [];
+  return s.planningContext;
+}
+function planningPinsChars() { return seasonPins().reduce(function(n, p) { return n + ((p.text || '').length); }, 0); }
+function buildPlanningContext() {
+  var pins = seasonPins();
+  if (!pins.length) return '';
+  return pins.map(function(p, i) { return '--- PINNED [' + (p.label || ('Pin ' + (i + 1))) + '] ---\n' + (p.text || ''); }).join('\n\n');
+}
+function pinToPlanningContext(text, label) {
+  text = (text || '').trim(); if (!text) return false;
+  if (planningPinsChars() + text.length > _PLANNING_CAP) {
+    showToast('⚠ Planning context is full (' + _PLANNING_CAP.toLocaleString() + '-char cap). Remove a pin before adding more.');
+    return false;
+  }
+  var pins = seasonPins();
+  pins.push({ id: 'pin-' + Date.now() + '-' + Math.floor(Math.random() * 1000), label: (label || '').trim() || ('Pin ' + (pins.length + 1)), text: text, addedAt: new Date().toISOString() });
+  autoSave('planning context pinned', true);
+  renderPlanningContext();
+  showToast('📌 Pinned — Boo keeps this every turn now.');
+  return true;
+}
+function removePlanningPin(id) {
+  var s = state.seasons[0] || {};
+  s.planningContext = (s.planningContext || []).filter(function(p) { return p.id !== id; });
+  autoSave('planning pin removed', true);
+  renderPlanningContext();
+}
+function pinFromChat(btn) {
+  var body = btn.closest ? btn.closest('.msg-body') : null;
+  var bubble = body ? body.querySelector('.msg-bubble') : null;
+  var text = bubble ? (bubble.innerText || bubble.textContent || '').trim() : '';
+  if (!text) return;
+  var label = 'Chat pin — ' + text.replace(/\s+/g, ' ').slice(0, 40) + (text.length > 40 ? '…' : '');
+  if (pinToPlanningContext(text, label)) { btn.textContent = '📌 pinned'; btn.style.color = 'var(--teal)'; btn.style.opacity = '1'; }
+}
+function addPinFromPanel() {
+  var ta = document.getElementById('pin-text'), li = document.getElementById('pin-label');
+  var text = ta ? ta.value : '', label = li ? li.value : '';
+  if (pinToPlanningContext(text, label) && ta) { ta.value = ''; if (li) li.value = ''; }
+}
+function renderPlanningContext() {
+  var el = document.getElementById('sv-planning-context'); if (!el) return;
+  var pins = seasonPins(), used = planningPinsChars(), cap = _PLANNING_CAP;
+  var tok = Math.round(used / 4 / 100) / 10; // ~k tokens
+  var color = used > cap ? '#E8431A' : (used > cap * 0.6 ? 'var(--gold)' : 'var(--teal)');
+  var head = '<div class="season-arc-label" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'
+    + '<span>📌 PLANNING CONTEXT</span>'
+    + '<span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px;color:' + color + ';">'
+    + used.toLocaleString() + ' / ' + cap.toLocaleString() + ' chars · ~' + tok + 'k tokens · rides EVERY turn</span>'
+    + '</div>';
+  var controls = '<div style="margin:4px 0 10px;">'
+    + '<input id="pin-label" placeholder="Label (e.g. Planning meeting, My answers)" style="width:100%;box-sizing:border-box;margin-bottom:6px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:12px;">'
+    + '<textarea id="pin-text" placeholder="Paste a transcript, direction notes, or your interrogation answers to pin — Boo keeps it every turn, it never scrolls out of chat." style="width:100%;box-sizing:border-box;min-height:70px;background:var(--surface);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:8px 10px;font-size:12px;font-family:\'DM Mono\',monospace;"></textarea>'
+    + '<button class="action-btn teal" style="margin-top:6px;" onclick="addPinFromPanel()">📌 Pin it</button>'
+    + '</div>';
+  var list = pins.length
+    ? '<div class="card-grid">' + pins.map(function(p) {
+        return '<div class="guest-card" style="border:1px solid var(--border);">'
+          + '<div class="guest-card-header"><div style="flex:1;min-width:0;font-family:\'Syne\',sans-serif;font-weight:700;font-size:13px;color:#E8E8E6;">' + esc(p.label) + '</div>'
+          + '<button class="season-ep-delete" onclick="removePlanningPin(\'' + p.id + '\')" title="Remove pin">×</button></div>'
+          + '<div class="guest-why" style="margin-top:6px;white-space:pre-wrap;max-height:64px;overflow:hidden;">' + esc((p.text || '').slice(0, 220)) + ((p.text || '').length > 220 ? '…' : '') + '</div>'
+          + '<div class="guest-unverified-note">' + (p.text || '').length.toLocaleString() + ' chars · pinned</div>'
+          + '</div>';
+      }).join('') + '</div>'
+    : '<div style="font-size:12px;color:var(--muted);padding:2px 0 6px;">Nothing pinned. Pin a pasted transcript or your interrogation answers so Boo keeps them every turn — they never scroll out of chat.</div>';
+  el.innerHTML = '<div class="season-arc-wrap">' + head + controls + list + '</div>';
+}
+
 function renderRecordingsList() {
   var el = document.getElementById('sv-recordings');
   if (!el) return;
@@ -5834,7 +5923,7 @@ function buildRecordingsContext() {
 function buildSeasonPlanPrompt() {
   var n = (state.recordings || []).length;
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
-  return 'We are planning Season ' + sNum + ' from the ' + n + ' recordings in your context (see SEASON RECORDINGS, and any FOCUSED TRANSCRIPTS). '
+  return 'We are planning Season ' + sNum + ' from the ' + n + ' recordings in your context (see SEASON RECORDINGS, any FOCUSED TRANSCRIPTS, and the PINNED PLANNING CONTEXT — the user\'s pinned direction and interrogation answers, which are authoritative). '
     + 'Run the SEASON PLANNING METHODOLOGY from your instructions, and follow the Boo dialogue pattern exactly.\n\n'
     + 'Begin MOVEMENT 1 — interrogate the story, hypothesis-driven. Open with CONFLICT/PROBLEM, the stakes-first question. This one is largely my judgment, not something the recordings can answer, so genuinely interrogate me: in 2-3 confident sentences give your best hypothesis for the season\'s central problem, grounded in specific evidence from the cards/transcripts (cite the actual guests and quotes, never invent) — then ask me exactly ONE question that sharpens the stakes (what happens if we DON\'T solve it, the cascading consequences, whether it is worth the cost, or how we would know we solved it).\n\n'
     + 'Do NOT run the other questions yet, do NOT propose an arc yet, and never give me a menu — one question. On later turns you will move to Who/What/Where/When, where you should mostly PROPOSE the answer from the recordings and ask me only to confirm or correct.';
@@ -5874,6 +5963,7 @@ function renderSeasonView() {
   document.getElementById('sv-progress-text').textContent = started + ' of ' + count + ' episode' + (count !== 1 ? 's' : '') + ' started';
 
   renderRecordingsList();
+  renderPlanningContext();
   renderArchivesList();
 
   // ── Story Shape: selector + active arc strip + compare-in-frame ──

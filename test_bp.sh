@@ -733,6 +733,22 @@ else
   printf '%s\n' "$T29_OUT" | grep 'FAIL' | sed 's/^/    /'
 fi
 
+echo ""
+echo "--- Test 30: planning-context pin reaches Boo (the pin changes the output) ---"
+T30_OUT=$(node test_planning_pin.js 2>&1)
+T30_RC=$?
+T30_FAILS=$(printf '%s\n' "$T30_OUT" | grep -c 'FAIL')
+T30_PASSES=$(printf '%s\n' "$T30_OUT" | grep -c 'PASS')
+if [[ $T30_RC -eq 0 && $T30_FAILS -eq 0 && $T30_PASSES -gt 0 ]]; then
+  pass "pinned content physically reaches the callBoo request during Plan Season, in a cached block; absent when unpinned; cap enforced ($T30_PASSES assertions)"
+elif [[ $T30_RC -eq 2 ]]; then
+  fail "planning-pin test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T30_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "planning-context pin broke ($T30_FAILS assertion(s) failed)"
+  printf '%s\n' "$T30_OUT" | grep 'FAIL' | sed 's/^/    /'
+fi
+
 # ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay

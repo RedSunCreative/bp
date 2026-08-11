@@ -256,6 +256,7 @@ function main() {
   // state.seasons + dynamic seasonBrief on a season (rides inside state.seasons)
   state.seasons[0].seasonBrief = S('seasonBrief');
   state.seasons[0].theme = S('seasonTheme');
+  state.seasons[0].planningContext = [{ id: 'pin1', label: S('pinLabel'), text: S('pinText'), addedAt: '2026-08-11' }];
   state.currentSeason.theme = S('currentSeasonTheme');
   state.currentEpisode.title = S('currentEpisodeTitle');
 
@@ -363,6 +364,8 @@ function main() {
     // seasons + dynamic seasonBrief
     ['state.seasons[0].seasonBrief', S('seasonBrief'),    cap(S('seasonBrief')),        containsSentinel(seasonAfter.seasonBrief, S('seasonBrief'))],
     ['state.seasons[0].theme',   S('seasonTheme'),        cap(S('seasonTheme')),        containsSentinel(seasonAfter.theme, S('seasonTheme'))],
+    ['state.seasons[0].planningContext.label', S('pinLabel'), cap(S('pinLabel')),       containsSentinel(seasonAfter.planningContext, S('pinLabel'))],
+    ['state.seasons[0].planningContext.text',  S('pinText'),  cap(S('pinText')),        containsSentinel(seasonAfter.planningContext, S('pinText'))],
     ['state.currentSeason.theme', S('currentSeasonTheme'), cap(S('currentSeasonTheme')), containsSentinel(stateAfter.currentSeason && stateAfter.currentSeason.theme, S('currentSeasonTheme'))],
     ['state.currentEpisode.title', S('currentEpisodeTitle'), cap(S('currentEpisodeTitle')), containsSentinel(stateAfter.currentEpisode && stateAfter.currentEpisode.title, S('currentEpisodeTitle'))],
 

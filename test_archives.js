@@ -163,13 +163,20 @@ function main() {
   ok((state.arcArchives || []).length === 2, 'arcArchives survive snapshot -> applySession');
 
   // 5. Restore round-trip: current season auto-archived first, then archived season restored.
+  //    Planning-context pins ride state.seasons[0], so they MUST archive and restore with
+  //    the season (Mark's requirement: "a restore that loses the pins" is unacceptable).
   state.seasons[0].theme = 'ORIGINAL THEME';
+  state.seasons[0].planningContext = [{ id: 'pinX', label: 'Direction', text: 'PIN_SURVIVES_ARCHIVE_9k' }];
   const archOrig = archiveCurrentSeason('orig');
   state.seasons[0].theme = 'CHANGED THEME';
+  state.seasons[0].planningContext = [];
   const before = state.arcArchives.length;
   restoreArcArchive(archOrig.id);
   ok(state.seasons[0].theme === 'ORIGINAL THEME', 'restore brings back the archived season');
   ok(state.arcArchives.length === before + 1, 'restore auto-archived the current state first (nothing lost)');
+  ok((state.seasons[0].planningContext || []).length === 1
+    && state.seasons[0].planningContext[0].text === 'PIN_SURVIVES_ARCHIVE_9k',
+    'planning-context pins archive WITH the season and come back on restore');
 
   // 6. Start Fresh zeroes episodes but PRESERVES guests (harvested to the repo).
   // Real episodeStore entries always carry conversationLog; mirror that here.
