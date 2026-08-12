@@ -88,6 +88,7 @@ function buildSandbox(scriptSrc) {
   try { globalThis.__cap = _PLANNING_CAP; } catch(e){ globalThis.__e10 = String(e); }
   try { globalThis.__pinRec = pinRecordingTranscript; } catch(e){ globalThis.__e11 = String(e); }
   try { globalThis.__setTx = function(id,t){ _transcriptStore[id] = t; }; } catch(e){ globalThis.__e12 = String(e); }
+  try { globalThis.__view = viewRecordingTranscript; } catch(e){ globalThis.__e13 = String(e); }
 })();`;
   vm.runInContext(scriptSrc + '\n' + epilogue, context, { filename:'bp.html#inline', timeout:20000 });
   return sandbox;
@@ -176,6 +177,14 @@ async function main() {
   cap.body = null;
   await sb.__callBoo(sb.__planPrompt());
   ok(sysText(cap.body).indexOf('FULL_DORA_TRANSCRIPT_MARKER_88') !== -1, 'a transcript pinned from its card reaches the callBoo request');
+
+  // ---- 8. the human transcript viewer opens without throwing and costs NO tokens ----
+  sb.__setTx('rec-1', FULL);
+  cap.body = null;
+  let viewThrew = null;
+  try { sb.__view('rec-1'); } catch (e) { viewThrew = e; }
+  ok(!viewThrew, 'viewRecordingTranscript opens the reader without throwing');
+  ok(cap.body === null, 'reading a transcript yourself makes NO Boo/API call (zero tokens)');
 
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
   process.exit(FAIL === 0 ? 0 : 1);

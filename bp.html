@@ -5648,6 +5648,32 @@ function pinRecordingTranscript(id) {
   }
   if (pinToPlanningContext(tx, name + ' — full transcript', id)) renderRecordingsList();
 }
+// Read the full transcript yourself — full-screen, read-only, local (no API call / no tokens).
+function viewRecordingTranscript(id) {
+  var rec = (state.recordings || []).find(function (r) { return r.id === id; });
+  var name = (rec && (rec.guest || rec.label)) || 'this recording';
+  var tx = loadTranscript(id);
+  var ov = document.getElementById('transcriptViewerOverlay');
+  var headEl = document.getElementById('tv-head');
+  var bodyEl = document.getElementById('tv-body');
+  if (!ov || !headEl || !bodyEl) return;
+  if (!tx) {
+    headEl.textContent = name + ' — transcript';
+    bodyEl.textContent = "This transcript is still syncing from the server. Give it a few seconds and open it again.";
+    if (typeof hydrateTranscripts === 'function') hydrateTranscripts();
+  } else {
+    headEl.textContent = name + ' — full transcript · ' + tx.length.toLocaleString() + ' chars · read-only (no tokens)';
+    bodyEl.textContent = tx;   // textContent, not innerHTML: safe + preserves the raw text verbatim
+  }
+  ov.style.display = 'flex';
+  bodyEl.scrollTop = 0;
+}
+function closeTranscriptViewer(e) {
+  // Close on backdrop click or the ✕ button (called with no event); ignore clicks inside the panel.
+  if (e && e.target !== document.getElementById('transcriptViewerOverlay')) return;
+  var ov = document.getElementById('transcriptViewerOverlay');
+  if (ov) ov.style.display = 'none';
+}
 function removePlanningPin(id) {
   var s = state.seasons[0] || {};
   s.planningContext = (s.planningContext || []).filter(function(p) { return p.id !== id; });
@@ -5728,7 +5754,8 @@ function renderRecordingsList() {
           + '</div>'
           + (r.tension ? '<div class="guest-why" style="margin-top:8px;">' + esc(r.tension) + '</div>' : '')
           + '<div class="guest-unverified-note">' + quotes + ' pull-quote' + (quotes === 1 ? '' : 's') + ' captured · transcript stored</div>'
-          + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')" title="Load this transcript for the current session (cleared on refresh, costs tokens only while loaded)">'
+          + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="viewRecordingTranscript(\'' + r.id + '\')" title="Read the full transcript yourself — full-screen, read-only, no tokens">📄 Read</button>'
+          + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')" title="Load this transcript for the current session (cleared on refresh, costs tokens only while loaded)">'
           + (_activeTranscriptIds.indexOf(r.id) !== -1 ? '✓ Boo is reading this' : '✦ Have Boo read this') + '</button>'
           + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'border-color:var(--teal);color:var(--teal);' : '') + '" onclick="pinRecordingTranscript(\'' + r.id + '\')" title="' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'Pinned — Boo keeps this full transcript on every turn. Click to unpin.' : 'Pin the FULL transcript so Boo keeps it on every turn (durable, rides every turn)') + '">'
           + (seasonPins().some(function(p){ return p.recId === r.id; }) ? '✕ Unpin transcript' : '📌 Pin transcript') + '</button>'
@@ -10161,6 +10188,15 @@ document.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <!-- Guest Detail Overlay -->
+<div id="transcriptViewerOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.82);z-index:750;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto;" onclick="closeTranscriptViewer(event)">
+  <div style="background:var(--surface,#12151c);border:1px solid var(--border,#2a2f3a);border-radius:12px;max-width:900px;width:100%;max-height:calc(100vh - 64px);display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.7);">
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--border,#2a2f3a);flex-shrink:0;">
+      <div id="tv-head" style="flex:1;min-width:0;font-family:'Syne',sans-serif;font-weight:700;font-size:14px;color:#E8E8E6;"></div>
+      <button onclick="closeTranscriptViewer()" title="Close (read-only viewer)" style="background:transparent;border:1px solid var(--border,#2a2f3a);color:var(--text-muted,#9aa2ad);border-radius:6px;font-size:15px;line-height:1;padding:6px 12px;cursor:pointer;flex-shrink:0;">✕ Close</button>
+    </div>
+    <div id="tv-body" style="overflow-y:auto;padding:20px 22px;white-space:pre-wrap;word-break:break-word;font-family:'DM Mono',monospace;font-size:12.5px;line-height:1.7;color:var(--text,#d7d2c8);"></div>
+  </div>
+</div>
 <div id="guestDetailOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:700;align-items:flex-start;justify-content:center;padding:32px 16px;overflow-y:auto;" onclick="closeGuestDetail(event)">
   <div id="guestDetailPanel" style="background:var(--surface2);border:1px solid var(--border);border-radius:12px;width:100%;max-width:900px;padding:28px 32px;position:relative;" onclick="event.stopPropagation()">
     <!-- Header -->
