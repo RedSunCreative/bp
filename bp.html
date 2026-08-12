@@ -5731,7 +5731,7 @@ function renderRecordingsList() {
           + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')" title="Load this transcript for the current session (cleared on refresh, costs tokens only while loaded)">'
           + (_activeTranscriptIds.indexOf(r.id) !== -1 ? '✓ Boo is reading this' : '✦ Have Boo read this') + '</button>'
           + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'border-color:var(--teal);color:var(--teal);' : '') + '" onclick="pinRecordingTranscript(\'' + r.id + '\')" title="' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'Pinned — Boo keeps this full transcript on every turn. Click to unpin.' : 'Pin the FULL transcript so Boo keeps it on every turn (durable, rides every turn)') + '">'
-          + (seasonPins().some(function(p){ return p.recId === r.id; }) ? '✓ Pinned every turn' : '📌 Pin transcript') + '</button>'
+          + (seasonPins().some(function(p){ return p.recId === r.id; }) ? '✕ Unpin transcript' : '📌 Pin transcript') + '</button>'
           + '</div>';
       }).join('') + '</div>'
     : '<div style="font-size:12px;color:var(--muted);padding:4px 0 8px;">No recordings yet — add transcript files or paste one, and Boo will read each and file a card.</div>';
