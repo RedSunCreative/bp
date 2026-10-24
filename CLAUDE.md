@@ -2,11 +2,25 @@
 
 ## Who I Am
 Mark Caddell, Red Sun Creative Studio, Austin TX.
-Boo Producer is the pre-production tool in the Boo Podcast Suite — episode planning, season arcs, guest research, topics, questions. Current client: Anno Coding podcast (Matt + Kartik). Demo: 2026-06-14.
+Boo Producer is the pre-production tool in the Boo Podcast Suite — episode planning, season arcs, guest research, topics, questions. Current client: **K12 Boss** podcast — "K-12 CS Education in a Post-Coding Era," hosts Karttikeya Mangalam (Kartik) + Matthew Callison (Matt), recorded on Riverside.fm. (Older notes and files say "Anno Coding" / `anno` — same hosts, same row 98; that name and code are gone from the app.)
 
 ## Delivery
-BP is served via GitHub Pages (`redsuncreative.github.io/bp/bp.html`). Local edits are invisible until pushed.
+BP is served via GitHub Pages. Local edits are invisible until pushed. Live URL (give it to Mark on its own line, never with punctuation after it — a trailing period breaks the link):
+
+https://redsuncreative.github.io/bp/bp.html
+
 **Every session with code changes:** `bash test_bp.sh` → `git commit` → `git push`. Never report work done without pushing.
+
+## Login — show codes (no password)
+Entered at the login screen; case-insensitive, **no spaces**. Defined in `SHOW_REGISTRY`.
+| Code | Show | Supabase `builder_state` row |
+|------|------|------|
+| `k12boss` | K12 Boss — **live client data** | 98 |
+| `k12bosstest1` | K12 Boss sandbox | 100 |
+| `k12bosstest2` | K12 Boss sandbox | 101 |
+| `lbv` | Little Big Voices (Mark hosts, StreamYard) | 97 |
+
+Use a test code for experiments — never row 98.
 
 ## The Boo Dialogue Philosophy
 
@@ -40,15 +54,27 @@ The specific interaction that makes this work (from `findGuest()`):
 
 ## Architecture
 Single file: `bp.html`. No build step.
-- `SHOW_CONFIG` — show identity (name, hosts, format, etc.) at top of script
+- `SHOW_REGISTRY` — show code → `{rowId, config}`. `SHOW_CONFIG` is populated from it at login (`submitShowCode()`); `getShowRow()` returns the active row id
 - `state` / `episodeStore` — all episode data, keyed by episode number
 - `activeEp()` — auto-initializes episode bucket, always use this
 - `conversationLog` — per-episode array of `{role, text, rawText?, html?}`
   - `rawText`: original API text, used by `getConversationHistory()` so Boo's context stays clean
   - `html`: rendered HTML, used by restore code so guest cards re-render as cards after refresh
-- `autoSave(reason)` — patches Supabase row 98 via REST PATCH
+- `autoSave(reason, immediate)` — patches the active show's `builder_state` row (`getShowRow()`) via REST PATCH. Blocked until `_supabaseLoaded` is true (load gate — never write before load completes); backs up the prior snapshot before overwriting
+- `backup_bp.sh [rowId]` — off-app, timestamped backup of a live row into `backups/` (gitignored); restore instructions are in the script header
 - `triggerBooDirectly(displayText, apiPrompt)` — fires Boo without touching the chat input field. Use this for all button-triggered Boo interactions. The `displayText` is a short label shown in chat; `apiPrompt` is the full context sent to the API.
-- `callBoo(prompt)` → `parseReply()` → `formatGuestSuggestions()` → `buildGuestCard()` — guest card pipeline
+- `callBoo(prompt)` → `parseReply()` → `formatGuestSuggestions()` → `buildGuestCard()` — guest card pipeline. `callBoo` auto-retries transient API overloads
+
+## Recordings, transcripts & pins (Season screen)
+- Recordings are cards on the Season screen; transcripts are stored durably in Supabase (`hydrateTranscripts()`) so they travel across devices.
+- Each card has three verbs, left to right:
+  - **📄 Read** — `viewRecordingTranscript(id)`: full-screen read-only viewer for the human. Zero API calls, zero tokens.
+  - **✦ Have Boo read this** — `booReadRecording(id)` / `loadTranscript(id)`: loads the transcript into Boo's context (prompt-cached; unload chip shown).
+  - **📌 Pin transcript** — `pinRecordingTranscript(id)`: durable planning-context pin.
+- **Planning-context pins** (`seasonPins()`, `pinToPlanningContext()`, `pinFromChat()`) are season-scoped and ride every Boo turn. Cap: `_PLANNING_CAP` = 150,000 chars.
+- Boo should prompt to load a transcript rather than bluff from the card; it can emit one-tap LOAD-TRANSCRIPT buttons.
+- **Plan Season** runs the interrogation methodology over already-recorded material. Each season shape (e.g. THE QUESTION, Kartik's height→down→partial-up variant) has its own beat vocabulary — don't default to Freytag.
+- A session cost meter shows approximate spend.
 
 ## Guest Card Format
 Boo returns pipe-delimited lines: `NAME | Title, Org | 2–3 sentence bio + unique angle | Topic 1, Topic 2 | Tier: Spotlight/Rising/Discovery, LinkedIn: ..., YouTube: ..., Substack: ..., Instagram: ...`
@@ -56,7 +82,7 @@ Boo returns pipe-delimited lines: `NAME | Title, Org | 2–3 sentence bio + uniq
 Tiers: Spotlight (T1 — high platform), Rising (T2 — building momentum), Discovery (T3 — diamond in the rough, the one no one else is booking).
 
 ## Auth — current state and roadmap
-Current: show-code login (`lbv` / `anno`) at `submitShowCode()`. Per-user identity is a `userPrefs` object (`{name, gmail}`) stored in `localStorage` under `boo_user_prefs`. A nudge toast fires on login if Gmail is not set. localStorage is fragile (wiped by browser clear-data).
+Current: show-code login at `submitShowCode()` (codes in the Login section above). Per-user identity is a `userPrefs` object (`{name, gmail}`) stored in `localStorage` under `boo_user_prefs`. A nudge toast fires on login if Gmail is not set. localStorage is fragile (wiped by browser clear-data).
 
 **Next auth milestone (when commercializing):** Supabase Auth with Google OAuth.
 - One "Sign in with Google" button replaces or supplements the show-code flow
@@ -69,3 +95,4 @@ Current: show-code login (`lbv` / `anno`) at `submitShowCode()`. Per-user identi
 ## Important
 - `Claude Console API Key.rtf` is in the project folder — never commit it
 - Fixes to the guest card format or system prompt: always check how `formatGuestSuggestions()` parses the result before changing the prompt
+- **Keep this file current.** When a commit changes login codes, rows, URLs, the client, or adds a major feature, update this file in the same commit. If anything here contradicts the code, trust the code, tell Mark, and fix this file.
