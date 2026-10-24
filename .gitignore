@@ -4,3 +4,6 @@
 # API keys
 *.rtf
 backups/
+
+# Boo DNA design archive — contains client planning + dialogues; private, never commit
+boo-dna/
