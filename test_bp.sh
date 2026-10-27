@@ -749,6 +749,22 @@ else
   printf '%s\n' "$T30_OUT" | grep 'FAIL' | sed 's/^/    /'
 fi
 
+echo ""
+echo "--- Test 31: Boo edit scripts + story shapes (WRITE-SCRIPT, clip verification, streamed writer, safe save, SEASON-ARC) ---"
+T31_OUT=$(node test_edit_script.js 2>&1)
+T31_RC=$?
+T31_FAILS=$(printf '%s\n' "$T31_OUT" | grep -c '^FAIL')
+T31_PASSES=$(printf '%s\n' "$T31_OUT" | grep -c '^PASS')
+if [[ $T31_RC -eq 0 && $T31_FAILS -eq 0 && $T31_PASSES -gt 0 ]]; then
+  pass "edit scripts + shapes: buttons keep args; clips verified/flagged/located; stream assembled, cut-offs/empties refused; replace confirm-gated + versioned; every Boo shape drawable; arc placed as planned ($T31_PASSES assertions)"
+elif [[ $T31_RC -eq 2 ]]; then
+  fail "edit-script test could not load bp.html into sandbox (rc=2)"
+  printf '%s\n' "$T31_OUT" | grep -iE 'FATAL|Error' | head -3 | sed 's/^/    /'
+else
+  fail "edit scripts broke ($T31_FAILS assertion(s) failed)"
+  printf '%s\n' "$T31_OUT" | grep '^FAIL' | sed 's/^/    /'
+fi
+
 # ──────────────────────────────────────────────────────────────
 # TEST 22 (source guard): no stale old-season content; narrative ethos present
 # Pins the "fix ALL of it" cleanup: the old Anno/Season-1 hardcoding must stay

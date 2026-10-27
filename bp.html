@@ -1675,6 +1675,41 @@
   .season-ep-row { display:flex; align-items:center; gap:10px; padding:12px 14px; border-radius:7px; border:1px solid var(--border); margin-bottom:7px; cursor:pointer; transition:background 0.12s, border-color 0.12s; background:var(--surface); }
   .season-ep-row:hover { background:rgba(255,255,255,0.04); border-color:rgba(255,255,255,0.12); }
   .season-ep-row.active-ep { border-color:var(--teal); background:rgba(59,184,201,0.06); }
+  .season-ep-script { background:transparent; border:1px solid rgba(59,184,201,0.45); color:var(--teal); border-radius:4px; padding:2px 8px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.05em; cursor:pointer; white-space:nowrap; flex-shrink:0; }
+  .season-ep-script:hover { background:rgba(59,184,201,0.12); }
+  .season-ep-script.has { border-color:rgba(255,255,255,0.15); padding:2px 6px; }
+  /* Edit script (Boo-written, clip-verified) */
+  .es-wrap { font-size:13px; line-height:1.55; }
+  .es-intro { margin-bottom:10px; }
+  .es-summary { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 12px; }
+  .es-pill { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.04em; border:1px solid var(--border); border-radius:10px; padding:2px 8px; color:var(--text-muted); }
+  .es-pill.ok { border-color:rgba(59,184,201,0.6); color:var(--teal); }
+  .es-pill.partial, .es-pill.confirm { border-color:rgba(232,178,26,0.6); color:var(--gold); }
+  .es-pill.missing { border-color:rgba(232,67,26,0.7); color:#E8431A; }
+  .es-title { font-family:'Syne',sans-serif; font-weight:700; font-size:17px; color:#E8E8E6; margin:4px 0 6px; }
+  .es-meta { font-size:12px; color:var(--text-muted); margin:1px 0; }
+  .es-meta b { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.1em; color:var(--teal); margin-right:4px; }
+  .es-seg { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); border-top:1px solid var(--border); margin:16px 0 6px; padding-top:8px; }
+  .es-host { margin:5px 0; }
+  .es-who { display:inline-block; min-width:52px; font-family:'DM Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.08em; margin-right:6px; }
+  .es-who.kartik { color:#9FB7FF; }
+  .es-who.matt { color:#7FD8A0; }
+  .es-note { font-size:12px; font-style:italic; color:var(--text-muted); margin:4px 0; }
+  .es-confirm { font-size:12px; color:var(--gold); margin:4px 0; }
+  .es-other { font-size:12px; color:var(--text-muted); margin:3px 0; }
+  .es-clip { border:1px solid var(--border); border-left:3px solid var(--teal); border-radius:6px; padding:6px 10px; margin:6px 0; background:rgba(255,255,255,0.02); }
+  .es-clip.partial { border-left-color:var(--gold); }
+  .es-clip.missing { border-left-color:#E8431A; }
+  .es-clip-head { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.06em; color:var(--teal); text-transform:uppercase; }
+  .es-clip.partial .es-clip-head { color:var(--gold); }
+  .es-clip.missing .es-clip-head { color:#E8431A; }
+  .es-tc { color:var(--text-muted); text-transform:none; margin-left:6px; }
+  .es-badge { float:right; text-transform:none; }
+  .es-clip-words { font-size:12px; margin-top:3px; }
+  .es-clip-job { font-size:11px; color:var(--text-muted); margin-top:2px; }
+  .es-clip-why { font-size:11px; color:var(--gold); margin-top:2px; }
+  .es-clip.missing .es-clip-why { color:#E8431A; }
+  .es-progress { font-family:'DM Mono',monospace; font-size:12px; color:var(--teal); }
   .season-ep-row.dragging { opacity:0.35; }
   .season-ep-row.drag-over { border-color:var(--teal) !important; background:rgba(59,184,201,0.1) !important; }
   .season-ep-drag { cursor:grab; color:rgba(255,255,255,0.18); font-size:15px; padding:0 2px; flex:0 0 24px; user-select:none; line-height:1; text-align:center; }
@@ -3285,7 +3320,7 @@ async function triggerBooDirectly(displayText, apiPrompt) {
     activeEp().conversationLog.push({ role: 'user', text: displayText, rawText: apiPrompt });
     hideTyping();
     const parsed = parseReply(reply);
-    addMsg('boo', parsed, buildTranscriptLoadActions(), reply); // load-transcript button(s) if Boo asked; original reply for clean API context
+    addMsg('boo', parsed, buildReplyActions(), reply); // load-transcript / write-script button(s) if Boo asked; original reply for clean API context
     autoSave('conversation updated', true);
     maybeOfferTranscriptUnloadTip();
   } catch (err) {
@@ -3295,6 +3330,26 @@ async function triggerBooDirectly(displayText, apiPrompt) {
     autoSave('conversation updated', true);
   }
   if (btn) btn.disabled = false;
+}
+
+// FOCUSED TRANSCRIPTS block — the full text of every transcript the user loaded.
+// Shared by callBoo() and the edit-script writer so both read identical context.
+function buildFocusedTranscriptsContext() {
+  if (!_activeTranscriptIds || !_activeTranscriptIds.length) return '';
+  var _txBudget = 1500000; // ~375k tokens — holds all recordings at once for a full-season read (Sonnet 4.6 has the window); still a backstop against runaway size
+  var _txParts = [];
+  _activeTranscriptIds.forEach(function(id) {
+    var rec = (state.recordings || []).find(function(r) { return r.id === id; });
+    var t = loadTranscript(id);
+    if (!t) return;
+    if (t.length > _txBudget) t = t.slice(0, _txBudget) + '\n…[transcript truncated to fit context]';
+    _txBudget -= t.length;
+    _txParts.push('--- FULL TRANSCRIPT: ' + ((rec && (rec.guest || rec.label)) || id) + ' ---\n' + t);
+  });
+  if (!_txParts.length) return '';
+  return '\n\n===== FOCUSED TRANSCRIPTS (full verbatim text — READ THESE DIRECTLY) =====\n'
+    + 'The user loaded these complete transcripts into your context. You CAN read them — quote and reason from the actual words, with timecodes where present. Do not say you lack the transcript.\n\n'
+    + _txParts.join('\n\n');
 }
 
 // ── API CALL ──
@@ -3322,7 +3377,7 @@ async function callBoo(userMsg) {
   // Season arc with guest assignments
   var _arcSeason = state.currentSeason || (state.seasons && state.seasons[0]) || {};
   var _arcOrder  = (_arcSeason.episodeOrder || []).slice();
-  if (!_arcOrder.length) { var _ac = _arcSeason.episodeCount || 8; for (var _ai = 1; _ai <= _ac; _ai++) _arcOrder.push(_ai); }
+  if (!_arcOrder.length) { var _ac = epCountOf(_arcSeason); for (var _ai = 1; _ai <= _ac; _ai++) _arcOrder.push(_ai); }
   var _arcList = _arcOrder.map(function(e) {
     var beat   = getEpArcBeat(e);
     var title  = getEpTitle(e) || 'TBD';
@@ -3330,7 +3385,7 @@ async function callBoo(userMsg) {
     var gStr   = eGuests.length
       ? eGuests.map(function(g) { return g.name + ' [' + (g.status || 'considering') + ']' + (g.why ? ' — ' + g.why.slice(0,80) : ''); }).join('; ')
       : 'No guest assigned';
-    return 'S' + _sNum + '-E' + e + ' [' + beat.label + '] "' + title + '"\n  Guest: ' + gStr;
+    return 'S' + _sNum + '-E' + e + (seasonShapeChosen() ? ' [' + beat.label + ']' : '') + ' "' + title + '"\n  Guest: ' + gStr;
   }).join('\n\n');
 
   // Current episode guest list (considerations)
@@ -3361,25 +3416,9 @@ async function callBoo(userMsg) {
   // Cards travel every turn (cheap); full transcripts are huge, so they load on
   // demand via booReadRecording() and stay in context until cleared. Capped so a
   // few long transcripts can't blow the context window.
-  var _txCtx = '';
-  if (_activeTranscriptIds && _activeTranscriptIds.length) {
-    var _txBudget = 1500000; // ~375k tokens — holds all recordings at once for a full-season read (Sonnet 4.6 has the window); still a backstop against runaway size
-    var _txParts = [];
-    _activeTranscriptIds.forEach(function(id) {
-      var rec = (state.recordings || []).find(function(r) { return r.id === id; });
-      var t = loadTranscript(id);
-      if (!t) return;
-      if (t.length > _txBudget) t = t.slice(0, _txBudget) + '\n…[transcript truncated to fit context]';
-      _txBudget -= t.length;
-      _txParts.push('--- FULL TRANSCRIPT: ' + ((rec && (rec.guest || rec.label)) || id) + ' ---\n' + t);
-    });
-    if (_txParts.length) {
-      _txCtx = '\n\n===== FOCUSED TRANSCRIPTS (full verbatim text — READ THESE DIRECTLY) =====\n'
-        + 'The user loaded these complete transcripts into your context. You CAN read them — quote and reason from the actual words, with timecodes where present. Do not say you lack the transcript.\n\n'
-        + _txParts.join('\n\n');
-    }
-  }
+  var _txCtx = buildFocusedTranscriptsContext();
   var _pinCtx = buildPlanningContext();  // pinned planning context — injected EVERY turn, survives the 14-message window
+  var _esCtx = buildCurrentEditScriptContext(); // this episode's saved edit script, so Boo can discuss/revise it
 
   // Action items
   var _actions = (state.actionItems || []).filter(function(a) { return !a.done; });
@@ -3420,7 +3459,7 @@ CURRENT STATE:
 - Working on: S${_sNum}-E${_epNum}
 - Season theme: "${(state.currentSeason && state.currentSeason.theme) || 'not set'}"
 - Episode title: "${getEpTitle(_epNum) || 'TBD'}"
-- Episode arc position: ${getEpArcBeat(_epNum).label}
+- Episode arc position: ${seasonShapeChosen() ? getEpArcBeat(_epNum).label : 'not mapped yet (no season shape chosen)'}
 - Booked guest: ${activeEp().guest ? (activeEp().guest.name + (activeEp().guest.title ? ', ' + activeEp().guest.title : '')) : 'None booked yet'}
 ${_hostCtx}
 
@@ -3467,6 +3506,10 @@ Ground every proposal in specific guests/quotes; never invent. At the END of Mov
 
 MOVEMENT 2 — PROPOSE & TEST THE ARC:
 From the interrogation, propose a SEASON shape and per-episode shapes, chosen deliberately and with cited evidence, from the SHAPE LIBRARY below (pick by each shape's "best when", and once chosen use THAT shape's own beats), plus the per-guest character shapes each recording carries. Then MAP the recordings into the arc — which recording feeds which episode/beat, where the hosts carry alone (host-gap), where a guest still needs research (guest-gap). Then a LIGHT test: name what the arc is trying to make the listener feel and whether it lands. (The full pressure-test — against a simulated target listener and the great storytellers — comes in a later step.)
+PUT THE ARC ON SCREEN: once the user agrees on the season arc, end that reply with ONE line, exactly:
+SEASON-ARC: <shape id> | E1=<beat key> "<episode title>", E2=<beat key> "<episode title>", … (every episode in the plan, titles optional)
+The app turns it into a one-tap "Use this arc" button that draws the arc on the Season screen and places each episode on its beat. Use only these shape ids and beat keys (anything else is rejected):
+${buildShapeKeysForPrompt()}
 CLOSE CALLS → ONE-TAP LOAD: when a placement is a close call that reading the full interview would resolve, do NOT merely name it in prose. For EACH such recording, emit on its own line the directive LOAD-TRANSCRIPT: <exact guest name as in SEASON RECORDINGS> (exactly that token, nothing else on that line). The app turns each into a one-tap "Load transcript" button so the user can firm it up in a click. Flagging a close call without emitting its LOAD-TRANSCRIPT line is a failure — always give the buttons.
 
 SHAPE LIBRARY — each shape has its OWN beats (use them); the "best when" tells you which to choose:
@@ -3519,6 +3562,12 @@ Question of the Week | 2:00 | 5 min
 Guest Interview | 7:00 | 25 min
 Am I Human? | 32:00 | 1 min
 Close / Outro / CTA | 33:00 | 1 min
+
+===== EPISODE EDIT SCRIPTS (assembling a finished episode from the recordings) =====
+An EDIT SCRIPT is the assembly plan for a finished episode: the exact host lines Kartik and Matt will record, interleaved with verbatim guest clips the editor cuts from the recorded interviews. It is different from the pre-interview SCRIPT in STEP 3 (questions for a live interview). The app writes edit scripts with a dedicated script writer — you never write a full edit script in chat.
+When the user is planning an episode's edit script, follow the dialogue pattern: hypothesis → exactly ONE question → withhold. When you have the direction you need, end your reply with this line on its own:
+WRITE-SCRIPT: E<episode number>
+The app turns it into a one-tap "Write the script" button. Emit it only when you are genuinely ready to write, at most once per reply. If a CURRENT EDIT SCRIPT block is in your context, that is the saved script for this episode — discuss and critique it directly, and emit WRITE-SCRIPT again when the user wants a new version written with their notes.
 
 ===== SHOW-LEVEL DECISIONS =====
 When you recognize something as a show-level decision — something that applies to EVERY episode, not just this one — flag it at the END of your response using this exact format:
@@ -3582,6 +3631,7 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
   var _cachedLead = '';
   if (_pinCtx) _cachedLead += '===== PINNED PLANNING CONTEXT (the user pinned these — authoritative direction and answers; always keep them in mind while planning, and never re-ask what they already answer) =====\n' + _pinCtx + '\n\n';
   if (_txCtx) _cachedLead += 'REFERENCE — FULL TRANSCRIPTS the user loaded (read them; usage instructions follow):\n' + _txCtx;
+  if (_esCtx) _cachedLead += '\n\n' + _esCtx;
   const _reqBody = JSON.stringify({
     model: MODEL,
     max_tokens: 2000,
@@ -3625,7 +3675,7 @@ Warm, organized, a little playful. One task at a time. Use first names (Matt, Ka
         throw new Error(data.error.message || (typeof data.error === 'string' ? data.error : 'API error'));
       }
       if (!data.content?.[0]?.text) throw new Error('Empty response from API');
-      trackUsage(data, systemPrompt.length + _txCtx.length + _pinCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
+      trackUsage(data, systemPrompt.length + _txCtx.length + _pinCtx.length + _esCtx.length + JSON.stringify(conversationHistory).length, data.content[0].text);
       return data.content[0].text;
     } catch (e) {
       _lastErr = e;
@@ -3651,6 +3701,9 @@ function activeEp() {
   if (!episodeStore[key]) {
     episodeStore[key] = { conversationLog: [], briefContent: '', briefFlags: [], bakedContext: [], guest: null, recordingDates: [], script: null, runOfShow: null, considerations: [], targetTime: 60, recordDate: '', recordTime: '', releaseDate: '', releaseTime: '', cues: [], summary: '', guestIntro: '', interviewQuestions: '', location: '' };
   }
+  // Episodes created elsewhere (addEpisodeToSeason, saveEditScript) start as {} — make sure
+  // the chat log exists, or every Boo turn on that episode crashes on conversationLog.slice.
+  if (!Array.isArray(episodeStore[key].conversationLog)) episodeStore[key].conversationLog = [];
   return episodeStore[key];
 }
 
@@ -3797,7 +3850,7 @@ async function sendMessage() {
     hideTyping();
     // Parse reply for special content types
     const parsed = parseReply(reply);
-    addMsg('boo', parsed, buildTranscriptLoadActions(), reply); // load-transcript button(s) if Boo asked; original reply for clean API context
+    addMsg('boo', parsed, buildReplyActions(), reply); // load-transcript / write-script button(s) if Boo asked; original reply for clean API context
     autoSave('conversation updated', true);
     maybeOfferTranscriptUnloadTip();
   } catch (err) {
@@ -3812,6 +3865,8 @@ async function sendMessage() {
 function parseReply(text) {
   // Extract and remove ACTION: lines before rendering
   _pendingLoadTargets = [];   // reset per turn; filled by LOAD-TRANSCRIPT: directives below
+  _pendingScriptEp = null;    // reset per turn; set by a WRITE-SCRIPT: E<n> directive below
+  _pendingArc = null;         // reset per turn; set by a SEASON-ARC: directive below
   // SEASON-BRIEF: <consolidated foundation> — Boo closing Movement 1 by writing the season
   // foundation into the EXISTING Season Context Brief field. Save it, strip only the marker
   // token, and leave the prose visible in chat.
@@ -3858,9 +3913,17 @@ function parseReply(text) {
       var _ln = trimmed.replace(/^LOAD-TRANSCRIPT:\s*/i, '').trim();
       if (_ln) { _pendingLoadTargets.push(_ln); return false; } // strip the directive from chat
     }
+    // Match: WRITE-SCRIPT: E<n>  (Boo is ready to write an episode's edit script → one-tap button)
+    var _ws = trimmed.match(/^WRITE-SCRIPT:\s*(?:S\d+\s*-?\s*)?E?\s*(\d+)\s*$/i);
+    if (_ws) { _pendingScriptEp = parseInt(_ws[1], 10); return false; } // strip the directive from chat
+    // Match: SEASON-ARC: <shape> | E1=<beat>, …  (Boo proposes the season arc → one-tap "Use this arc")
+    if (/^SEASON-ARC:/i.test(trimmed)) { _pendingArc = trimmed; return false; }
     return true;
   });
-  const cleanedText = cleanedLines.join('\n');
+  let cleanedText = cleanedLines.join('\n');
+  // Boo sometimes replies with ONLY the WRITE-SCRIPT directive — don't render an empty bubble.
+  if (!cleanedText.trim() && _pendingScriptEp) cleanedText = "I have what I need. Tap below and I'll write E" + _pendingScriptEp + '.';
+  if (!cleanedText.trim() && _pendingArc) cleanedText = 'Here is the arc. Tap below to put it on the Season screen.';
 
   // Add detected ACTION items
   actionLines.forEach(function(item) {
@@ -3897,8 +3960,11 @@ function parseReply(text) {
   if (rosLines.length >= 3) {
     return formatRunOfShow(cleanedText);
   }
-  // Detect script content — must have both OPENING and OUTRO
-  if (cleanedText.toUpperCase().includes('OPENING') && cleanedText.toUpperCase().includes('OUTRO')) {
+  // Detect a pre-interview script — it must have real section HEADINGS (a line that IS
+  // "OPENING" … and a line that IS "OUTRO"), not prose that merely mentions an opening and an
+  // outro. formatScript() overwrites the episode's script field, so a false positive here
+  // silently destroyed data (any reply discussing an episode's opening + outro was hijacked).
+  if (isScriptHeading(cleanedText, 'OPENING') && isScriptHeading(cleanedText, 'OUTRO')) {
     return formatScript(cleanedText);
   }
   // Detect guest suggestions — pipe lines matching the documented guest format,
@@ -3915,6 +3981,15 @@ function parseReply(text) {
     return formatGuestSuggestions(cleanedText);
   }
   return cleanedText;
+}
+
+// True when `text` has a heading line for section `name`: "OPENING", "## OPENING",
+// "**OPENING**", "OPENING (0:00–1:30)", or a markdown-wrapped "## Opening" — with at most a
+// short label after it. A prose sentence that starts with or contains the word does not count.
+function isScriptHeading(text, name) {
+  var caps = new RegExp('^\\s*(?:#{1,6}\\s*|\\*\\*\\s*)?' + name + '\\b[^\\n]{0,40}$', 'm');
+  var md = new RegExp('^\\s*(?:#{1,6}\\s*|\\*\\*\\s*)' + name + '\\b[^\\n]{0,40}$', 'im');
+  return caps.test(String(text || '')) || md.test(String(text || ''));
 }
 
 function formatRunOfShow(text) {
@@ -5033,7 +5108,92 @@ const STORY_SHAPES = {
       { label: 'Climbing Out', cls: 'climbout',    fortune: 1,  span: [0.67, 1.0001],tip: 'Better, changed, not fully restored — the practitioners who found a way through.' },
     ],
   },
+  // The season shapes from Boo's SHAPE LIBRARY (system prompt), so anything Boo proposes can be
+  // drawn. `key` is the short name Boo uses in a SEASON-ARC: directive; `fortune` is the height
+  // on the curve (−3 floor … +3 peak). THE MOUNTAIN is 'plot-mountain' above; THE PRESSURE
+  // COOKER is an episode shape, not a season shape, so it is not here.
+  'kartik': {
+    id: 'kartik',
+    name: "Kartik's Recipe",
+    source: "Kartik's variant of The Descent & Return",
+    level: 'season',
+    blurb: 'Open on the biggest opportunity, fall to every barrier, climb to a realistic hope that lands below where it began.',
+    beats: [
+      { key: 'height', label: 'The Height',          cls: 'comfortable', fortune: 3,  span: [0, 0.25],      tip: 'The biggest opportunity, named plainly — the ceiling is gone.' },
+      { key: 'floor',  label: 'All the Way Down',    cls: 'hole',        fortune: -3, span: [0.25, 0.5],    tip: 'Every barrier, unsoftened — who is left behind, and what it costs.' },
+      { key: 'climb',  label: 'Up, Not All the Way', cls: 'climbout',    fortune: 1,  span: [0.5, 1.0001],  tip: 'A realistic ray of hope — higher than the floor, deliberately below the opening height.' },
+    ],
+  },
+  'descent-return': {
+    id: 'descent-return',
+    name: 'The Descent & Return',
+    source: 'Boo shape library',
+    level: 'season',
+    blurb: 'Leave the ordinary world, go down to a reckoning, and come back changed with a new frame.',
+    beats: [
+      { key: 'ordinary',  label: 'Ordinary World',      cls: 'exposition',  fortune: 1,  span: [0, 0.2],      tip: 'Where the audience starts — the world as they know it.' },
+      { key: 'descent',   label: 'The Descent',         cls: 'rising',      fortune: -1, span: [0.2, 0.45],   tip: 'Going down — the comfortable view gives way.' },
+      { key: 'reckoning', label: 'The Depth',           cls: 'hole',        fortune: -3, span: [0.45, 0.65],  tip: 'The reckoning — the lowest point, faced honestly.' },
+      { key: 'return',    label: 'The Return, Changed', cls: 'climbout',    fortune: 1,  span: [0.65, 0.85],  tip: 'Coming back up, carrying what the depth taught.' },
+      { key: 'frame',     label: 'New Frame',           cls: 'comfortable', fortune: 2,  span: [0.85, 1.0001],tip: 'The world seen differently than at the start.' },
+    ],
+  },
+  'the-question': {
+    id: 'the-question',
+    name: 'The Question',
+    source: 'Boo shape library',
+    level: 'season',
+    blurb: 'Pose a real question, let attempts complicate it, reframe it bigger, hand it back sharper.',
+    beats: [
+      { key: 'pose',       label: 'Pose the Question',   cls: 'exposition',  fortune: 0,  span: [0, 0.2],     tip: 'The question the season exists to investigate.' },
+      { key: 'complicate', label: 'Attempts Complicate', cls: 'rising',      fortune: -1, span: [0.2, 0.6],   tip: 'Each attempt at an answer makes it harder, not easier.' },
+      { key: 'reframe',    label: 'Reframed Bigger',     cls: 'climax',      fortune: 2,  span: [0.6, 0.85],  tip: 'The question turns out to be bigger than it looked.' },
+      { key: 'handback',   label: 'Handed Back, Sharper',cls: 'climbout',    fortune: 1,  span: [0.85, 1.0001], tip: 'The audience leaves with a better question, not a tidy answer.' },
+    ],
+  },
+  'the-braid': {
+    id: 'the-braid',
+    name: 'The Braid',
+    source: 'Boo shape library',
+    level: 'season',
+    blurb: 'Separate threads develop in parallel until a hidden connection surfaces and they converge.',
+    beats: [
+      { key: 'threads',    label: 'Separate Threads',    cls: 'exposition',  fortune: 0,  span: [0, 0.3],     tip: 'Stories that do not obviously connect.' },
+      { key: 'parallel',   label: 'In Parallel',         cls: 'rising',      fortune: 0,  span: [0.3, 0.6],   tip: 'Each thread develops on its own.' },
+      { key: 'connection', label: 'Hidden Connection',   cls: 'climbout',    fortune: 1,  span: [0.6, 0.85],  tip: 'The first link between threads surfaces.' },
+      { key: 'converge',   label: 'Convergence',         cls: 'comfortable', fortune: 3,  span: [0.85, 1.0001], tip: 'The threads revealed as one story.' },
+    ],
+  },
+  'the-turn': {
+    id: 'the-turn',
+    name: 'The Turn',
+    source: 'Boo shape library',
+    level: 'season',
+    blurb: 'A held belief cracks and collapses, leaving a conviction the audience would have resisted.',
+    beats: [
+      { key: 'belief',     label: 'The Held Belief',     cls: 'exposition',  fortune: 1,  span: [0, 0.3],     tip: 'What the audience believes going in.' },
+      { key: 'cracks',     label: 'Cracks',              cls: 'rising',      fortune: -1, span: [0.3, 0.6],   tip: 'Evidence the belief does not hold.' },
+      { key: 'collapse',   label: 'The Turn',            cls: 'hole',        fortune: -3, span: [0.6, 0.8],   tip: 'The belief collapses.' },
+      { key: 'conviction', label: 'New Conviction',      cls: 'comfortable', fortune: 2,  span: [0.8, 1.0001], tip: 'A conviction they would have resisted at the start.' },
+    ],
+  },
+  'vignettes': {
+    id: 'vignettes',
+    name: 'Vignettes on a Spine',
+    source: 'Boo shape library',
+    level: 'season',
+    blurb: 'Standalone episodes, each satisfying, advancing one spine to a cumulative payoff.',
+    beats: [
+      { key: 'spine',      label: 'Establish the Spine', cls: 'exposition',  fortune: 0,  span: [0, 0.15],    tip: 'The theme, place, or question that ties everything.' },
+      { key: 'vignettes',  label: 'Vignettes',           cls: 'rising',      fortune: 1,  span: [0.15, 0.7],  tip: 'Standalone stories, each satisfying on its own.' },
+      { key: 'advance',    label: 'Spine Advanced',      cls: 'climbout',    fortune: 1,  span: [0.7, 0.9],   tip: 'The spine echoed and pushed forward.' },
+      { key: 'payoff',     label: 'Cumulative Payoff',   cls: 'comfortable', fortune: 2,  span: [0.9, 1.0001], tip: 'What the whole adds up to.' },
+    ],
+  },
 };
+// Short key for a beat (Boo addresses beats by key in SEASON-ARC:). Legacy shapes have no key —
+// derive one from the label so every beat is addressable.
+function beatKey(b) { return b.key || String(b.label || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
 
 function activeStoryShapeId() {
   return (state.currentSeason && state.currentSeason.storyShape)
@@ -5043,9 +5203,12 @@ function activeStoryShapeId() {
 function activeStoryShape() {
   return STORY_SHAPES[activeStoryShapeId()] || STORY_SHAPES['plot-mountain'];
 }
+// Episode count for a season. Legacy default 8 only when the count was never set — a real 0
+// (fresh / Start-Fresh season) stays 0; `|| 8` used to turn it into 8 phantom episodes.
+function epCountOf(s) { return (s && typeof s.episodeCount === 'number') ? s.episodeCount : 8; }
 function seasonEpisodeCount() {
   var s = state.currentSeason || (state.seasons && state.seasons[0]) || {};
-  return s.episodeCount || 8;
+  return epCountOf(s);
 }
 // Which beat does episode n (1-based) of `count` episodes fall into, for a shape?
 // Uses the episode's center position; the [0,0.25) span for 8 eps reproduces the
@@ -5059,8 +5222,20 @@ function beatForEpisode(shape, n, count) {
   }
   return shape.beats[shape.beats.length - 1];
 }
+// The beat an episode sits on. A saved season arc (season.episodeBeats, set by "Use this arc")
+// places each episode exactly where the plan puts it; without one, the shape's even spans apply.
+// Explicit placement only applies to the ACTIVE shape (the compare view shows even placement).
+function explicitBeat(shape, n) {
+  var s = state.currentSeason || (state.seasons && state.seasons[0]) || {};
+  var map = s.episodeBeats;
+  if (!map || !shape || activeStoryShapeId() !== shape.id) return null;
+  var k = map[n] || map[String(n)];
+  if (!k) return null;
+  return shape.beats.find(function(b) { return beatKey(b) === k; }) || null;
+}
+function beatAt(shape, n, count) { return explicitBeat(shape, n) || beatForEpisode(shape, n, count); }
 function getEpArcBeat(n) {
-  var b = beatForEpisode(activeStoryShape(), n);
+  var b = beatAt(activeStoryShape(), n);
   return { label: b.label, cls: b.cls, tip: b.tip };
 }
 // Whether Boo has DETERMINED the story shape yet. Until then the arc
@@ -5084,6 +5259,70 @@ function setStoryShape(id) {
   renderSeasonView();
   autoSave('Story shape -> ' + id);
 }
+// ── SEASON ARC: Boo proposes, the user applies ──
+// Boo emits  SEASON-ARC: <shape id> | E1=<beat key> "Title", E2=<beat key>, …  once the user agrees
+// on an arc. parseSeasonArc() validates it against STORY_SHAPES; the one-tap "Use this arc"
+// button runs applySeasonArc(), which shows exactly what will change and asks before applying.
+function parseSeasonArc(str) {
+  var raw = String(str || '').replace(/^SEASON-ARC:\s*/i, '').trim();
+  var bar = raw.indexOf('|');
+  if (bar === -1) return { error: 'no episode placements after the shape' };
+  var shapeId = raw.slice(0, bar).trim().toLowerCase();
+  var shape = STORY_SHAPES[shapeId];
+  if (!shape) return { error: 'unknown shape "' + shapeId + '"' };
+  var beats = {}, titles = {}, bad = [], re = /E\s*(\d+)\s*=\s*([A-Za-z0-9-]+)(?:\s*["“]([^"”]*)["”])?/g, m, count = 0;
+  while ((m = re.exec(raw.slice(bar + 1))) !== null) {
+    var n = parseInt(m[1], 10), k = m[2].toLowerCase();
+    var beat = shape.beats.find(function(b) { return beatKey(b) === k || String(b.label).toLowerCase() === k; });
+    if (!beat || !n) { bad.push('E' + m[1] + '=' + m[2]); continue; }
+    beats[n] = beatKey(beat); count++;
+    if (m[3] && m[3].trim()) titles[n] = m[3].trim();
+  }
+  if (bad.length) return { error: 'beats not in ' + shape.name + ': ' + bad.join(', ') };
+  if (!count) return { error: 'no episode placements' };
+  return { shapeId: shapeId, shape: shape, beats: beats, titles: titles, maxEp: Math.max.apply(null, Object.keys(beats).map(Number)) };
+}
+function applySeasonArc(str) {
+  var arc = parseSeasonArc(str);
+  if (arc.error) { showToast('Could not use that arc — ' + arc.error + '.'); return false; }
+  var s0 = state.seasons[0] || (state.seasons[0] = {});
+  var have = epCountOf(s0);
+  var nums = Object.keys(arc.beats).map(Number).sort(function(a, b) { return a - b; });
+  var summary = arc.shape.name + ':\n' + nums.map(function(n) {
+    var b = arc.shape.beats.find(function(x) { return beatKey(x) === arc.beats[n]; });
+    return '  E' + n + ' → ' + b.label + (arc.titles[n] ? ' — "' + arc.titles[n] + '"' : '');
+  }).join('\n');
+  var adds = arc.maxEp > have ? '\n\nThis adds episode slots E' + (have + 1) + '–E' + arc.maxEp + ' (empty, titled where given).' : '';
+  var replacing = seasonShapeChosen() ? '\n\nThis replaces the current arc (' + activeStoryShape().name + ').' : '';
+  if (!confirm('Use this season arc?\n\n' + summary + adds + replacing + '\n\nExisting episode titles are kept.')) return false;
+  var eps = s0.episodes || (s0.episodes = []);
+  for (var n = have + 1; n <= arc.maxEp; n++) {
+    if (!eps.find(function(e) { return e.number === n; })) eps.push({ number: n, title: '', guest: '' });
+    if (!episodeStore[n]) episodeStore[n] = {};
+  }
+  if (arc.maxEp > have) {
+    s0.episodeCount = arc.maxEp;
+    if ((s0.episodeOrder || []).length) for (var k = have + 1; k <= arc.maxEp; k++) if (s0.episodeOrder.indexOf(k) === -1) s0.episodeOrder.push(k);
+  }
+  Object.keys(arc.titles).forEach(function(n) {
+    var ep = eps.find(function(e) { return e.number === Number(n); });
+    if (ep && (!ep.title || /^TBD/.test(ep.title))) ep.title = arc.titles[n];
+  });
+  s0.episodeBeats = arc.beats;
+  if (state.currentSeason && state.currentSeason !== s0) state.currentSeason.episodeBeats = arc.beats;
+  mirrorEpisodeStructureToCurrentSeason();
+  setStoryShape(arc.shapeId);   // marks chosen on both records, re-renders, autosaves
+  showToast('Season arc set — ' + arc.shape.name + ', ' + nums.length + ' episodes placed.');
+  return true;
+}
+// Shape ids + beat keys, generated from STORY_SHAPES so Boo's directive vocabulary can never
+// drift from what the screen can draw.
+function buildShapeKeysForPrompt() {
+  return Object.keys(STORY_SHAPES).filter(function(id) { return STORY_SHAPES[id].level === 'season'; }).map(function(id) {
+    return '  ' + id + ' (' + STORY_SHAPES[id].name + '): ' + STORY_SHAPES[id].beats.map(beatKey).join(', ');
+  }).join('\n');
+}
+
 var _shapeCompareOpen = false;
 function toggleShapeCompare() { _shapeCompareOpen = !_shapeCompareOpen; renderSeasonView(); }
 
@@ -5095,7 +5334,7 @@ function renderShapeStrip(shape, count) {
   function yFor(f) { return (H - ((f - minF) / (maxF - minF)) * H); }
   var pts = [];
   for (var n = 1; n <= count; n++) {
-    var b = beatForEpisode(shape, n, count);
+    var b = beatAt(shape, n, count);
     pts.push([((n - 0.5) / count) * W, yFor(b.fortune)]);
   }
   var poly = pts.map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
@@ -5106,9 +5345,10 @@ function renderShapeStrip(shape, count) {
     + dots + '</svg>';
   var pills = shape.beats.map(function(b){
     var eps = [];
-    for (var n = 1; n <= count; n++) { if (beatForEpisode(shape, n, count) === b) eps.push(n); }
+    for (var n = 1; n <= count; n++) { if (beatAt(shape, n, count) === b) eps.push(n); }
     if (!eps.length) return '';
-    var range = eps.length === 1 ? ('Ep ' + eps[0]) : ('Eps ' + eps[0] + '–' + eps[eps.length - 1]);
+    var contiguous = eps[eps.length - 1] - eps[0] === eps.length - 1;
+    var range = eps.length === 1 ? ('Ep ' + eps[0]) : contiguous ? ('Eps ' + eps[0] + '–' + eps[eps.length - 1]) : ('Eps ' + eps.join(', '));
     return '<div class="arc-beat ' + b.cls + '" data-tip="' + esc(b.tip) + '">' + esc(b.label) + '<br><span style="opacity:0.6;font-weight:400;">' + range + '</span></div>';
   }).join('');
   return '<div class="season-arc-beats">' + pills + '</div>' + svg;
@@ -5212,7 +5452,7 @@ function svDrop(e, toEpNum) {
   document.querySelectorAll('.season-ep-row').forEach(function(r) { r.classList.remove('drag-over', 'dragging'); });
   if (_svDragFrom === null || _svDragFrom === toEpNum) { _svDragFrom = null; return; }
   var season = state.seasons[0] || {};
-  var count = season.episodeCount || 8;
+  var count = epCountOf(season);
   var order = (season.episodeOrder || []).slice();
   if (!order.length) { for (var i = 1; i <= count; i++) order.push(i); }
   var fromIdx = order.indexOf(_svDragFrom);
@@ -5222,6 +5462,7 @@ function svDrop(e, toEpNum) {
   order.splice(toIdx, 0, _svDragFrom);
   season.episodeOrder = order;
   _svDragFrom = null;
+  mirrorEpisodeStructureToCurrentSeason();
   renderSeasonView();
   autoSave('ep-reorder');
 }
@@ -5247,22 +5488,34 @@ function setEpTitle(epNum, title) {
   autoSave('ep-title');
 }
 
+// The episode-structure writers below edit state.seasons[0], but the Season view and Boo read
+// state.currentSeason first. After a load those are two separate objects (JSON round-trip), so
+// a newly added episode never appeared. Mirror the structure fields (like setStoryShape does).
+function mirrorEpisodeStructureToCurrentSeason() {
+  var s0 = state.seasons && state.seasons[0], cs = state.currentSeason;
+  if (!s0 || !cs || cs === s0 || (cs.number || 1) !== (s0.number || 1)) return;
+  cs.episodeCount = s0.episodeCount;
+  cs.episodes = s0.episodes;
+  cs.episodeOrder = s0.episodeOrder;
+}
+
 function addEpisodeToSeason() {
   var season = state.seasons[0] || (state.seasons[0] = {});
-  var count = (season.episodeCount || 8) + 1;
+  var count = epCountOf(season) + 1;
   season.episodeCount = count;
   var eps = season.episodes || (season.episodes = []);
   eps.push({ number: count, title: '', guest: '' });
   if (!episodeStore[count]) episodeStore[count] = {};
   var order = season.episodeOrder || [];
   if (order.length) order.push(count);
+  mirrorEpisodeStructureToCurrentSeason();
   renderSeasonView();
   autoSave('add-episode');
 }
 
 function deleteEpisodeFromSeason(epNum) {
   var season = state.seasons[0] || {};
-  var count = season.episodeCount || 8;
+  var count = epCountOf(season);
   if (count <= 1) return;
   if (!confirm('Delete Episode ' + epNum + ' from Season ' + (season.number || 1) + '?')) return;
   season.episodeCount = count - 1;
@@ -5272,6 +5525,7 @@ function deleteEpisodeFromSeason(epNum) {
   if (season.episodeOrder) {
     season.episodeOrder = season.episodeOrder.filter(function(n) { return n !== epNum; });
   }
+  mirrorEpisodeStructureToCurrentSeason();
   renderSeasonView();
   autoSave('delete-episode');
 }
@@ -5506,6 +5760,28 @@ function booReadRecordingByName(name) {
 }
 // Turn any LOAD-TRANSCRIPT directives Boo emitted this turn into one-tap load buttons,
 // skipping guests with no recording or whose transcript is already loaded. null if none.
+// Action buttons are serialized to onclick SOURCE (buildActions uses action.toString()), so an
+// action must never capture variables — a captured value is lost and the click throws. This
+// builds a closure-free call with its argument baked in as an attribute-safe literal (no double
+// quotes, no raw single quotes), which also keeps working when the bubble is restored on reload.
+function _actionCall(fnName, arg) {
+  var lit = typeof arg === 'number' ? String(arg)
+    : "decodeURIComponent('" + encodeURIComponent(String(arg)).replace(/'/g, '%27') + "')";
+  return new Function(fnName + '(' + lit + ')');
+}
+// All one-tap actions for a Boo reply: transcript loads + the write-script button.
+function buildReplyActions() {
+  var actions = buildTranscriptLoadActions() || [];
+  if (_pendingArc) {
+    var arc = parseSeasonArc(_pendingArc);
+    if (!arc.error) actions.push({ label: '◆ Use this arc (' + esc(arc.shape.name) + ')', action: _actionCall('applySeasonArc', _pendingArc) });
+  }
+  if (_pendingScriptEp) {
+    var n = _pendingScriptEp;
+    actions.push({ label: '✦ Write the E' + n + ' script', action: _actionCall('writeEpisodeScript', n) });
+  }
+  return actions.length ? actions : null;
+}
 function buildTranscriptLoadActions() {
   if (!_pendingLoadTargets || !_pendingLoadTargets.length) return null;
   if (_pendingLoadTargets.some(function(n) { return /^all$/i.test(String(n).trim()); })) {
@@ -5524,8 +5800,7 @@ function buildTranscriptLoadActions() {
     });
     if (!matches.length) return;
     if (matches.some(function(r) { return _activeTranscriptIds.indexOf(r.id) !== -1; })) return; // already loaded
-    actions.push({ label: "✦ Load " + name + "'s transcript",
-      action: (function(n) { return function() { booReadRecordingByName(n); }; })(name) });
+    actions.push({ label: "✦ Load " + esc(name) + "'s transcript", action: _actionCall('booReadRecordingByName', name) });
   });
   return actions.length ? actions : null;
 }
@@ -5663,6 +5938,7 @@ function viewRecordingTranscript(id) {
     if (typeof hydrateTranscripts === 'function') hydrateTranscripts();
   } else {
     headEl.textContent = name + ' — full transcript · ' + tx.length.toLocaleString() + ' chars · read-only (no tokens)';
+    bodyEl.style.whiteSpace = 'pre-wrap'; bodyEl.style.fontFamily = '';   // reset if the edit-script view changed them
     bodyEl.textContent = tx;   // textContent, not innerHTML: safe + preserves the raw text verbatim
   }
   ov.style.display = 'flex';
@@ -5967,6 +6243,466 @@ function buildRecordingsContext() {
   }).join('\n\n');
 }
 
+// ── EPISODE EDIT SCRIPTS ────────────────────────────────────────────────────
+// An edit script is the assembly plan for a FINISHED episode: host lines to record,
+// interleaved with verbatim guest clips. Flow (Boo dialogue pattern):
+//   ✦ Script on a season row → startEpisodeScript(n): loads every transcript, Boo gives a
+//   hypothesis + ONE question → user answers → Boo emits WRITE-SCRIPT: E<n> → one-tap button
+//   → writeEpisodeScript(n): a dedicated, STREAMED long-form call writes the whole script in a
+//   strict line format → verifyEditScript() checks every CLIP against the transcripts and
+//   locates it (Boo never supplies timecodes — the app does) → saved to
+//   episodeStore[n].editScript (replacing a saved script goes through dataMutationProtocol;
+//   every version is also kept in editScriptVersions, so nothing is ever lost).
+var SCRIPT_MODEL = 'claude-opus-5-5';      // long-form writing — the most capable Opus
+var SCRIPT_MAX_TOKENS = 64000;             // thinking + script share this budget; a ~45-min script is ~8–15k tokens
+var SCRIPT_EFFORT = 'medium';              // at 'high', Opus spent all 24k tokens thinking and wrote nothing (sandbox run, 2026-10-26)
+var _SCRIPT_PRICE = { in: 4, out: 20, cacheWrite: 5, cacheRead: 0.20 }; // Opus 5.5, USD per 1M tokens
+var _pendingScriptEp = null;               // set by a WRITE-SCRIPT: directive in Boo's reply
+var _pendingArc = null;                    // set by a SEASON-ARC: directive in Boo's reply
+var _scriptWriting = false;                // one script at a time
+var _lastScriptUsage = null;               // usage of the last script call (diagnostics)
+
+function recordingsWithTranscripts() {
+  return (state.recordings || []).filter(function(r) { return (loadTranscript(r.id) || '').length > 0; });
+}
+
+// The saved edit script for the ACTIVE episode, as context for chat turns (critique / revise).
+function buildCurrentEditScriptContext() {
+  var es = activeEp().editScript;
+  if (!es || !es.text) return '';
+  var epNum = state.currentEpisode ? state.currentEpisode.number : 1;
+  return '===== CURRENT EDIT SCRIPT — the saved edit script for E' + epNum + ' (written ' + (es.createdAt || '') + ') =====\n' + es.text;
+}
+
+function buildEpisodeScriptKickoff(epNum) {
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var title = getEpTitle(epNum);
+  var n = recordingsWithTranscripts().length;
+  return 'We are building the EDIT SCRIPT for S' + sNum + '-E' + epNum + (title ? ' — "' + title + '"' : '') + '. '
+    + 'All ' + n + ' interview transcripts are loaded (FOCUSED TRANSCRIPTS) and my season direction is in your context (PINNED PLANNING CONTEXT and the season brief). '
+    + 'Read what the direction says this episode must do, then check it against what the interviews actually contain.\n\n'
+    + 'Before writing anything: in 2 confident sentences, give your hypothesis for this episode — its shape, its job in the season arc, and the specific moment(s) from the interviews it turns on. '
+    + 'If the direction asks for something the transcripts do not support, say so plainly. '
+    + 'Then ask me exactly ONE question — the answer that would most change the script. '
+    + 'Do not write the script and do not emit WRITE-SCRIPT in this reply; emit it after I answer, once you have what you need.';
+}
+
+// ✦ Script (season row) — load every transcript, then open the episode's script conversation.
+function startEpisodeScript(epNum) {
+  var withTx = recordingsWithTranscripts();
+  if (!withTx.length) { showToast('Import the interview transcripts first — Boo scripts from them.'); return; }
+  setView('chat');
+  switchEpisode(epNum);
+  withTx.forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
+  _txTurns = 0; _txTipShown = true;   // scripting needs every transcript loaded — don't nag to unload
+  renderRecordingsList();
+  renderTranscriptChip();
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  triggerBooDirectly('Script S' + sNum + '-E' + epNum, buildEpisodeScriptKickoff(epNum));
+}
+
+function buildEditScriptSystemPrompt(epNum) {
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var title = getEpTitle(epNum);
+  var brief = ((state.seasons[0] || {}).seasonBrief || '').trim();
+  return 'You are Boo, the producer of ' + (SHOW_CONFIG.showName || 'the show') + ', writing the EDIT SCRIPT for S' + sNum + '-E' + epNum + (title ? ' ("' + title + '")' : '') + '.\n'
+    + 'An edit script is the assembly plan for a finished episode: the exact words the hosts will record (intros, narration, bridges, color commentary, outro, workshop project) interleaved with the guest clips the editor will cut from the recorded interviews. The editor builds the timeline directly from it, so it must be exact.\n\n'
+    + 'SHOW: K12 Boss — K-12 Computer Science Education in a Post-Coding Era. Hosts: Karttikeya (Kartik) Mangalam — AI researcher, PhD UC Berkeley, formerly Google and Facebook; Matthew (Matt) Callison, PhD — Director of Innovation, South Fayette Township School District. Audience: K-12 CS teachers, district leaders, curriculum directors, administrators. Audio-first.\n\n'
+    + 'SOURCES in your context: the FULL TRANSCRIPTS (verbatim interviews); the PINNED PLANNING CONTEXT (Mark\'s direction — authoritative for the season\'s shape and each episode\'s job); the season brief and recording cards below; and our conversation about this episode — the direction Mark just gave you is your most specific instruction.\n\n'
+    + 'THE TRANSCRIPTS — read carefully:\n'
+    + '- They were assembled from several recording tracks, so many passages appear two or three times in slightly different wordings, and speaker labels are often wrong. Judge who is speaking from content, not labels.\n'
+    + '- Timecodes appear only at the start of blocks. You do NOT supply timecodes — the app locates every clip itself.\n'
+    + '- Pre-roll and post-roll (sound checks, name spellings, "three, two, one", camera notes, retakes) are never usable.\n\n'
+    + 'FORMAT — follow exactly; the app parses it line by line:\n'
+    + '# S' + sNum + '-E' + epNum + ' · <episode title>\n'
+    + 'SHAPE: <the episode\'s narrative shape and its beats in order, one line>\n'
+    + 'JOB: <what this episode must do in the season arc, one line>\n'
+    + 'RUNTIME: <target minutes>\n'
+    + 'Then the segments in order. Each segment begins with a heading line:\n'
+    + '## <segment number> · <SEGMENT NAME> · ~<estimated minutes>\n'
+    + 'Inside a segment, every line is exactly one of these, with nothing else on the line:\n'
+    + 'KARTIK: <words Kartik records — written for the ear>\n'
+    + 'MATT: <words Matt records>\n'
+    + 'CLIP: <guest name exactly as in SEASON RECORDINGS> | FROM "<the first 8–15 words of the clip>" | TO "<the last 8–15 words of the clip>" | <its job, under 12 words>\n'
+    + 'NOTE: <instruction for the editor — music, pause, sting, pacing>\n'
+    + 'CONFIRM: <a fact the hosts must check before recording>\n'
+    + 'Blank lines are fine. No other markdown, no bullets, no bold.\n\n'
+    + 'CLIP RULES (load-bearing — the app checks every clip against the transcripts and flags failures to Mark):\n'
+    + '- FROM and TO are copied character-for-character from ONE transcript passage, including filler words ("like", "you know") and the transcript\'s own spelling. Never clean them up, never stitch different passages together, never paraphrase. If a passage appears more than once, copy from one copy only.\n'
+    + '- FROM comes before TO in the same continuous stretch of speech. A clip can run from a few seconds to several minutes; a long stretch of interview is one CLIP.\n'
+    + '- Every word a listener hears from a guest comes from a CLIP. Hosts never put words in a guest\'s mouth: when a host line quotes a guest, the quote is verbatim from the transcript; otherwise phrase it as a paraphrase ("Dominick\'s argument is…").\n'
+    + '- Interview episodes are built mostly from the interview itself: choose the strongest stretches, cut dead air and retakes, and keep the guest\'s own arc intact.\n\n'
+    + 'HONESTY:\n'
+    + '- Never invent facts about a guest, a host, a school, a number, or a story. Anything not in the transcripts, the pinned context, or the show context above gets a CONFIRM line instead of being asserted.\n'
+    + '- Where the pinned direction asserts something the transcripts do not support (a quote that is not verbatim, an overstated title, a number nobody said), follow the transcript and add a CONFIRM line saying what you changed and why.\n'
+    + '- If the material cannot support what the direction asks for, say so in a NOTE rather than faking it.\n'
+    + '- Speaker labels in the transcripts are unreliable, so any host line that says which host asked a question ("I asked him…") gets a CONFIRM line, and a clip whose words may be a host\'s rather than the guest\'s gets a NOTE.\n'
+    + '- Outside knowledge (names, credits, spellings not in the sources) never goes in a host line; at most a CONFIRM line that says it is unverified.\n\n'
+    + 'VOICE: Kartik is the AI researcher — precise, a little wry, sees the system. Matt is the practitioner — Monday-morning concrete, warm. Write host lines to be spoken: short sentences, contractions, no slide-deck phrasing. Boo never appears in the script.\n\n'
+    + (brief ? '===== SEASON CONTEXT BRIEF =====\n' + brief + '\n\n' : '')
+    + '===== SEASON RECORDINGS (cards) =====\n' + buildRecordingsContext() + '\n\n'
+    + 'Write the complete script — every segment, every line. Nothing before the # line and nothing after the last segment.';
+}
+
+// Request body for the streamed script call. Pinned direction + transcripts ride in the
+// leading cached block (same content callBoo caches, so it is usually a cache hit).
+function buildEditScriptRequestBody(epNum) {
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var lead = '';
+  var pins = buildPlanningContext();
+  var tx = buildFocusedTranscriptsContext();
+  if (pins) lead += '===== PINNED PLANNING CONTEXT (Mark\'s direction — authoritative) =====\n' + pins + '\n\n';
+  if (tx) lead += 'REFERENCE — FULL TRANSCRIPTS:\n' + tx;
+  var system = [];
+  if (lead) system.push({ type: 'text', text: lead, cache_control: { type: 'ephemeral' } });
+  system.push({ type: 'text', text: buildEditScriptSystemPrompt(epNum) });
+  var messages = getConversationHistory();
+  messages.push({ role: 'user', content: 'Write the complete edit script for S' + sNum + '-E' + epNum + ' now, in the FORMAT exactly, using the direction from our conversation.' });
+  return {
+    model: SCRIPT_MODEL,
+    max_tokens: SCRIPT_MAX_TOKENS,
+    stream: true,
+    thinking: { type: 'adaptive' },
+    output_config: { effort: SCRIPT_EFFORT },
+    system: system,
+    messages: messages,
+  };
+}
+
+// POST a streaming request through the proxy and assemble the text from SSE events.
+// onProgress(textSoFar, phase) fires as text arrives ('thinking' before the first word).
+// Resolves { text, usage, stopReason }. Throws if the stream errors or is cut off.
+async function streamScriptCall(body, onProgress) {
+  var res = await fetch(PROXY, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${SB_ANON}`, 'apikey': SB_ANON },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok || !res.body) {
+    var errText = '';
+    try { errText = await res.text(); } catch (e) {}
+    var msg = 'HTTP ' + res.status;
+    try { var ej = JSON.parse(errText); msg = (ej.error && (ej.error.message || ej.error)) || msg; } catch (e) {}
+    throw new Error(typeof msg === 'string' ? msg : ('HTTP ' + res.status));
+  }
+  var reader = res.body.getReader();
+  var decoder = new TextDecoder();
+  var buf = '', text = '', usage = {}, stopReason = null, sawStop = false, streamErr = null;
+  function handle(evt) {
+    var data = evt.split('\n').filter(function(l) { return l.indexOf('data:') === 0; })
+      .map(function(l) { return l.slice(5).trim(); }).join('');
+    if (!data) return;
+    var d; try { d = JSON.parse(data); } catch (e) { return; }
+    if (d.type === 'message_start' && d.message && d.message.usage) Object.assign(usage, d.message.usage);
+    else if (d.type === 'content_block_start' && d.content_block && d.content_block.type === 'thinking') { if (onProgress) onProgress(text, 'thinking'); }
+    else if (d.type === 'content_block_delta' && d.delta && d.delta.type === 'text_delta') { text += d.delta.text; if (onProgress) onProgress(text, 'writing'); }
+    else if (d.type === 'message_delta') { if (d.usage) Object.assign(usage, d.usage); if (d.delta && d.delta.stop_reason) stopReason = d.delta.stop_reason; }
+    else if (d.type === 'message_stop') sawStop = true;
+    else if (d.type === 'error') streamErr = (d.error && d.error.message) || 'stream error';
+  }
+  while (true) {
+    var chunk = await reader.read();
+    if (chunk.done) break;
+    buf += decoder.decode(chunk.value, { stream: true });
+    var idx;
+    while ((idx = buf.indexOf('\n\n')) !== -1) { handle(buf.slice(0, idx)); buf = buf.slice(idx + 2); }
+  }
+  if (buf.trim()) handle(buf);
+  if (streamErr) throw new Error(streamErr);
+  if (stopReason === 'refusal') throw new Error('the model declined this request');
+  if (!sawStop) throw new Error('the connection was cut off after ' + text.length.toLocaleString() + ' characters — nothing was saved; try again');
+  return { text: text, usage: usage, stopReason: stopReason };
+}
+
+// ── Clip verification: locate every CLIP's FROM/TO in the transcripts ──
+// Normalize for matching (lowercase, letters/digits only, single spaces) while keeping a
+// map from each normalized char back to its raw index, so a match can be timecoded.
+var _normTxCache = {};
+function _normWithMap(raw) {
+  var out = [], map = [], prevSpace = true;
+  for (var i = 0; i < raw.length; i++) {
+    var c = raw[i].toLowerCase();
+    if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) { out.push(c); map.push(i); prevSpace = false; }
+    else if (!prevSpace) { out.push(' '); map.push(i); prevSpace = true; }
+  }
+  return { s: out.join(''), map: map };
+}
+function _normPhrase(s) { return _normWithMap(s || '').s.trim(); }
+function _normTranscript(recId) {
+  var raw = loadTranscript(recId) || '';
+  var c = _normTxCache[recId];
+  if (c && c.len === raw.length) return c;
+  var n = _normWithMap(raw);
+  var stamps = [], re = /\((\d{1,2}:\d{2}(?::\d{2})?)(?:\.\d+)?\)/g, m;
+  while ((m = re.exec(raw)) !== null) stamps.push({ pos: m.index, tc: m[1] });
+  c = { len: raw.length, s: n.s, map: n.map, stamps: stamps };
+  _normTxCache[recId] = c;
+  return c;
+}
+function _timecodeAt(t, normIdx) {
+  if (normIdx < 0 || !t.map.length) return '';
+  var rawIdx = t.map[Math.min(normIdx, t.map.length - 1)];
+  var tc = '';
+  for (var i = 0; i < t.stamps.length && t.stamps[i].pos <= rawIdx; i++) tc = t.stamps[i].tc;
+  return tc;
+}
+function _guestMatches(rec, name) {
+  var g = String((rec && (rec.guest || rec.label)) || '').toLowerCase().trim();
+  var n = String(name || '').toLowerCase().trim();
+  if (!g || !n) return false;
+  return g === n || g.indexOf(n) !== -1 || n.indexOf(g) !== -1
+    || g.split(/\s+/).pop() === n.split(/\s+/).pop();   // surname match ("Dr. Victoria Fudge" ~ "Victoria Fudge")
+}
+// Find a phrase: exact normalized match first; otherwise the longest leading (or trailing)
+// run of 6+ words that matches — reported as 'partial' so Mark sees it needs a look.
+function _findPhrase(t, phrase, fromIdx, fromEnd) {
+  var p = _normPhrase(phrase);
+  if (!p) return { idx: -1, exact: false };
+  var i = t.s.indexOf(p, fromIdx || 0);
+  if (i !== -1) return { idx: i, end: i + p.length, exact: true };
+  var words = p.split(' ');
+  for (var k = words.length - 1; k >= 6; k--) {
+    var sub = fromEnd ? words.slice(words.length - k).join(' ') : words.slice(0, k).join(' ');
+    var j = t.s.indexOf(sub, fromIdx || 0);
+    if (j !== -1) return { idx: j, end: j + sub.length, exact: false };
+  }
+  return { idx: -1, exact: false };
+}
+function locateClip(guest, from, to) {
+  var recs = recordingsWithTranscripts();
+  var named = recs.filter(function(r) { return _guestMatches(r, guest); });
+  var others = recs.filter(function(r) { return named.indexOf(r) === -1; });
+  var best = null;
+  [named, others].forEach(function(group, gi) {
+    if (best && best.status === 'ok') return;
+    group.forEach(function(r) {
+      if (best && best.status === 'ok') return;
+      var t = _normTranscript(r.id);
+      var f = _findPhrase(t, from, 0, false);
+      if (f.idx === -1) return;
+      var e = _findPhrase(t, to, f.idx, true);
+      var status = (f.exact && e.idx !== -1 && e.exact) ? 'ok' : 'partial';
+      var cand = { status: status, recId: r.id, recGuest: r.guest || r.label || '', wrongGuest: gi === 1,
+        fromFound: true, fromExact: f.exact, toFound: e.idx !== -1, toExact: !!e.exact,
+        startTc: _timecodeAt(t, f.idx), endTc: e.idx !== -1 ? _timecodeAt(t, e.end) : '' };
+      if (cand.wrongGuest && cand.status === 'ok') cand.status = 'partial'; // right words, wrong guest named
+      if (!best || (best.status !== 'ok' && cand.status === 'ok')) best = cand;
+    });
+  });
+  return best || { status: 'missing', recId: null, recGuest: '', wrongGuest: false, fromFound: false, toFound: false, startTc: '', endTc: '' };
+}
+var _CLIP_RE = /^CLIP:\s*(.+?)\s*\|\s*FROM\s*["“](.+?)["”]\s*\|\s*TO\s*["“](.+?)["”]\s*(?:\|\s*(.*))?$/i;
+function parseClipLine(line) {
+  var m = String(line || '').trim().match(_CLIP_RE);
+  if (!m) return null;
+  return { guest: m[1].trim(), from: m[2].trim(), to: m[3].trim(), job: (m[4] || '').trim() };
+}
+// Parse + verify a whole script. Returns { clips:[...], counts:{...}, segments, confirms }.
+function verifyEditScript(text) {
+  var clips = [], segments = 0, confirms = 0, malformedClips = 0;
+  String(text || '').split('\n').forEach(function(line, i) {
+    var tl = line.trim();
+    if (/^##\s/.test(tl)) segments++;
+    else if (/^CONFIRM:/i.test(tl)) confirms++;
+    else if (/^CLIP:/i.test(tl)) {
+      var c = parseClipLine(tl);
+      if (!c) { malformedClips++; clips.push({ line: i, malformed: true, status: 'missing', raw: tl }); return; }
+      var loc = locateClip(c.guest, c.from, c.to);
+      clips.push(Object.assign({ line: i }, c, loc));
+    }
+  });
+  var counts = { ok: 0, partial: 0, missing: 0 };
+  clips.forEach(function(c) { counts[c.status] = (counts[c.status] || 0) + 1; });
+  return { clips: clips, counts: counts, segments: segments, confirms: confirms, malformedClips: malformedClips };
+}
+
+// Render a script (+ its verification) as chat/viewer HTML. Every value is escaped.
+function renderEditScriptHtml(text, check) {
+  check = check || verifyEditScript(text);
+  var byLine = {};
+  (check.clips || []).forEach(function(c) { byLine[c.line] = c; });
+  var c = check.counts || {};
+  var summary = '<div class="es-summary">'
+    + '<span class="es-pill ok">✓ ' + (c.ok || 0) + ' clip' + (c.ok === 1 ? '' : 's') + ' verified</span>'
+    + ((c.partial || 0) ? '<span class="es-pill partial">⚠ ' + c.partial + ' need a look</span>' : '')
+    + ((c.missing || 0) ? '<span class="es-pill missing">✕ ' + c.missing + ' not found in any transcript</span>' : '')
+    + (check.confirms ? '<span class="es-pill confirm">' + check.confirms + ' to confirm</span>' : '')
+    + '<span class="es-pill">' + (check.segments || 0) + ' segments</span>'
+    + '</div>';
+  var body = String(text || '').split('\n').map(function(line, i) {
+    var tl = line.trim();
+    if (!tl) return '';
+    var m;
+    if (/^#\s/.test(tl)) return '<div class="es-title">' + esc(tl.replace(/^#\s*/, '')) + '</div>';
+    if (/^##\s/.test(tl)) return '<div class="es-seg">' + esc(tl.replace(/^##\s*/, '')) + '</div>';
+    if ((m = tl.match(/^(SHAPE|JOB|RUNTIME):\s*(.*)$/i))) return '<div class="es-meta"><b>' + esc(m[1].toUpperCase()) + '</b> ' + esc(m[2]) + '</div>';
+    if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) return '<div class="es-host"><span class="es-who ' + m[1].toLowerCase() + '">' + esc(m[1].toUpperCase()) + '</span>' + esc(m[2]) + '</div>';
+    if ((m = tl.match(/^NOTE:\s*(.*)$/i))) return '<div class="es-note">✎ ' + esc(m[1]) + '</div>';
+    if ((m = tl.match(/^CONFIRM:\s*(.*)$/i))) return '<div class="es-confirm">⚑ CONFIRM — ' + esc(m[1]) + '</div>';
+    var clip = byLine[i];
+    if (clip) {
+      if (clip.malformed) return '<div class="es-clip missing"><div class="es-clip-head">✕ Unreadable clip line</div><div class="es-clip-words">' + esc(clip.raw) + '</div></div>';
+      var badge = clip.status === 'ok' ? '✓ found' : clip.status === 'partial' ? '⚠ check' : '✕ not found';
+      var why = [];
+      if (clip.status !== 'missing') {
+        if (!clip.fromExact) why.push('opening words only partly match');
+        if (!clip.toFound) why.push('closing words not found after the opening');
+        else if (!clip.toExact) why.push('closing words only partly match');
+        if (clip.wrongGuest) why.push('found in ' + clip.recGuest + "'s transcript, not " + clip.guest + "'s");
+      } else why.push('these words are not in any transcript');
+      var tc = clip.startTc ? ('≈ ' + clip.startTc + (clip.endTc ? ' → ' + clip.endTc : '')) : '';
+      return '<div class="es-clip ' + clip.status + '">'
+        + '<div class="es-clip-head">CLIP · ' + esc(clip.guest) + (tc ? ' <span class="es-tc">' + esc(tc) + '</span>' : '') + ' <span class="es-badge">' + badge + '</span></div>'
+        + '<div class="es-clip-words">“' + esc(clip.from) + '” … “' + esc(clip.to) + '”</div>'
+        + (clip.job ? '<div class="es-clip-job">' + esc(clip.job) + '</div>' : '')
+        + (why.length ? '<div class="es-clip-why">' + esc(why.join(' · ')) + '</div>' : '')
+        + '</div>';
+    }
+    return '<div class="es-other">' + esc(tl) + '</div>';   // off-format line — visible, not hidden
+  }).join('');
+  return '<div class="es-wrap">' + summary + body + '</div>';
+}
+
+// Save a freshly written script to the episode. Every version is appended to
+// editScriptVersions (append-only — nothing is ever lost). Replacing an existing
+// CURRENT script is a destructive op → the full dataMutationProtocol (backup, confirm, verify).
+async function saveEditScript(epNum, text, check) {
+  var ep = episodeStore[epNum] || (episodeStore[epNum] = {});
+  var entry = { text: text, createdAt: new Date().toISOString(), model: SCRIPT_MODEL,
+    counts: check.counts, segments: check.segments, confirms: check.confirms };
+  if (!Array.isArray(ep.editScriptVersions)) ep.editScriptVersions = [];
+  ep.editScriptVersions.push(entry);
+  if (ep.editScriptVersions.length > 5) ep.editScriptVersions = ep.editScriptVersions.slice(-5);
+  var current = ep.editScript && ep.editScript.text;
+  if (current && current !== text) {
+    await dataMutationProtocol.backup('Replace E' + epNum + ' edit script', current);
+    var ok = await dataMutationProtocol.showDiff('Replace E' + epNum + ' edit script', current, text);
+    if (!ok) { autoSave('edit script version kept (not made current)', true); return false; }
+  }
+  await dataMutationProtocol.apply(async function() { ep.editScript = entry; return autoSave('edit script saved E' + epNum, true); });
+  // autoSave writes on a timer and returns nothing to await, so poll the row (up to ~20s)
+  // until the write lands — reading once raced the write and reported a false failure.
+  await dataMutationProtocol.verify('E' + epNum + ' edit script', async function() {
+    for (var attempt = 0; attempt < 10; attempt++) {
+      var d = await fetchRowRaw();
+      var saved = d && d.episodeStore && d.episodeStore[epNum] && d.episodeStore[epNum].editScript;
+      if (saved && saved.text === text) return { success: true, message: text.length + ' chars saved' };
+      await new Promise(function(r) { setTimeout(r, 2000); });
+    }
+    return { success: false, message: 'the saved row does not match yet — the script is still in this browser; it will retry on the next save' };
+  });
+  return true;
+}
+
+// The one-tap "Write the script" action (from Boo's WRITE-SCRIPT directive).
+async function writeEpisodeScript(epNum) {
+  if (_scriptWriting) { showToast('Boo is already writing a script — one at a time.'); return; }
+  if (!recordingsWithTranscripts().length) { showToast('Import the interview transcripts first — Boo scripts from them.'); return; }
+  _scriptWriting = true;
+  setView('chat');
+  if (!state.currentEpisode || state.currentEpisode.number !== epNum) switchEpisode(epNum);
+  recordingsWithTranscripts().forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
+  renderTranscriptChip();
+  var body = buildEditScriptRequestBody(epNum);
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var label = 'Write the S' + sNum + '-E' + epNum + ' edit script';
+  addMsg('user', label);
+  // Live progress bubble (DOM only — not logged; replaced by the finished script).
+  var msgs = document.getElementById('messages');
+  var prog = document.createElement('div');
+  prog.className = 'msg boo';
+  prog.innerHTML = '<div class="msg-avatar">🎬</div><div class="msg-body"><div class="msg-name">Boo</div><div class="msg-bubble"><span class="es-progress">Reading the interviews and planning the episode…</span></div></div>';
+  msgs.appendChild(prog);
+  msgs.scrollTop = msgs.scrollHeight;
+  var progEl = prog.querySelector('.es-progress');
+  var t0 = Date.now(), words = 0;
+  // Tick every second on its own: Opus can think for a minute or more before the first word,
+  // and a label that only moves when text arrives looks frozen.
+  function paint() {
+    var secs = Math.round((Date.now() - t0) / 1000);
+    var clock = Math.floor(secs / 60) + ':' + ('0' + (secs % 60)).slice(-2);
+    if (progEl) progEl.textContent = words
+      ? 'Writing the script… ' + words.toLocaleString() + ' words · ' + clock
+      : 'Reading the interviews and planning the episode… ' + clock + ' (planning took ~2½ min in testing; writing ~1 more)';
+  }
+  var ticker = setInterval(paint, 1000);
+  try {
+    var result = await streamScriptCall(body, function(textSoFar) {
+      words = textSoFar ? textSoFar.split(/\s+/).length : 0;
+      paint();
+    });
+    clearInterval(ticker);
+    prog.remove();
+    if (!String(result.text || '').trim()) {
+      throw new Error(result.stopReason === 'max_tokens'
+        ? 'I used my whole budget planning and never got to the writing'
+        : 'the reply came back empty');
+    }
+    var check = verifyEditScript(result.text);
+    _lastScriptUsage = result.usage;   // diagnostics: input/cache/output incl. thinking tokens
+    trackUsage({ usage: result.usage }, 0, result.text, _SCRIPT_PRICE);
+    var truncated = result.stopReason === 'max_tokens';
+    var head = truncated ? '<div class="es-confirm">⚠ The script hit the length limit and stops mid-way — ask me for a tighter version.</div>' : '';
+    addMsg('boo', '<div class="es-intro">Here is the S' + sNum + '-E' + epNum + ' edit script. Every clip has been checked against the transcripts — anything marked ⚠ or ✕ needs a look before it goes to the editor.</div>' + head + renderEditScriptHtml(result.text, check),
+      [{ label: '📄 Open full-screen', action: _actionCall('viewEditScript', epNum) },
+       { label: '⤓ Download', action: _actionCall('downloadEditScript', epNum) }],
+      'I wrote the full S' + sNum + '-E' + epNum + ' edit script: ' + check.segments + ' segments, ' + check.clips.length + ' clips ('
+        + (check.counts.ok || 0) + ' verified, ' + (check.counts.partial || 0) + ' need a look, ' + (check.counts.missing || 0) + ' not found), '
+        + check.confirms + ' items to confirm' + (truncated ? ' — it hit the length limit and is incomplete' : '') + '. The saved version is in your context as CURRENT EDIT SCRIPT.');
+    await saveEditScript(epNum, result.text, check);
+    renderSeasonView();
+  } catch (err) {
+    clearInterval(ticker);
+    if (prog.parentNode) prog.remove();
+    addMsg('boo', 'Hmm, I hit a snag writing the script: <em>' + esc(err.message || 'unknown error') + '</em>. Nothing was saved. Try again?');
+    autoSave('conversation updated', true);
+  } finally {
+    _scriptWriting = false;
+  }
+}
+
+// Full-screen read-only view of the saved script (reuses the transcript viewer overlay).
+function viewEditScript(epNum) {
+  var es = (episodeStore[epNum] || {}).editScript;
+  var ov = document.getElementById('transcriptViewerOverlay');
+  var headEl = document.getElementById('tv-head');
+  var bodyEl = document.getElementById('tv-body');
+  if (!ov || !headEl || !bodyEl) return;
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  if (!es || !es.text) {
+    headEl.textContent = 'S' + sNum + '-E' + epNum + ' — no edit script yet';
+    bodyEl.textContent = 'Use ✦ Script on this episode to have Boo write one.';
+  } else {
+    headEl.textContent = 'S' + sNum + '-E' + epNum + ' — edit script · written ' + new Date(es.createdAt).toLocaleString() + ' · read-only';
+    bodyEl.style.whiteSpace = 'normal'; bodyEl.style.fontFamily = 'inherit';
+    bodyEl.innerHTML = renderEditScriptHtml(es.text);   // re-verified against the current transcripts; every value escaped
+  }
+  ov.style.display = 'flex';
+  bodyEl.scrollTop = 0;
+}
+
+// Download the saved script as plain text, with each clip's verification + ≈timecode inline.
+function downloadEditScript(epNum) {
+  var es = (episodeStore[epNum] || {}).editScript;
+  if (!es || !es.text) { showToast('No edit script saved for this episode yet.'); return; }
+  var check = verifyEditScript(es.text);
+  var byLine = {};
+  check.clips.forEach(function(c) { byLine[c.line] = c; });
+  var out = es.text.split('\n').map(function(line, i) {
+    var c = byLine[i];
+    if (!c) return line;
+    var mark = c.status === 'ok' ? '[✓ found' : c.status === 'partial' ? '[⚠ CHECK' : '[✕ NOT FOUND';
+    return line + '\n    ' + mark + (c.startTc ? ' · ≈' + c.startTc + (c.endTc ? '→' + c.endTc : '') : '') + ']';
+  }).join('\n');
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (SHOW_CONFIG.showName || 'show').replace(/[^A-Za-z0-9]+/g, '-') + '-S' + sNum + 'E' + epNum + '-edit-script.txt';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+}
+
 // The Plan-Season kickoff: container FIRST (finished vs. raw material + bookends),
 // evidence-grounded hypothesis, then exactly ONE upstream question — no story
 // shape or ordering yet. Encodes the choreography designed + tested with Mark.
@@ -6120,6 +6856,10 @@ function renderSeasonView() {
         + '</div>'
       + '<div class="season-ep-mini-bar" onclick="event.stopPropagation()"><div class="season-ep-mini-fill" style="width:' + epPct + '%;background:' + epColor + ';"></div></div>'
       + '<select class="season-ep-status-sel ' + status + '" onclick="event.stopPropagation()" onchange="event.stopPropagation();setEpStatus(' + e + ',this.value)">' + opts + '</select>'
+      + ((episodeStore[e] && episodeStore[e].editScript && episodeStore[e].editScript.text)
+          ? '<button class="season-ep-script has" onclick="event.stopPropagation();viewEditScript(' + e + ')" title="Read the saved edit script — full-screen, no tokens">📄</button>'
+          : '')
+      + '<button class="season-ep-script" onclick="event.stopPropagation();startEpisodeScript(' + e + ')" title="Have Boo script this episode from the recorded interviews">✦ Script</button>'
       + '<div class="season-ep-chevron" onclick="event.stopPropagation();goToEpisodeFromSeason(' + e + ')">›</div>'
       + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
       + '</div>'
@@ -6447,7 +7187,7 @@ function lookupGuest() {
 
 function renderShowPanel(content) {
   var season = state.seasons[0] || {};
-  var epCount = (state.currentSeason && state.currentSeason.episodeCount) || season.episodeCount || 8;
+  var epCount = epCountOf(state.currentSeason || season);
   var episodes = season.episodes || [];
   var recordedCount = episodes.filter(function(e) { return e.status === 'recorded'; }).length;
 
@@ -8284,18 +9024,19 @@ function rpNewEpisode() {
 // caching); falls back to a ~4-chars/token estimate otherwise.
 var _sessionCostUSD = 0;
 var _PRICE = { in: 3, out: 15, cacheWrite: 3.75, cacheRead: 0.30 }; // Sonnet 4.6, USD per 1M tokens
-function trackUsage(data, estInputChars, outputText) {
+function trackUsage(data, estInputChars, outputText, price) {
+  var P = price || _PRICE;   // per-model pricing (the edit-script writer passes Opus rates)
   var cost = 0;
   var u = data && data.usage;
   if (u && (u.input_tokens != null || u.output_tokens != null || u.cache_read_input_tokens != null || u.cache_creation_input_tokens != null)) {
-    cost = ((u.input_tokens || 0) * _PRICE.in
-          + (u.output_tokens || 0) * _PRICE.out
-          + (u.cache_creation_input_tokens || 0) * _PRICE.cacheWrite
-          + (u.cache_read_input_tokens || 0) * _PRICE.cacheRead) / 1e6;
+    cost = ((u.input_tokens || 0) * P.in
+          + (u.output_tokens || 0) * P.out
+          + (u.cache_creation_input_tokens || 0) * P.cacheWrite
+          + (u.cache_read_input_tokens || 0) * P.cacheRead) / 1e6;
   } else {
     var inTok = Math.ceil((estInputChars || 0) / 4);
     var outTok = Math.ceil(((outputText || '').length) / 4);
-    cost = (inTok * _PRICE.in + outTok * _PRICE.out) / 1e6;
+    cost = (inTok * P.in + outTok * P.out) / 1e6;
   }
   _sessionCostUSD += cost;
   renderCostMeter();
@@ -8910,8 +9651,8 @@ function detectActionItems(booText) {
 
 // ── PATCH addMsg TO AUTO-DETECT ON BOO MESSAGES ──
 const _origAddMsg = addMsg;
-addMsg = function(role, html, actions) {
-  _origAddMsg(role, html, actions);
+addMsg = function(role, html, actions, rawText) {
+  _origAddMsg(role, html, actions, rawText);   // forward rawText — dropping it lost Boo's original reply from his own history
   if (role === 'boo') {
     setTimeout(() => {
       detectActionItems(html);
