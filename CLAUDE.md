@@ -2,7 +2,7 @@
 
 ## Who I Am
 Mark Caddell, Red Sun Creative Studio, Austin TX.
-Boo Producer is the pre-production tool in the Boo Podcast Suite — episode planning, season arcs, guest research, topics, questions. Current client: **K12 Boss** podcast — "K-12 CS Education in a Post-Coding Era," hosts Karttikeya Mangalam (Kartik) + Matthew Callison (Matt), recorded on Riverside.fm. (Older notes and files say "Anno Coding" / `anno` — same hosts, same row 98; that name and code are gone from the app.)
+Boo Producer is the pre-production tool in the Boo Podcast Suite — episode planning, season arcs, guest research, topics, questions. It's Red Sun Creative's product for designing client podcasts and video, aimed eventually at clients too (lower production cost, richer shows, usable during recordings). Current client: **K12 Boss** podcast — "K-12 CS Education in a Post-Coding Era," hosts Karttikeya Mangalam (Kartik) + Matthew Callison (Matt), recorded on Riverside.fm. (Older notes and files say "Anno Coding" / `anno` — same hosts, same row 98; that name and code are gone from the app.)
 
 ## Delivery
 BP is served via GitHub Pages. Local edits are invisible until pushed. Live URL (give it to Mark on its own line, never with punctuation after it — a trailing period breaks the link):
@@ -18,7 +18,7 @@ Entered at the login screen; case-insensitive, **no spaces**. Defined in `SHOW_R
 | `k12boss` | K12 Boss — **live client data** | 98 |
 | `k12bosstest1` | K12 Boss sandbox | 100 |
 | `k12bosstest2` | K12 Boss sandbox | 101 |
-| `lbv` | Little Big Voices (Mark hosts, StreamYard) | 97 |
+| `lbv` | Little Big Voices: Mark's own show, streamed to YouTube. Placeholder for future BP use (row 97 not created yet) | 97 |
 
 Use a test code for experiments — never row 98.
 
@@ -63,7 +63,7 @@ Single file: `bp.html`. No build step.
 - `autoSave(reason, immediate)` — patches the active show's `builder_state` row (`getShowRow()`) via REST PATCH. Blocked until `_supabaseLoaded` is true (load gate — never write before load completes); backs up the prior snapshot before overwriting
 - `backup_bp.sh [rowId]` — off-app, timestamped backup of a live row into `backups/` (gitignored); restore instructions are in the script header
 - **Automatic backups:** `auto_backup_bp.sh` saves row 98 and the k12boss transcripts at login and every 2 hours, and discards copies identical to the previous one. It runs as the launchd job `net.redsuncreative.bp-backup`. macOS blocks background jobs from reading ~/Documents, so `install_auto_backup.sh` copies the scripts to `~/Library/Application Support/BooBackups/bp/bin`. Re-run the installer after editing either script. The backups and `auto_backup.log` are in `bp/backups/auto` (a link to that folder). Pruning only removes plain timestamped files; hand-named backups (`PRE-*`, `EOD-*`, …) are never deleted.
-- Row 97 (`lbv`) does not exist in Supabase, and a save PATCH to a missing row changes nothing, so LBV work may never have persisted. Not yet investigated.
+- Little Big Voices runs on **Boo Episode Builder (BEB)** and **Boo Show Manager (BSM)**, not BP; its data lives there. The `lbv` code in BP is a placeholder for using BP on LBV someday. Row 97 hasn't been created, and BP's save is a PATCH (it updates an existing row and does nothing when the row is missing), so create the row before using `lbv` for real.
 - `triggerBooDirectly(displayText, apiPrompt)` — fires Boo without touching the chat input field. Use this for all button-triggered Boo interactions. The `displayText` is a short label shown in chat; `apiPrompt` is the full context sent to the API.
 - `callBoo(prompt)` → `parseReply()` → `formatGuestSuggestions()` → `buildGuestCard()` — guest card pipeline. `callBoo` auto-retries transient API overloads
 
