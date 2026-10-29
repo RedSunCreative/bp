@@ -51,6 +51,9 @@
  *  17. Cost (Mark: "Boo is reading 8 transcripts — am I paying a lot?"): ✦ Script no longer loads
  *      the 8 full transcripts into chat (~175k tokens every turn); the kickoff works from the cards
  *      and direction; the writer sends its own scoped transcripts without loading them into chat.
+ *  18. Full read-through (Mark: "why not put all of the transcript in there?"): a clip's actual
+ *      words from IN to OUT, with label lines removed and merged-track repeats collapsed; the
+ *      Share document offers a read-through version (full text + an honest caveat) beside cues.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -126,7 +129,7 @@ function buildSandbox(scriptSrc) {
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
     'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
-    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript'];
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript','cleanClipText','clipText'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -540,6 +543,21 @@ async function main() {
   await sb.__writeEpisodeScript(12, 'Dominick Sanders');
   cap.queue = null;
   ok(sb.__getActiveTx().length === 0, 'writing a script does not load transcripts into chat');
+
+  // ---- 18. Full clip text ----
+  const MERGED = ['Dominick Sanders (24:56.034)', 'They have the heart for it. They have the mind for it. But they just were not great coders.', '',
+    'Dr. Kartik Mangalam (25:01.000)', 'They have the mind for it. But they just were not great coders. And it was like syntax or bust in certain situations.', '',
+    'And it was like syntax or bust in certain situations. Now they have the ideas.'].join('\n');
+  const cleaned18 = sb.__cleanClipText(MERGED);
+  ok(cleaned18.indexOf('(24:56') === -1 && cleaned18.indexOf('Kartik Mangalam') === -1, 'speaker/timecode label lines are removed');
+  ok((cleaned18.match(/were not great coders/g) || []).length === 1 && (cleaned18.match(/syntax or bust/g) || []).length === 1, 'passages repeated across merged tracks appear once');
+  ok(/heart for it/.test(cleaned18) && /Now they have the ideas/.test(cleaned18), 'new speech is kept, in order');
+  const chk18 = sb.__verifyEditScript('CLIP: Dominick Sanders | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | x');
+  const body18 = sb.__clipText(chk18.clips[0]);
+  ok(/^they have the heart for it/i.test(body18.trim()) && /syntax or bust almost in certain situations\.?$/.test(body18.trim()) && body18.indexOf('entrepreneurs') === -1, "a clip's text runs exactly from its IN words to its OUT words");
+  const shareFull = sb.__buildShareScriptHtml(11, { full: true }), shareCue = sb.__buildShareScriptHtml(11);
+  ok(/weren&#39;t great coders|weren't great coders/.test(shareFull) && !/<b>IN:<\/b>/.test(shareFull) && /Read-through version/.test(shareFull) && /audio is the authority/.test(shareFull), 'the read-through shows the full clip text with an honest caveat');
+  ok(/<b>IN:<\/b>/.test(shareCue) && !/weren't great coders/.test(shareCue) && !/Read-through version/.test(shareCue), 'the script version keeps IN/OUT cues only');
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');

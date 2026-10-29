@@ -6542,12 +6542,53 @@ function locateClip(guest, from, to) {
       var status = (f.exact && e.idx !== -1 && e.exact) ? 'ok' : 'partial';
       var cand = { status: status, recId: r.id, recGuest: r.guest || r.label || '', wrongGuest: gi === 1,
         fromFound: true, fromExact: f.exact, toFound: e.idx !== -1, toExact: !!e.exact,
-        startTc: _timecodeAt(t, f.idx), endTc: e.idx !== -1 ? _timecodeAt(t, e.end) : '' };
+        startTc: _timecodeAt(t, f.idx), endTc: e.idx !== -1 ? _timecodeAt(t, e.end) : '',
+        rawStart: t.map[f.idx], rawEnd: e.idx !== -1 ? t.map[Math.min(e.end - 1, t.map.length - 1)] + 1 : null };
       if (cand.wrongGuest && cand.status === 'ok') cand.status = 'partial'; // right words, wrong guest named
       if (!best || (best.status !== 'ok' && cand.status === 'ok')) best = cand;
     });
   });
   return best || { status: 'missing', recId: null, recGuest: '', wrongGuest: false, fromFound: false, toFound: false, startTc: '', endTc: '' };
+}
+// The words a clip actually contains, from its IN to its OUT, cleaned for reading: speaker/timecode
+// label lines removed, and the merged-track repeats (the same passage transcribed 2–3 times in
+// overlapping windows) collapsed so each stretch of speech appears once. A heuristic — the text
+// is for reading the episode, not for the edit; the audio is the authority.
+function cleanClipText(raw) {
+  var LABEL = /^[^\n]{1,80}\(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?\)\s*$/;
+  var text = String(raw || '').split('\n').filter(function(l) { return !LABEL.test(l.trim()); }).join('\n');
+  var paras = text.split(/\n\s*\n/).map(function(p) { return p.replace(/\s+/g, ' ').trim(); }).filter(Boolean);
+  var seen = {}, out = [], N = 4;
+  function norm(w) { return w.toLowerCase().replace(/[^a-z0-9']+/g, ''); }
+  paras.forEach(function(p) {
+    var keptSentences = [];
+    // Sentence by sentence: the merged tracks repeat speech in overlapping windows, so a sentence
+    // whose 4-word runs were mostly heard already is a repeat; a fragment cut at a window edge
+    // (no end punctuation, mostly seen) is dropped too.
+    p.split(/(?<=[.?!])\s+/).forEach(function(sen) {
+      var ws = sen.split(' ').map(norm).filter(Boolean);
+      if (!ws.length) return;
+      var grams = [];
+      for (var i = 0; i + N <= ws.length; i++) grams.push(ws.slice(i, i + N).join(' '));
+      var seenCount = grams.filter(function(g) { return seen[g]; }).length;
+      var shortSeen = ws.length < N && out.concat(keptSentences).join(' ').toLowerCase().indexOf(ws.join(' ')) !== -1;
+      if (shortSeen || (grams.length && seenCount / grams.length >= 0.5)) return;
+      grams.forEach(function(g) { seen[g] = true; });
+      keptSentences.push(sen);
+    });
+    if (keptSentences.length) out.push(keptSentences.join(' '));
+  });
+  // Rejoin the artificial breaks the transcription windows left mid-sentence, so it reads as speech.
+  var merged = [];
+  out.forEach(function(p) {
+    if (merged.length && !/[.?!]["”']?$/.test(merged[merged.length - 1])) merged[merged.length - 1] += ' ' + p;
+    else merged.push(p);
+  });
+  return merged.join('\n\n');
+}
+function clipText(clip) {
+  if (!clip || !clip.recId || clip.rawStart == null || clip.rawEnd == null || clip.rawEnd <= clip.rawStart) return '';
+  return cleanClipText((loadTranscript(clip.recId) || '').slice(clip.rawStart, clip.rawEnd));
 }
 var _CLIP_RE = /^CLIP:\s*(.+?)\s*\|\s*FROM\s*["“](.+?)["”]\s*\|\s*TO\s*["“](.+?)["”]\s*(?:\|\s*(.*))?$/i;
 function parseClipLine(line) {
@@ -6854,7 +6895,7 @@ var _esViewMode = 'script';
 function _esToolbar(epNum) {
   function b(label, fn, active) { return '<button class="action-btn' + (active ? ' teal' : '') + '" style="font-size:11px;padding:4px 10px;" onclick="' + fn + '(' + Number(epNum) + ')">' + label + '</button>'; }
   return '<div class="es-toolbar">' + b('📄 Full script', 'viewEditScript', _esViewMode === 'script') + b('🎙 Recording sheet', 'viewRecordingSheet', _esViewMode === 'sheet')
-    + b('📤 Share (PDF / Google Docs)', 'openShareScript', false) + b('⤓ Script .txt', 'downloadEditScript', false) + b('⤓ Recording sheet .txt', 'downloadRecordingSheet', false) + '</div>';
+    + b('📤 Share: script', 'openShareScript', false) + b('📖 Share: full read-through', 'openShareReadthrough', false) + b('⤓ Script .txt', 'downloadEditScript', false) + b('⤓ Recording sheet .txt', 'downloadRecordingSheet', false) + '</div>';
 }
 function _openEsViewer(epNum, title, html) {
   var ov = document.getElementById('transcriptViewerOverlay');
@@ -6904,7 +6945,8 @@ function viewRecordingSheet(epNum) {
 // (Courier), interview clips as IN/OUT cue blocks, editor notes in [brackets], and the open
 // questions on a final page. No verification badges. Inline styles throughout so it survives
 // "Copy for Google Docs" and prints cleanly to PDF.
-function buildShareScriptHtml(epNum) {
+function buildShareScriptHtml(epNum, opts) {
+  opts = opts || {};
   var es = (episodeStore[epNum] || {}).editScript;
   if (!es || !es.text) return '';
   var text = es.text, check = verifyEditScript(text), ov = editScriptOverview(text, check);
@@ -6940,10 +6982,13 @@ function buildShareScriptHtml(epNum) {
     if (c && !c.malformed) {
       clipN++;
       var tc = c.startTc ? ' &nbsp;<span style="font-weight:normal;color:#555;">(≈ ' + esc(c.startTc) + ')</span>' : '';
+      var body = opts.full ? clipText(c) : '';
       out.push('<p style="' + SANS + 'font-size:11pt;font-weight:bold;margin:12pt 0 2pt 0;">▶ CLIP ' + clipN + ' — ' + esc(String(c.guest).toUpperCase()) + ' (interview)' + tc + '</p>'
-        + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>IN:</b> “' + esc(c.from) + '”</p>'
-        + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>OUT:</b> “' + esc(c.to) + '”</p>'
-        + (c.job ? '<p style="' + SANS + 'font-size:10pt;font-style:italic;color:#555;margin:0 0 4pt 0.6in;">' + esc(c.job) + '</p>' : ''));
+        + (c.job ? '<p style="' + SANS + 'font-size:10pt;font-style:italic;color:#555;margin:0 0 4pt 0.6in;">' + esc(c.job) + '</p>' : '')
+        + (body
+          ? body.split('\n\n').map(function(para) { return '<p style="' + SANS + 'font-size:10.5pt;line-height:1.45;margin:0 0 5pt 0.6in;padding-left:8pt;border-left:2px solid #bbb;">' + esc(para) + '</p>'; }).join('')
+          : '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>IN:</b> “' + esc(c.from) + '”</p>'
+            + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>OUT:</b> “' + esc(c.to) + '”</p>'));
       return;
     }
     out.push('<p style="' + SANS + 'font-size:10pt;color:#555;margin:4pt 0;">' + esc(tl) + '</p>');
@@ -6955,7 +7000,10 @@ function buildShareScriptHtml(epNum) {
     + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 2pt;"><b>Runtime target:</b> ' + esc(meta.RUNTIME || '—') + ' min &nbsp;·&nbsp; <b>Hosts record:</b> ' + ov.hostLines + ' lines, about ' + ov.recordMinutes + ' min (Kartik ' + ov.hosts.Kartik.lines + ', Matt ' + ov.hosts.Matt.lines + ') &nbsp;·&nbsp; <b>Interview clips:</b> ' + ov.clips + '</p>'
     + (meta.JOB ? '<p style="' + SANS + 'font-size:10.5pt;margin:6pt 0 2pt;"><b>This episode’s job:</b> ' + esc(meta.JOB) + '</p>' : '')
     + (meta.SHAPE ? '<p style="' + SANS + 'font-size:10.5pt;margin:2pt 0 10pt;"><b>Shape:</b> ' + esc(meta.SHAPE) + '</p>' : '')
-    + '<p style="' + SANS + 'font-size:9.5pt;color:#555;margin:0 0 4pt;">KARTIK / MATT = lines the hosts record · ▶ CLIP = cut from the recorded interview (IN/OUT are the first and last words) · [brackets] = notes for the editor</p>';
+    + '<p style="' + SANS + 'font-size:9.5pt;color:#555;margin:0 0 4pt;">KARTIK / MATT = lines the hosts record · ▶ CLIP = cut from the recorded interview'
+    + (opts.full ? ' (full text shown) · [brackets] = notes for the editor</p>'
+        + '<p style="' + SANS + 'font-size:9.5pt;color:#555;margin:0 0 4pt;"><i>Read-through version. Clip text comes from the interview transcript, lightly cleaned of repeats. It may contain small errors, and host questions inside a clip are not labeled. The audio is the authority.</i></p>'
+      : ' (IN/OUT are the first and last words) · [brackets] = notes for the editor</p>');
   var qs = '';
   if (ov.confirms.length) {
     qs = '<p style="' + SANS + 'font-size:12pt;font-weight:bold;text-transform:uppercase;margin:28pt 0 6pt;border-bottom:1px solid #999;padding-bottom:3pt;page-break-before:always;">Before recording — open questions</p>'
@@ -6968,11 +7016,12 @@ function buildShareScriptHtml(epNum) {
   }
   return '<div id="doc" style="max-width:7in;margin:0 auto;color:#111;">' + head + out.join('') + qs + '</div>';
 }
-function openShareScript(epNum) {
-  var body = buildShareScriptHtml(epNum);
+function openShareReadthrough(epNum) { openShareScript(epNum, true); }
+function openShareScript(epNum, full) {
+  var body = buildShareScriptHtml(epNum, { full: !!full });
   if (!body) { showToast('No edit script saved for this episode yet.'); return; }
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
-  var docTitle = (SHOW_CONFIG.showName || 'Script') + ' S' + sNum + 'E' + epNum + ' — script';
+  var docTitle = (SHOW_CONFIG.showName || 'Script') + ' S' + sNum + 'E' + epNum + (full ? ' — read-through' : ' — script');
   var w = window.open('', '_blank');
   if (!w) { showToast('Your browser blocked the new window — allow pop-ups for this site and try again.'); return; }
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(docTitle) + '</title>'
