@@ -487,7 +487,7 @@ async function main() {
   ok(((sb.__buildReplyActions() || [])[0] || {}).label && /ALL/.test(String((sb.__buildReplyActions() || [])[0].action)), 'no names means ALL (host episodes)');
   const bDom = sb.__buildEditScriptRequestBody(2, 'Dominick Sanders');
   ok(bDom.system[0].text.indexOf('syntax or bust') !== -1 && bDom.system[0].text.indexOf('we were forgotten') === -1, "only Dominick's full transcript is sent for E2");
-  ok(/only for: Dominick Sanders/.test(bDom.messages[bDom.messages.length - 1].content) && /never quote them/.test(bDom.messages[bDom.messages.length - 1].content), 'the writer is told whose transcripts it has and not to quote the others');
+  ok(/only for: Dominick Sanders/.test(bDom.messages[bDom.messages.length - 1].content) && /never quote them/.test(bDom.messages[bDom.messages.length - 1].content) && /not in the materials I was given/.test(bDom.messages[bDom.messages.length - 1].content), 'the writer is told whose transcripts it has, not to quote the others, and never to call an unseen guest detail "unsupported"');
   const bAll = sb.__buildEditScriptRequestBody(1, 'ALL');
   ok(bAll.system[0].text.indexOf('syntax or bust') !== -1 && bAll.system[0].text.indexOf('we were forgotten') !== -1, 'ALL sends every transcript');
   ok(sb.__resolveScriptSources('Nobody Real').all === true && sb.__resolveScriptSources('Jigar Patel, Dominick Sanders').recs.length === 2, 'unknown names fall back to ALL; a list resolves each name');

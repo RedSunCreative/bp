@@ -6404,7 +6404,9 @@ function buildEditScriptRequestBody(epNum, sources) {
   var messages = getConversationHistory();
   messages.push({ role: 'user', content: 'Write the complete edit script for S' + sNum + '-E' + epNum + ' now, in the FORMAT exactly, using the direction from our conversation.'
     + (src.all ? '' : ' Full transcripts are included only for: ' + src.recs.map(function(r) { return r.guest || r.label; }).join(', ')
-      + '. CLIP only from those transcripts; the other guests appear only as cards, so never quote them.') });
+      + '. CLIP only from those transcripts; the other guests appear only as cards, so never quote them. '
+      + 'Anything you say about another guest (a next-episode teaser, a callback) comes from their card only: keep it to what the card says, add a CONFIRM, '
+      + 'and never claim a detail is unsupported — you have not seen their transcript, so say "not in the materials I was given".') });
   return {
     model: SCRIPT_MODEL,
     max_tokens: SCRIPT_MAX_TOKENS,
