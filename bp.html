@@ -6826,6 +6826,7 @@ async function writeEpisodeScript(epNum, sources) {
     addMsg('boo', '<div class="es-intro">Here is the S' + sNum + '-E' + epNum + ' edit script. Every clip has been checked against the transcripts — anything marked ⚠ or ✕ needs a look before it goes to the editor.</div>' + head + renderEditScriptHtml(result.text, check),
       [{ label: '📄 Open full-screen', action: _actionCall('viewEditScript', epNum) },
        { label: '🎙 Recording sheet', action: _actionCall('viewRecordingSheet', epNum) },
+       { label: '📤 Share', action: _actionCall('openShareScript', epNum) },
        { label: '⤓ Download', action: _actionCall('downloadEditScript', epNum) }],
       'I wrote the full S' + sNum + '-E' + epNum + ' edit script: ' + check.segments + ' segments, ' + check.clips.length + ' clips ('
         + (check.counts.ok || 0) + ' verified, ' + (check.counts.partial || 0) + ' need a look, ' + (check.counts.missing || 0) + ' not found), '
@@ -6852,7 +6853,7 @@ var _esViewMode = 'script';
 function _esToolbar(epNum) {
   function b(label, fn, active) { return '<button class="action-btn' + (active ? ' teal' : '') + '" style="font-size:11px;padding:4px 10px;" onclick="' + fn + '(' + Number(epNum) + ')">' + label + '</button>'; }
   return '<div class="es-toolbar">' + b('📄 Full script', 'viewEditScript', _esViewMode === 'script') + b('🎙 Recording sheet', 'viewRecordingSheet', _esViewMode === 'sheet')
-    + b('⤓ Script .txt', 'downloadEditScript', false) + b('⤓ Recording sheet .txt', 'downloadRecordingSheet', false) + '</div>';
+    + b('📤 Share (PDF / Google Docs)', 'openShareScript', false) + b('⤓ Script .txt', 'downloadEditScript', false) + b('⤓ Recording sheet .txt', 'downloadRecordingSheet', false) + '</div>';
 }
 function _openEsViewer(epNum, title, html) {
   var ov = document.getElementById('transcriptViewerOverlay');
@@ -6895,6 +6896,95 @@ function viewRecordingSheet(epNum) {
           + '<div class="es-host ' + r.who.toLowerCase() + '"><span class="es-who ' + r.who.toLowerCase() + '">' + esc(r.who) + '</span><span class="es-line">' + esc(r.text) + '</span></div>';
       }).join('');
   _openEsViewer(epNum, 'S' + sNum + '-E' + epNum + ' — recording sheet', '<div class="es-wrap">' + html + '</div>');
+}
+
+// ── SHARE: a traditional, clean script document for hosts/client ──
+// Radio/podcast script layout: title block, numbered segments, SPEAKER in caps above their lines
+// (Courier), interview clips as IN/OUT cue blocks, editor notes in [brackets], and the open
+// questions on a final page. No verification badges. Inline styles throughout so it survives
+// "Copy for Google Docs" and prints cleanly to PDF.
+function buildShareScriptHtml(epNum) {
+  var es = (episodeStore[epNum] || {}).editScript;
+  if (!es || !es.text) return '';
+  var text = es.text, check = verifyEditScript(text), ov = editScriptOverview(text, check);
+  var byLine = {};
+  (check.clips || []).forEach(function(c) { byLine[c.line] = c; });
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var MONO = "font-family:'Courier New',Courier,monospace;font-size:12pt;";
+  var SANS = "font-family:Arial,Helvetica,sans-serif;";
+  var title = '', meta = {}, out = [], lastWho = null, clipN = 0;
+  String(text).split('\n').forEach(function(line, i) {
+    var tl = line.trim(), m;
+    if (!tl) return;
+    if (/^#\s/.test(tl)) { title = tl.replace(/^#\s*/, '').replace(/^S\d+-E\d+\s*·\s*/, ''); return; }
+    if ((m = tl.match(/^(SHAPE|JOB|RUNTIME):\s*(.*)$/i))) { meta[m[1].toUpperCase()] = m[2]; return; }
+    if (/^##\s/.test(tl)) {
+      lastWho = null;
+      var h = tl.replace(/^##\s*/, '').split('·').map(function(x) { return x.trim(); });
+      var mins = (h[2] || '').replace(/^~\s*/, '');
+      out.push('<p style="' + SANS + 'font-size:12pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin:22pt 0 6pt;border-bottom:1px solid #999;padding-bottom:3pt;">'
+        + esc(h[0]) + '. ' + esc(h[1] || '') + (mins ? ' <span style="font-weight:normal;color:#555;">(~' + esc(mins) + ' min)</span>' : '') + '</p>');
+      return;
+    }
+    if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) {
+      var who = m[1].toUpperCase();
+      if (who !== lastWho) out.push('<p style="' + MONO + 'font-weight:bold;margin:12pt 0 2pt 0;">' + who + '</p>');
+      out.push('<p style="' + MONO + 'margin:0 0 4pt 0.6in;line-height:1.35;">' + esc(m[2]) + '</p>');
+      lastWho = who; return;
+    }
+    if (/^CONFIRM:/i.test(tl)) return;   // gathered on the final page — invisible here, so it doesn't break a speaker's run
+    lastWho = null;
+    if ((m = tl.match(/^NOTE:\s*(.*)$/i))) { out.push('<p style="' + SANS + 'font-size:10pt;font-style:italic;color:#555;margin:6pt 0 6pt 0.6in;">[' + esc(m[1]) + ']</p>'); return; }
+    var c = byLine[i];
+    if (c && !c.malformed) {
+      clipN++;
+      var tc = c.startTc ? ' &nbsp;<span style="font-weight:normal;color:#555;">(≈ ' + esc(c.startTc) + ')</span>' : '';
+      out.push('<p style="' + SANS + 'font-size:11pt;font-weight:bold;margin:12pt 0 2pt 0;">▶ CLIP ' + clipN + ' — ' + esc(String(c.guest).toUpperCase()) + ' (interview)' + tc + '</p>'
+        + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>IN:</b> “' + esc(c.from) + '”</p>'
+        + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>OUT:</b> “' + esc(c.to) + '”</p>'
+        + (c.job ? '<p style="' + SANS + 'font-size:10pt;font-style:italic;color:#555;margin:0 0 4pt 0.6in;">' + esc(c.job) + '</p>' : ''));
+      return;
+    }
+    out.push('<p style="' + SANS + 'font-size:10pt;color:#555;margin:4pt 0;">' + esc(tl) + '</p>');
+  });
+  var date = new Date(es.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  var head = '<p style="' + SANS + 'font-size:10pt;letter-spacing:1px;text-transform:uppercase;color:#555;margin:0;">' + esc(SHOW_CONFIG.showName || '') + ' · Season ' + sNum + ' · Episode ' + epNum + '</p>'
+    + '<p style="' + SANS + 'font-size:20pt;font-weight:bold;margin:4pt 0 2pt;">' + esc(title || ('Episode ' + epNum)) + '</p>'
+    + '<p style="' + SANS + 'font-size:10pt;color:#555;margin:0 0 10pt;">Draft script · ' + esc(SHOW_CONFIG.producerCompany || '') + ' · ' + esc(date) + '</p>'
+    + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 2pt;"><b>Runtime target:</b> ' + esc(meta.RUNTIME || '—') + ' min &nbsp;·&nbsp; <b>Hosts record:</b> ' + ov.hostLines + ' lines, about ' + ov.recordMinutes + ' min (Kartik ' + ov.hosts.Kartik.lines + ', Matt ' + ov.hosts.Matt.lines + ') &nbsp;·&nbsp; <b>Interview clips:</b> ' + ov.clips + '</p>'
+    + (meta.JOB ? '<p style="' + SANS + 'font-size:10.5pt;margin:6pt 0 2pt;"><b>This episode’s job:</b> ' + esc(meta.JOB) + '</p>' : '')
+    + (meta.SHAPE ? '<p style="' + SANS + 'font-size:10.5pt;margin:2pt 0 10pt;"><b>Shape:</b> ' + esc(meta.SHAPE) + '</p>' : '')
+    + '<p style="' + SANS + 'font-size:9.5pt;color:#555;margin:0 0 4pt;">KARTIK / MATT = lines the hosts record · ▶ CLIP = cut from the recorded interview (IN/OUT are the first and last words) · [brackets] = notes for the editor</p>';
+  var qs = '';
+  if (ov.confirms.length) {
+    qs = '<p style="' + SANS + 'font-size:12pt;font-weight:bold;text-transform:uppercase;margin:28pt 0 6pt;border-bottom:1px solid #999;padding-bottom:3pt;page-break-before:always;">Before recording — open questions</p>'
+      + ['Kartik', 'Matt', 'Mark'].map(function(who) {
+          var items = ov.confirms.filter(function(x) { return x.who === who; });
+          if (!items.length) return '';
+          return '<p style="' + SANS + 'font-size:10.5pt;font-weight:bold;margin:10pt 0 3pt;">' + (who === 'Mark' ? 'Mark (producer)' : who) + '</p>'
+            + items.map(function(x) { return '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 4pt 0.3in;">☐ ' + esc(x.text) + '</p>'; }).join('');
+        }).join('');
+  }
+  return '<div id="doc" style="max-width:7in;margin:0 auto;color:#111;">' + head + out.join('') + qs + '</div>';
+}
+function openShareScript(epNum) {
+  var body = buildShareScriptHtml(epNum);
+  if (!body) { showToast('No edit script saved for this episode yet.'); return; }
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  var docTitle = (SHOW_CONFIG.showName || 'Script') + ' S' + sNum + 'E' + epNum + ' — script';
+  var w = window.open('', '_blank');
+  if (!w) { showToast('Your browser blocked the new window — allow pop-ups for this site and try again.'); return; }
+  w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(docTitle) + '</title>'
+    + '<style>body{background:#fff;margin:0;padding:28px 20px 60px;} .bar{position:sticky;top:0;background:#f4f4f2;border-bottom:1px solid #ddd;padding:10px;margin:-28px -20px 24px;text-align:center;font-family:Arial,sans-serif;font-size:13px;}'
+    + ' .bar button{font-size:13px;padding:7px 14px;margin:0 6px;border:1px solid #888;border-radius:5px;background:#fff;cursor:pointer;} #ok{color:#0a7;margin-left:8px;}'
+    + ' @media print{.bar{display:none;} body{padding:0;} @page{margin:0.8in;}}</style></head><body>'
+    + '<div class="bar"><button onclick="window.print()">⎙ Save as PDF / Print</button><button onclick="copyDoc()">⧉ Copy for Google Docs</button><span id="ok"></span></div>'
+    + body
+    + '<script>function copyDoc(){var el=document.getElementById("doc");var done=function(){document.getElementById("ok").textContent="Copied — paste into a Google Doc";};'
+    + 'try{if(navigator.clipboard&&window.ClipboardItem){navigator.clipboard.write([new ClipboardItem({"text/html":new Blob([el.outerHTML],{type:"text/html"}),"text/plain":new Blob([el.innerText],{type:"text/plain"})})]).then(done,fallback);return;}}catch(e){}fallback();'
+    + 'function fallback(){var r=document.createRange();r.selectNodeContents(el);var s=window.getSelection();s.removeAllRanges();s.addRange(r);document.execCommand("copy");s.removeAllRanges();done();}}<\/script>'
+    + '</body></html>');
+  w.document.close();
 }
 
 function _downloadText(filename, text) {

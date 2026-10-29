@@ -44,6 +44,10 @@
  *      proxy's limit): WRITE-SCRIPT names the episode's recordings; the writer sends only those
  *      full transcripts (ALL for host episodes); a long drop is NOT auto-retried (already billed)
  *      and the user is told plainly the server's time ran out.
+ *  16. Share document (Mark: "sloppy… how would I even copy and share"): a traditional script —
+ *      title block, numbered segments, SPEAKER in caps once per run of lines, clips as IN/OUT
+ *      cues with ≈time, editor notes in [brackets], open questions on a final page grouped by
+ *      who checks; no verification badges; everything escaped.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -119,7 +123,7 @@ function buildSandbox(scriptSrc) {
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
     'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
-    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources'];
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -501,6 +505,21 @@ async function main() {
   const wallMsg = sb.__episodeStore[10].conversationLog.slice(-1)[0].text;
   ok(wallCalls === 1, 'a drop after minutes of planning is NOT retried automatically (it was already billed)');
   ok(/ran out of time planning/.test(wallMsg) && /6½ minutes/.test(wallMsg) && /Nothing was saved/.test(wallMsg), 'the user is told plainly the server time ran out, and nothing was saved');
+
+  // ---- 16. Share document ----
+  const SH_TXT = ['# S1-E7 · The <Promise>', 'SHAPE: Holding the height', 'JOB: Open the guest arc', 'RUNTIME: 42', '## 1 · COLD OPEN · ~0.5', 'NOTE: No music under the clip.',
+    'CLIP: Dominick Sanders | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | the gate',
+    '## 2 · INTRO · ~2.5', 'MATT: Line one.', 'CONFIRM: Mark — check his title.', 'MATT: Line two.', 'KARTIK: Kartik speaks.', 'CONFIRM: Kartik — your bio as spoken.'].join('\n');
+  sb.__episodeStore[11] = { conversationLog: [], editScript: { text: SH_TXT, createdAt: '2026-10-29T12:00:00Z' } };
+  const share = sb.__buildShareScriptHtml(11);
+  ok(/Season 1 · Episode 11/.test(share) && share.indexOf('The &lt;Promise&gt;') !== -1 && share.indexOf('<Promise>') === -1, 'title block present; the title is escaped');
+  ok(/1\. COLD OPEN/.test(share) && /2\. INTRO/.test(share) && /~0\.5 min/.test(share), 'numbered segments with timing');
+  ok((share.match(/>MATT<\/p>/g) || []).length === 1 && (share.match(/>KARTIK<\/p>/g) || []).length === 1 && /Line one\./.test(share) && /Line two\./.test(share), 'speaker name once per run of lines, in caps, script-style (a hidden check between lines does not repeat the name)');
+  ok(/▶ CLIP 1 — DOMINICK SANDERS \(interview\)/.test(share) && /<b>IN:<\/b> “they have the heart/.test(share) && /<b>OUT:<\/b>/.test(share) && /≈ 24:56/.test(share), 'clips are IN/OUT cue blocks with ≈time');
+  ok(/\[No music under the clip\.\]/.test(share), 'editor notes in [brackets]');
+  ok(share.indexOf('check his title') > share.indexOf('Before recording — open questions') && share.indexOf('Before recording') > share.indexOf('Kartik speaks'), 'open questions are gathered on a final page, not inline');
+  ok(!/✓ found|⚠ check|verified/.test(share), 'no verification badges in the shared document');
+  ok(sb.__buildShareScriptHtml(999) === '', 'no script, no document');
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
