@@ -6416,11 +6416,13 @@ async function streamScriptCall(body, onProgress) {
   var reader = res.body.getReader();
   var decoder = new TextDecoder();
   var buf = '', text = '', usage = {}, stopReason = null, sawStop = false, streamErr = null;
+  var t0 = Date.now(), events = 0, lastType = '(none)', status = res.status;
   function handle(evt) {
     var data = evt.split('\n').filter(function(l) { return l.indexOf('data:') === 0; })
       .map(function(l) { return l.slice(5).trim(); }).join('');
     if (!data) return;
     var d; try { d = JSON.parse(data); } catch (e) { return; }
+    events++; lastType = d.type || lastType;
     if (d.type === 'message_start' && d.message && d.message.usage) Object.assign(usage, d.message.usage);
     else if (d.type === 'content_block_start' && d.content_block && d.content_block.type === 'thinking') { if (onProgress) onProgress(text, 'thinking'); }
     else if (d.type === 'content_block_delta' && d.delta && d.delta.type === 'text_delta') { text += d.delta.text; if (onProgress) onProgress(text, 'writing'); }
@@ -6438,7 +6440,13 @@ async function streamScriptCall(body, onProgress) {
   if (buf.trim()) handle(buf);
   if (streamErr) throw new Error(streamErr);
   if (stopReason === 'refusal') throw new Error('the model declined this request');
-  if (!sawStop) throw new Error('the connection was cut off after ' + text.length.toLocaleString() + ' characters — nothing was saved; try again');
+  if (!sawStop) {
+    // Diagnostics in the message itself, so a failure in Mark's browser tells us where it died.
+    var err = new Error('the connection was cut off after ' + text.length.toLocaleString() + ' characters ('
+      + Math.round((Date.now() - t0) / 1000) + 's, HTTP ' + status + ', ' + events + ' server events, last: ' + lastType + ')');
+    err.cutOff = true; err.chars = text.length;
+    throw err;
+  }
   return { text: text, usage: usage, stopReason: stopReason };
 }
 
@@ -6761,10 +6769,24 @@ async function writeEpisodeScript(epNum) {
   }
   var ticker = setInterval(paint, 1000);
   try {
-    var result = await streamScriptCall(body, function(textSoFar) {
-      words = textSoFar ? textSoFar.split(/\s+/).length : 0;
-      paint();
-    });
+    var result;
+    for (var attempt = 1; ; attempt++) {
+      try {
+        result = await streamScriptCall(body, function(textSoFar) {
+          words = textSoFar ? textSoFar.split(/\s+/).length : 0;
+          paint();
+        });
+        break;
+      } catch (e) {
+        // A connection that drops before any script text costs nothing to redo — retry once.
+        if (e && e.cutOff && !e.chars && attempt === 1) {
+          if (progEl) progEl.textContent = 'The connection dropped before writing started — trying once more…';
+          words = 0; t0 = Date.now();
+          continue;
+        }
+        throw e;
+      }
+    }
     clearInterval(ticker);
     prog.remove();
     if (!String(result.text || '').trim()) {

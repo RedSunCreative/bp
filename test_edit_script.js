@@ -37,6 +37,9 @@
  *      an overview counts what to record vs clips; CONFIRMs become ONE numbered checklist grouped
  *      by who checks, with tick-boxes that save; a recording sheet holds only the host lines with
  *      cues; the text downloads carry the same; Boo's one question is about intent.
+ *  14. A live failure ("cut off after 0 characters", no clue why): the error now reports
+ *      seconds, HTTP status, server events and the last event; a connection that drops before
+ *      any script text retries once automatically (free); a drop mid-writing is not retried.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -82,6 +85,7 @@ function fetchImpl(url, opts) {
   const u = String(url);
   if (/builder_state|builder_transcripts/.test(u)) return Promise.resolve({ ok:true, status:200, json:()=>Promise.resolve([]), text:()=>Promise.resolve('[]') });
   cap.body = (opts && opts.body) || null;
+  if (cap.queue && cap.queue.length) { cap.calls = (cap.calls || 0) + 1; return Promise.resolve({ ok:true, status:200, body: sseBody(cap.queue.shift()), text:()=>Promise.resolve('') }); }
   if (cap.stream) return Promise.resolve({ ok:true, status:200, body: sseBody(cap.stream), text:()=>Promise.resolve('') });
   return Promise.resolve({ ok:true, status:200, json:()=>Promise.resolve({ content:[{ text:'OK' }], usage:{ input_tokens:10, output_tokens:5 } }) });
 }
@@ -445,6 +449,28 @@ async function main() {
   ok(/RECORDING SHEET — 3 lines/.test(rst) && rst.indexOf('CLIP:') === -1 && rst.indexOf('NOTE:') === -1 && /\(after ▶ Dominick Sanders/.test(rst), 'the recording-sheet download is host lines + cues only');
   ok(/CONFIRM: <Kartik\|Matt\|Mark> —/.test(sb.__buildEditScriptSystemPrompt(2)) && /Keep CONFIRMs few/.test(sb.__buildEditScriptSystemPrompt(2)), 'the writer is told to tag who checks each CONFIRM and keep them few');
   ok(/ONE question about INTENT/.test(sb.__buildEpisodeScriptKickoff(2)) && /Logistics are NOT the question/.test(sb.__buildEpisodeScriptKickoff(2)), "Boo's one question is about intent, not logistics");
+
+  // ---- 14. Dropped connections: diagnostics + one free retry ----
+  const FULL = [ev({ type:'message_start', message:{ usage:{ input_tokens: 5 } } }), ev({ type:'content_block_delta', index:1, delta:{ type:'text_delta', text:'# S1-E8 · Retry\nKARTIK: It worked.' } }),
+    ev({ type:'message_delta', delta:{ stop_reason:'end_turn' }, usage:{ output_tokens: 9 } }), ev({ type:'message_stop' })];
+  const DROP0 = [ev({ type:'message_start', message:{ usage:{} } }), ev({ type:'content_block_start', index:0, content_block:{ type:'thinking', thinking:'' } })];
+  cap.queue = [DROP0.slice()];
+  let diag = '';
+  try { await sb.__streamScriptCall({}, null); } catch (e) { diag = e.message; }
+  ok(/cut off after 0 characters \(\d+s, HTTP 200, 2 server events, last: content_block_start\)/.test(diag), 'a cut-off reports seconds, HTTP status, server events and the last event');
+  state.currentEpisode = { number: 8, title: '' };
+  sb.__episodeStore[8] = { conversationLog: [] };
+  cap.calls = 0; cap.queue = [DROP0.slice(), FULL.slice()];
+  await sb.__writeEpisodeScript(8);
+  ok(cap.calls === 2 && sb.__episodeStore[8].editScript && /It worked/.test(sb.__episodeStore[8].editScript.text), 'a drop before any writing retries once automatically and succeeds');
+  const DROPMID = [ev({ type:'message_start', message:{ usage:{} } }), ev({ type:'content_block_delta', index:1, delta:{ type:'text_delta', text:'# S1-E9 · half a scr' } })];
+  sb.__episodeStore[9] = { conversationLog: [] }; state.currentEpisode = { number: 9, title: '' };
+  cap.calls = 0; cap.queue = [DROPMID.slice(), FULL.slice()];
+  await sb.__writeEpisodeScript(9);
+  ok(cap.calls === 1 && !sb.__episodeStore[9].editScript, 'a drop after writing started is NOT retried (that would cost a second full run) and nothing is saved');
+  const msg9 = sb.__episodeStore[9].conversationLog.slice(-1)[0].text;
+  ok(/cut off after 20 characters/.test(msg9) && /Nothing was saved/.test(msg9), 'the user sees the diagnostic and that nothing was saved');
+  cap.queue = null;
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
