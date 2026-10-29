@@ -40,6 +40,10 @@
  *  14. A live failure ("cut off after 0 characters", no clue why): the error now reports
  *      seconds, HTTP status, server events and the last event; a connection that drops before
  *      any script text retries once automatically (free); a drop mid-writing is not retried.
+ *  15. The 400-second wall (live E2: all 8 transcripts + long context made Opus plan past the
+ *      proxy's limit): WRITE-SCRIPT names the episode's recordings; the writer sends only those
+ *      full transcripts (ALL for host episodes); a long drop is NOT auto-retried (already billed)
+ *      and the user is told plainly the server's time ran out.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -115,7 +119,7 @@ function buildSandbox(scriptSrc) {
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
     'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
-    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt'];
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -471,6 +475,32 @@ async function main() {
   const msg9 = sb.__episodeStore[9].conversationLog.slice(-1)[0].text;
   ok(/cut off after 20 characters/.test(msg9) && /Nothing was saved/.test(msg9), 'the user sees the diagnostic and that nothing was saved');
   cap.queue = null;
+
+  // ---- 15. Scoped sources + the 400-second wall ----
+  sb.__parseReply('Ready.\nWRITE-SCRIPT: E2 | Dominick Sanders');
+  const sBtn = (sb.__buildReplyActions() || []).find(a => /Write the E2 script/.test(a.label));
+  const seenW = [];
+  vm.runInContext('writeEpisodeScript = function(n, src){ __seenW.push([n, src]); };', Object.assign(sb, { __seenW: seenW }));
+  ok(sBtn && evalOnclick(sb, sb.__buildActions([sBtn])) === 'OK' && seenW[0] && seenW[0][0] === 2 && seenW[0][1] === 'Dominick Sanders', 'WRITE-SCRIPT names the recordings; the button passes them to the writer');
+  vm.runInContext('writeEpisodeScript = __writeEpisodeScript;', sb);
+  sb.__parseReply('WRITE-SCRIPT: E1');
+  ok(((sb.__buildReplyActions() || [])[0] || {}).label && /ALL/.test(String((sb.__buildReplyActions() || [])[0].action)), 'no names means ALL (host episodes)');
+  const bDom = sb.__buildEditScriptRequestBody(2, 'Dominick Sanders');
+  ok(bDom.system[0].text.indexOf('syntax or bust') !== -1 && bDom.system[0].text.indexOf('we were forgotten') === -1, "only Dominick's full transcript is sent for E2");
+  ok(/only for: Dominick Sanders/.test(bDom.messages[bDom.messages.length - 1].content) && /never quote them/.test(bDom.messages[bDom.messages.length - 1].content), 'the writer is told whose transcripts it has and not to quote the others');
+  const bAll = sb.__buildEditScriptRequestBody(1, 'ALL');
+  ok(bAll.system[0].text.indexOf('syntax or bust') !== -1 && bAll.system[0].text.indexOf('we were forgotten') !== -1, 'ALL sends every transcript');
+  ok(sb.__resolveScriptSources('Nobody Real').all === true && sb.__resolveScriptSources('Jigar Patel, Dominick Sanders').recs.length === 2, 'unknown names fall back to ALL; a list resolves each name');
+  ok(/WRITE-SCRIPT: E2 \| <guest names, or ALL>/.test(sb.__buildEpisodeScriptKickoff(2)), 'the kickoff tells Boo to name the recordings');
+  // A drop at the 400-second wall: no auto-retry (already billed), plain explanation.
+  let wallCalls = 0;
+  vm.runInContext('__realStream = streamScriptCall; streamScriptCall = function(){ __wall(); var e = new Error("the connection was cut off after 0 characters (400s, HTTP 200, 15 server events, last: ping)"); e.cutOff = true; e.chars = 0; e.elapsed = 400; return Promise.reject(e); };', Object.assign(sb, { __wall: () => wallCalls++ }));
+  sb.__episodeStore[10] = { conversationLog: [] }; state.currentEpisode = { number: 10, title: '' };
+  await sb.__writeEpisodeScript(10, 'Dominick Sanders');
+  vm.runInContext('streamScriptCall = __realStream;', sb);
+  const wallMsg = sb.__episodeStore[10].conversationLog.slice(-1)[0].text;
+  ok(wallCalls === 1, 'a drop after minutes of planning is NOT retried automatically (it was already billed)');
+  ok(/ran out of time planning/.test(wallMsg) && /6½ minutes/.test(wallMsg) && /Nothing was saved/.test(wallMsg), 'the user is told plainly the server time ran out, and nothing was saved');
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');

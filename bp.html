@@ -3360,11 +3360,12 @@ async function triggerBooDirectly(displayText, apiPrompt) {
 
 // FOCUSED TRANSCRIPTS block — the full text of every transcript the user loaded.
 // Shared by callBoo() and the edit-script writer so both read identical context.
-function buildFocusedTranscriptsContext() {
-  if (!_activeTranscriptIds || !_activeTranscriptIds.length) return '';
+function buildFocusedTranscriptsContext(ids) {
+  ids = ids || _activeTranscriptIds;
+  if (!ids || !ids.length) return '';
   var _txBudget = 1500000; // ~375k tokens — holds all recordings at once for a full-season read (Sonnet 4.6 has the window); still a backstop against runaway size
   var _txParts = [];
-  _activeTranscriptIds.forEach(function(id) {
+  ids.forEach(function(id) {
     var rec = (state.recordings || []).find(function(r) { return r.id === id; });
     var t = loadTranscript(id);
     if (!t) return;
@@ -3592,8 +3593,8 @@ Close / Outro / CTA | 33:00 | 1 min
 ===== EPISODE EDIT SCRIPTS (assembling a finished episode from the recordings) =====
 An EDIT SCRIPT is the assembly plan for a finished episode: the exact host lines Kartik and Matt will record, interleaved with verbatim guest clips the editor cuts from the recorded interviews. It is different from the pre-interview SCRIPT in STEP 3 (questions for a live interview). The app writes edit scripts with a dedicated script writer — you never write a full edit script in chat.
 When the user is planning an episode's edit script, follow the dialogue pattern: hypothesis → exactly ONE question → withhold. When you have the direction you need, end your reply with this line on its own:
-WRITE-SCRIPT: E<episode number>
-The app turns it into a one-tap "Write the script" button. Emit it only when you are genuinely ready to write, at most once per reply. If a CURRENT EDIT SCRIPT block is in your context, that is the saved script for this episode — discuss and critique it directly, and emit WRITE-SCRIPT again when the user wants a new version written with their notes.
+WRITE-SCRIPT: E<episode number> | <the guests whose recordings this episode is built from, comma-separated — or ALL for a host episode that draws on everyone>
+The app turns it into a one-tap "Write the script" button, and sends the writer only those full transcripts (everyone else as cards), which keeps it fast. Emit it only when you are genuinely ready to write, at most once per reply. If a CURRENT EDIT SCRIPT block is in your context, that is the saved script for this episode — discuss and critique it directly, and emit WRITE-SCRIPT again when the user wants a new version written with their notes.
 
 ===== SHOW-LEVEL DECISIONS =====
 When you recognize something as a show-level decision — something that applies to EVERY episode, not just this one — flag it at the END of your response using this exact format:
@@ -3940,8 +3941,8 @@ function parseReply(text) {
       if (_ln) { _pendingLoadTargets.push(_ln); return false; } // strip the directive from chat
     }
     // Match: WRITE-SCRIPT: E<n>  (Boo is ready to write an episode's edit script → one-tap button)
-    var _ws = trimmed.match(/^WRITE-SCRIPT:\s*(?:S\d+\s*-?\s*)?E?\s*(\d+)\s*$/i);
-    if (_ws) { _pendingScriptEp = parseInt(_ws[1], 10); return false; } // strip the directive from chat
+    var _ws = trimmed.match(/^WRITE-SCRIPT:\s*(?:S\d+\s*-?\s*)?E?\s*(\d+)\s*(?:\|\s*(.+))?$/i);
+    if (_ws) { _pendingScriptEp = parseInt(_ws[1], 10); _pendingScriptSources = (_ws[2] || 'ALL').trim(); return false; } // strip the directive from chat
     // Match: SEASON-ARC: <shape> | E1=<beat>, …  (Boo proposes the season arc → one-tap "Use this arc")
     if (/^SEASON-ARC:/i.test(trimmed)) { _pendingArc = trimmed; return false; }
     return true;
@@ -5790,10 +5791,12 @@ function booReadRecordingByName(name) {
 // action must never capture variables — a captured value is lost and the click throws. This
 // builds a closure-free call with its argument baked in as an attribute-safe literal (no double
 // quotes, no raw single quotes), which also keeps working when the bubble is restored on reload.
-function _actionCall(fnName, arg) {
-  var lit = typeof arg === 'number' ? String(arg)
-    : "decodeURIComponent('" + encodeURIComponent(String(arg)).replace(/'/g, '%27') + "')";
-  return new Function(fnName + '(' + lit + ')');
+function _actionCall(fnName /*, ...args */) {
+  var lits = Array.prototype.slice.call(arguments, 1).map(function(arg) {
+    return typeof arg === 'number' ? String(arg)
+      : "decodeURIComponent('" + encodeURIComponent(String(arg)).replace(/'/g, '%27') + "')";
+  });
+  return new Function(fnName + '(' + lits.join(', ') + ')');
 }
 // All one-tap actions for a Boo reply: transcript loads + the write-script button.
 function buildReplyActions() {
@@ -5804,7 +5807,7 @@ function buildReplyActions() {
   }
   if (_pendingScriptEp) {
     var n = _pendingScriptEp;
-    actions.push({ label: '✦ Write the E' + n + ' script', action: _actionCall('writeEpisodeScript', n) });
+    actions.push({ label: '✦ Write the E' + n + ' script', action: _actionCall('writeEpisodeScript', n, _pendingScriptSources || 'ALL') });
   }
   return actions.length ? actions : null;
 }
@@ -6285,6 +6288,7 @@ var SCRIPT_EFFORT = 'medium';              // at 'high', Opus spent all 24k toke
 var _SCRIPT_PRICE = { in: 4, out: 20, cacheWrite: 5, cacheRead: 0.20 }; // Opus 5.5, USD per 1M tokens
 var _pendingScriptEp = null;               // set by a WRITE-SCRIPT: directive in Boo's reply
 var _pendingArc = null;                    // set by a SEASON-ARC: directive in Boo's reply
+var _pendingScriptSources = 'ALL';         // recordings named in WRITE-SCRIPT: E<n> | <names|ALL>
 var _scriptWriting = false;                // one script at a time
 var _lastScriptUsage = null;               // usage of the last script call (diagnostics)
 
@@ -6311,7 +6315,7 @@ function buildEpisodeScriptKickoff(epNum) {
     + 'If the direction asks for something the transcripts do not support, say so plainly. '
     + 'Then ask me exactly ONE question about INTENT — what the listener should feel or understand when the episode ends, or which tension to lean on — the answer that would most change the script. '
     + 'Logistics are NOT the question (a missing story, an unconfirmed fact, a placeholder): handle those yourself in the script with placeholders and CONFIRM lines. '
-    + 'Do not write the script and do not emit WRITE-SCRIPT in this reply; emit it after I answer, once you have what you need.';
+    + 'Do not write the script and do not emit WRITE-SCRIPT in this reply; emit it after I answer, once you have what you need, naming the recordings this episode is built from (WRITE-SCRIPT: E' + epNum + ' | <guest names, or ALL>).';
 }
 
 // ✦ Script (season row) — load every transcript, then open the episode's script conversation.
@@ -6374,18 +6378,33 @@ function buildEditScriptSystemPrompt(epNum) {
 
 // Request body for the streamed script call. Pinned direction + transcripts ride in the
 // leading cached block (same content callBoo caches, so it is usually a cache hit).
-function buildEditScriptRequestBody(epNum) {
+// Which full transcripts an episode's script needs: Boo names them in WRITE-SCRIPT
+// ("E2 | Dominick Sanders"), or ALL for a host episode that draws on everyone. Sending only
+// what's needed keeps the writer inside the proxy's 400-second limit (all 8 transcripts +
+// a long conversation made Opus plan past it) and cuts cost. Unknown names fall back to ALL.
+function resolveScriptSources(sources) {
+  var withTx = recordingsWithTranscripts();
+  var raw = String(sources || 'ALL').trim();
+  if (!raw || /^all$/i.test(raw)) return { all: true, recs: withTx };
+  var names = raw.split(/\s*,\s*|\s+and\s+/).filter(Boolean);
+  var recs = withTx.filter(function(r) { return names.some(function(n) { return _guestMatches(r, n); }); });
+  return recs.length ? { all: false, recs: recs } : { all: true, recs: withTx };
+}
+function buildEditScriptRequestBody(epNum, sources) {
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
   var lead = '';
   var pins = buildPlanningContext();
-  var tx = buildFocusedTranscriptsContext();
+  var src = resolveScriptSources(sources);
+  var tx = buildFocusedTranscriptsContext(src.recs.map(function(r) { return r.id; }));
   if (pins) lead += '===== PINNED PLANNING CONTEXT (Mark\'s direction — authoritative) =====\n' + pins + '\n\n';
   if (tx) lead += 'REFERENCE — FULL TRANSCRIPTS:\n' + tx;
   var system = [];
   if (lead) system.push({ type: 'text', text: lead, cache_control: { type: 'ephemeral' } });
   system.push({ type: 'text', text: buildEditScriptSystemPrompt(epNum) });
   var messages = getConversationHistory();
-  messages.push({ role: 'user', content: 'Write the complete edit script for S' + sNum + '-E' + epNum + ' now, in the FORMAT exactly, using the direction from our conversation.' });
+  messages.push({ role: 'user', content: 'Write the complete edit script for S' + sNum + '-E' + epNum + ' now, in the FORMAT exactly, using the direction from our conversation.'
+    + (src.all ? '' : ' Full transcripts are included only for: ' + src.recs.map(function(r) { return r.guest || r.label; }).join(', ')
+      + '. CLIP only from those transcripts; the other guests appear only as cards, so never quote them.') });
   return {
     model: SCRIPT_MODEL,
     max_tokens: SCRIPT_MAX_TOKENS,
@@ -6444,7 +6463,7 @@ async function streamScriptCall(body, onProgress) {
     // Diagnostics in the message itself, so a failure in Mark's browser tells us where it died.
     var err = new Error('the connection was cut off after ' + text.length.toLocaleString() + ' characters ('
       + Math.round((Date.now() - t0) / 1000) + 's, HTTP ' + status + ', ' + events + ' server events, last: ' + lastType + ')');
-    err.cutOff = true; err.chars = text.length;
+    err.cutOff = true; err.chars = text.length; err.elapsed = (Date.now() - t0) / 1000;
     throw err;
   }
   return { text: text, usage: usage, stopReason: stopReason };
@@ -6710,7 +6729,7 @@ function buildRecordingSheet(text, check) {
 // CURRENT script is a destructive op → the full dataMutationProtocol (backup, confirm, verify).
 async function saveEditScript(epNum, text, check) {
   var ep = episodeStore[epNum] || (episodeStore[epNum] = {});
-  var entry = { text: text, createdAt: new Date().toISOString(), model: SCRIPT_MODEL,
+  var entry = { text: text, createdAt: new Date().toISOString(), model: SCRIPT_MODEL, sources: (check && check.sources) || 'ALL',
     counts: check.counts, segments: check.segments, confirms: check.confirms };
   if (!Array.isArray(ep.editScriptVersions)) ep.editScriptVersions = [];
   ep.editScriptVersions.push(entry);
@@ -6737,15 +6756,16 @@ async function saveEditScript(epNum, text, check) {
 }
 
 // The one-tap "Write the script" action (from Boo's WRITE-SCRIPT directive).
-async function writeEpisodeScript(epNum) {
+async function writeEpisodeScript(epNum, sources) {
   if (_scriptWriting) { showToast('Boo is already writing a script — one at a time.'); return; }
   if (!recordingsWithTranscripts().length) { showToast('Import the interview transcripts first — Boo scripts from them.'); return; }
   _scriptWriting = true;
   setView('chat');
   if (!state.currentEpisode || state.currentEpisode.number !== epNum) switchEpisode(epNum);
-  recordingsWithTranscripts().forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
+  var src = resolveScriptSources(sources);
+  src.recs.forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
   renderTranscriptChip();
-  var body = buildEditScriptRequestBody(epNum);
+  var body = buildEditScriptRequestBody(epNum, sources);
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
   var label = 'Write the S' + sNum + '-E' + epNum + ' edit script';
   addMsg('user', label);
@@ -6779,7 +6799,8 @@ async function writeEpisodeScript(epNum) {
         break;
       } catch (e) {
         // A connection that drops before any script text costs nothing to redo — retry once.
-        if (e && e.cutOff && !e.chars && attempt === 1) {
+        // Only a QUICK drop is free to redo; a long one already billed its planning.
+        if (e && e.cutOff && !e.chars && e.elapsed < 60 && attempt === 1) {
           if (progEl) progEl.textContent = 'The connection dropped before writing started — trying once more…';
           words = 0; t0 = Date.now();
           continue;
@@ -6795,6 +6816,7 @@ async function writeEpisodeScript(epNum) {
         : 'the reply came back empty');
     }
     var check = verifyEditScript(result.text);
+    check.sources = src.all ? 'ALL' : src.recs.map(function(r) { return r.guest || r.label; }).join(', ');
     _lastScriptUsage = result.usage;   // diagnostics: input/cache/output incl. thinking tokens
     trackUsage({ usage: result.usage }, 0, result.text, _SCRIPT_PRICE);
     var truncated = result.stopReason === 'max_tokens';
@@ -6811,7 +6833,11 @@ async function writeEpisodeScript(epNum) {
   } catch (err) {
     clearInterval(ticker);
     if (prog.parentNode) prog.remove();
-    addMsg('boo', 'Hmm, I hit a snag writing the script: <em>' + esc(err.message || 'unknown error') + '</em>. Nothing was saved. Try again?');
+    var timedOut = err && err.cutOff && !err.chars && err.elapsed >= 380;
+    addMsg('boo', timedOut
+      ? 'I ran out of time planning this one — the server allows about 6½ minutes per script, and I was still working out the episode when it closed the connection. Nothing was saved. '
+        + 'Tell me which recordings this episode really needs and I\'ll write it from just those. <em>(' + esc(err.message) + ')</em>'
+      : 'Hmm, I hit a snag writing the script: <em>' + esc(err.message || 'unknown error') + '</em>. Nothing was saved. Try again?');
     autoSave('conversation updated', true);
   } finally {
     _scriptWriting = false;
