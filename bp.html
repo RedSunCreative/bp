@@ -1690,15 +1690,41 @@
   .es-meta { font-size:12px; color:var(--text-muted); margin:1px 0; }
   .es-meta b { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.1em; color:var(--teal); margin-right:4px; }
   .es-seg { font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; color:var(--gold); border-top:1px solid var(--border); margin:16px 0 6px; padding-top:8px; }
-  .es-host { margin:5px 0; }
+  .es-host { margin:6px 0; padding:6px 10px 6px 10px; border-left:3px solid var(--gold); background:rgba(245,208,58,0.07); border-radius:0 6px 6px 0; }
+  .es-host.matt { border-left-color:#7FD8A0; background:rgba(127,216,160,0.07); }
+  .es-host.kartik { border-left-color:#9FB7FF; background:rgba(159,183,255,0.07); }
+  .es-rec { font-family:'DM Mono',monospace; font-size:9px; letter-spacing:0.08em; color:var(--gold); margin-right:8px; white-space:nowrap; }
+  .es-line { color:#ECECEA; }
+  .es-overview { border:1px solid var(--border); border-radius:8px; padding:8px 12px; margin:6px 0 10px; background:rgba(255,255,255,0.02); }
+  .es-ov-rec, .es-ov-clip { font-size:12.5px; margin:3px 0; }
+  .es-ov-rec b { color:var(--gold); font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.06em; }
+  .es-ov-clip b { color:var(--teal); font-family:'DM Mono',monospace; font-size:11px; letter-spacing:0.06em; }
+  .es-ov-sub { font-size:11px; color:var(--text-muted); }
+  .es-checklist { border:1px solid rgba(245,208,58,0.35); border-radius:8px; padding:8px 12px; margin:0 0 10px; }
+  .es-cl-head { font-family:'DM Mono',monospace; font-size:10.5px; letter-spacing:0.08em; color:var(--gold); margin-bottom:4px; }
+  .es-cl-group { margin:6px 0 2px; }
+  .es-cl-who { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.06em; color:var(--text-muted); text-transform:uppercase; margin-bottom:2px; }
+  .es-cl-item { display:block; font-size:12px; margin:3px 0; cursor:pointer; line-height:1.45; }
+  .es-cl-item.done { opacity:0.45; text-decoration:line-through; }
+  .es-cl-box { margin-right:6px; vertical-align:-2px; cursor:pointer; }
+  .es-cl-bullet { margin-right:6px; color:var(--gold); }
+  .es-cl-n { font-family:'DM Mono',monospace; font-size:10px; color:var(--gold); }
+  .es-cl-hint { font-size:10.5px; color:var(--text-muted); margin-top:4px; }
+  .es-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:10.5px; color:var(--text-muted); margin:0 0 6px; }
+  .es-lg-rec { color:var(--gold); } .es-lg-clip { color:var(--teal); }
+  .es-flag { font-family:'DM Mono',monospace; font-size:10px; color:var(--gold); opacity:0.8; margin:2px 0 2px 2px; cursor:help; }
+  .es-cue { font-size:11px; color:var(--text-muted); font-style:italic; margin:8px 0 0 2px; }
+  .es-toolbar { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
   .es-who { display:inline-block; min-width:52px; font-family:'DM Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.08em; margin-right:6px; }
   .es-who.kartik { color:#9FB7FF; }
   .es-who.matt { color:#7FD8A0; }
   .es-note { font-size:12px; font-style:italic; color:var(--text-muted); margin:4px 0; }
   .es-confirm { font-size:12px; color:var(--gold); margin:4px 0; }
   .es-other { font-size:12px; color:var(--text-muted); margin:3px 0; }
-  .es-clip { border:1px solid var(--border); border-left:3px solid var(--teal); border-radius:6px; padding:6px 10px; margin:6px 0; background:rgba(255,255,255,0.02); }
+  .es-clip { border:1px dashed rgba(59,184,201,0.45); border-left:3px solid var(--teal); border-radius:6px; padding:6px 10px; margin:6px 0 6px 18px; background:rgba(59,184,201,0.04); }
   .es-clip.partial { border-left-color:var(--gold); }
+  .es-clip.pending { border-left-color:var(--text-muted); border-color:var(--border); }
+  .es-clip.pending .es-clip-head { color:var(--text-muted); }
   .es-clip.missing { border-left-color:#E8431A; }
   .es-clip-head { font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.06em; color:var(--teal); text-transform:uppercase; }
   .es-clip.partial .es-clip-head { color:var(--gold); }
@@ -6283,7 +6309,8 @@ function buildEpisodeScriptKickoff(epNum) {
     + 'Read what the direction says this episode must do, then check it against what the interviews actually contain.\n\n'
     + 'Before writing anything: in 2 confident sentences, give your hypothesis for this episode — its shape, its job in the season arc, and the specific moment(s) from the interviews it turns on. '
     + 'If the direction asks for something the transcripts do not support, say so plainly. '
-    + 'Then ask me exactly ONE question — the answer that would most change the script. '
+    + 'Then ask me exactly ONE question about INTENT — what the listener should feel or understand when the episode ends, or which tension to lean on — the answer that would most change the script. '
+    + 'Logistics are NOT the question (a missing story, an unconfirmed fact, a placeholder): handle those yourself in the script with placeholders and CONFIRM lines. '
     + 'Do not write the script and do not emit WRITE-SCRIPT in this reply; emit it after I answer, once you have what you need.';
 }
 
@@ -6325,7 +6352,7 @@ function buildEditScriptSystemPrompt(epNum) {
     + 'MATT: <words Matt records>\n'
     + 'CLIP: <guest name exactly as in SEASON RECORDINGS> | FROM "<the first 8–15 words of the clip>" | TO "<the last 8–15 words of the clip>" | <its job, under 12 words>\n'
     + 'NOTE: <instruction for the editor — music, pause, sting, pacing>\n'
-    + 'CONFIRM: <a fact the hosts must check before recording>\n'
+    + 'CONFIRM: <Kartik|Matt|Mark> — <the one fact to check before recording> (Kartik or Matt for their own lines, bios and stories; Mark, the producer, for guest facts, logistics and production)\n'
     + 'Blank lines are fine. No other markdown, no bullets, no bold.\n\n'
     + 'CLIP RULES (load-bearing — the app checks every clip against the transcripts and flags failures to Mark):\n'
     + '- FROM and TO are copied character-for-character from ONE transcript passage, including filler words ("like", "you know") and the transcript\'s own spelling. Never clean them up, never stitch different passages together, never paraphrase. If a passage appears more than once, copy from one copy only.\n'
@@ -6337,7 +6364,8 @@ function buildEditScriptSystemPrompt(epNum) {
     + '- Where the pinned direction asserts something the transcripts do not support (a quote that is not verbatim, an overstated title, a number nobody said), follow the transcript and add a CONFIRM line saying what you changed and why.\n'
     + '- If the material cannot support what the direction asks for, say so in a NOTE rather than faking it.\n'
     + '- Speaker labels in the transcripts are unreliable, so any host line that says which host asked a question ("I asked him…") gets a CONFIRM line, and a clip whose words may be a host\'s rather than the guest\'s gets a NOTE.\n'
-    + '- Outside knowledge (names, credits, spellings not in the sources) never goes in a host line; at most a CONFIRM line that says it is unverified.\n\n'
+    + '- Outside knowledge (names, credits, spellings not in the sources) never goes in a host line; at most a CONFIRM line that says it is unverified.\n'
+    + '- Keep CONFIRMs few and worth reading: one per fact that genuinely needs checking, related ones merged, no CONFIRM for what the transcript already proves. The app gathers them into one checklist.\n\n'
     + 'VOICE: Kartik is the AI researcher — precise, a little wry, sees the system. Matt is the practitioner — Monday-morning concrete, warm. Write host lines to be spoken: short sentences, contractions, no slide-deck phrasing. Boo never appears in the script.\n\n'
     + (brief ? '===== SEASON CONTEXT BRIEF =====\n' + brief + '\n\n' : '')
     + '===== SEASON RECORDINGS (cards) =====\n' + buildRecordingsContext() + '\n\n'
@@ -6498,37 +6526,107 @@ function parseClipLine(line) {
   return { guest: m[1].trim(), from: m[2].trim(), to: m[3].trim(), job: (m[4] || '').trim() };
 }
 // Parse + verify a whole script. Returns { clips:[...], counts:{...}, segments, confirms }.
+// Transcripts load from the server a few seconds after login. Until every recording's
+// transcript is in, a clip can't be judged — report "pending", never a false "not found".
+function transcriptsReady() {
+  var recs = state.recordings || [];
+  return recs.length > 0 && recordingsWithTranscripts().length >= recs.length;
+}
 function verifyEditScript(text) {
-  var clips = [], segments = 0, confirms = 0, malformedClips = 0;
+  var clips = [], segments = 0, confirms = 0, malformedClips = 0, ready = transcriptsReady();
   String(text || '').split('\n').forEach(function(line, i) {
     var tl = line.trim();
     if (/^##\s/.test(tl)) segments++;
     else if (/^CONFIRM:/i.test(tl)) confirms++;
     else if (/^CLIP:/i.test(tl)) {
       var c = parseClipLine(tl);
-      if (!c) { malformedClips++; clips.push({ line: i, malformed: true, status: 'missing', raw: tl }); return; }
-      var loc = locateClip(c.guest, c.from, c.to);
+      if (!c) { malformedClips++; clips.push({ line: i, malformed: true, status: 'unreadable', raw: tl }); return; }
+      var loc = ready ? locateClip(c.guest, c.from, c.to) : { status: 'pending', recId: null, recGuest: '', wrongGuest: false, fromFound: false, toFound: false, startTc: '', endTc: '' };
       clips.push(Object.assign({ line: i }, c, loc));
     }
   });
-  var counts = { ok: 0, partial: 0, missing: 0 };
+  var counts = { ok: 0, partial: 0, missing: 0, pending: 0, unreadable: 0 };
   clips.forEach(function(c) { counts[c.status] = (counts[c.status] || 0) + 1; });
-  return { clips: clips, counts: counts, segments: segments, confirms: confirms, malformedClips: malformedClips };
+  return { clips: clips, counts: counts, segments: segments, confirms: confirms, malformedClips: malformedClips, pending: !ready };
+}
+
+// CONFIRM owner: an explicit "CONFIRM: Kartik — …" tag; else a line whose subject is a host
+// ("Kartik fills…", not "Kartik's line says…"); else Mark, the producer (guest facts, logistics).
+function parseConfirm(tl) {
+  var m = String(tl || '').trim().match(/^CONFIRM:\s*(.*)$/i);
+  if (!m) return null;
+  var body = m[1].trim(), who = null;
+  var tag = body.match(/^\[?(Kartik|Matt|Mark)\]?\s*[—–:-]\s+([\s\S]*)$/i);
+  if (tag) { who = tag[1]; body = tag[2].trim(); }
+  else { var h = body.match(/^(Kartik|Matt)\b(?!['’]s)/i); if (h) who = h[1]; }
+  who = who ? who.charAt(0).toUpperCase() + who.slice(1).toLowerCase() : 'Mark';
+  return { who: who, text: body };
+}
+// Stable id for a check (survives re-renders and re-verification) — a hash of its text.
+function confirmId(text) {
+  var h = 0, t = String(text || '');
+  for (var i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0;
+  return 'c' + (h >>> 0).toString(36);
+}
+// Everything a reader needs at a glance: what to record vs what comes from interviews, and
+// the checks to clear before recording (numbered, grouped by who checks).
+function editScriptOverview(text, check) {
+  check = check || verifyEditScript(text);
+  var hosts = { Kartik: { lines: 0, words: 0 }, Matt: { lines: 0, words: 0 } }, confirms = [];
+  String(text || '').split('\n').forEach(function(line, i) {
+    var tl = line.trim(), m;
+    if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) {
+      var h = hosts[m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase()];
+      h.lines++; h.words += m[2].split(/\s+/).filter(Boolean).length;
+    } else {
+      var c = parseConfirm(tl);
+      if (c) confirms.push({ line: i, n: confirms.length + 1, who: c.who, text: c.text, id: confirmId(c.text) });
+    }
+  });
+  var words = hosts.Kartik.words + hosts.Matt.words;
+  return { hosts: hosts, hostLines: hosts.Kartik.lines + hosts.Matt.lines, recordMinutes: Math.max(1, Math.round(words / 150)),
+    clips: (check.clips || []).length, counts: check.counts || {}, confirms: confirms };
 }
 
 // Render a script (+ its verification) as chat/viewer HTML. Every value is escaped.
-function renderEditScriptHtml(text, check) {
+// opts.epNum + opts.interactive → the checklist gets tick-boxes that save (full-screen view).
+function renderEditScriptHtml(text, check, opts) {
+  opts = opts || {};
   check = check || verifyEditScript(text);
-  var byLine = {};
+  var ov = editScriptOverview(text, check);
+  var byLine = {}, confirmByLine = {};
   (check.clips || []).forEach(function(c) { byLine[c.line] = c; });
-  var c = check.counts || {};
-  var summary = '<div class="es-summary">'
-    + '<span class="es-pill ok">✓ ' + (c.ok || 0) + ' clip' + (c.ok === 1 ? '' : 's') + ' verified</span>'
-    + ((c.partial || 0) ? '<span class="es-pill partial">⚠ ' + c.partial + ' need a look</span>' : '')
-    + ((c.missing || 0) ? '<span class="es-pill missing">✕ ' + c.missing + ' not found in any transcript</span>' : '')
-    + (check.confirms ? '<span class="es-pill confirm">' + check.confirms + ' to confirm</span>' : '')
-    + '<span class="es-pill">' + (check.segments || 0) + ' segments</span>'
-    + '</div>';
+  ov.confirms.forEach(function(c) { confirmByLine[c.line] = c; });
+  var c = ov.counts;
+  var done = (opts.epNum != null && episodeStore[opts.epNum] && episodeStore[opts.epNum].editScript && episodeStore[opts.epNum].editScript.checked) || {};
+  var summary = '<div class="es-overview">'
+    + '<div class="es-ov-rec">🎙 <b>TO RECORD</b> — ' + ov.hostLines + ' host line' + (ov.hostLines === 1 ? '' : 's') + ' · about ' + ov.recordMinutes + ' min'
+    + ' <span class="es-ov-sub">(Kartik ' + ov.hosts.Kartik.lines + ' · Matt ' + ov.hosts.Matt.lines + ')</span></div>'
+    + '<div class="es-ov-clip">▶ <b>FROM INTERVIEWS</b> — ' + ov.clips + ' clip' + (ov.clips === 1 ? '' : 's')
+    + (check.pending ? ' · <span class="es-pill">⏳ transcripts still loading — checking in a moment</span>' : ' · <span class="es-pill ok">✓ ' + (c.ok || 0) + ' clip' + (c.ok === 1 ? '' : 's') + ' verified</span>')
+    + ((c.partial || 0) ? ' <span class="es-pill partial">⚠ ' + c.partial + ' need a look</span>' : '')
+    + ((c.missing || 0) ? ' <span class="es-pill missing">✕ ' + c.missing + ' not found in any transcript</span>' : '')
+    + ((c.unreadable || 0) ? ' <span class="es-pill missing">✕ ' + c.unreadable + ' unreadable clip line' + (c.unreadable === 1 ? '' : 's') + '</span>' : '')
+    + '</div></div>';
+  var checklist = '';
+  if (ov.confirms.length) {
+    var nDone = ov.confirms.filter(function(x) { return done[x.id]; }).length;
+    checklist = '<div class="es-checklist"><div class="es-cl-head">⚑ BEFORE RECORDING — ' + ov.confirms.length + ' check' + (ov.confirms.length === 1 ? '' : 's')
+      + (opts.interactive ? ' · ' + nDone + ' done' : '') + '</div>'
+      + ['Kartik', 'Matt', 'Mark'].map(function(who) {
+          var items = ov.confirms.filter(function(x) { return x.who === who; });
+          if (!items.length) return '';
+          return '<div class="es-cl-group"><div class="es-cl-who">' + (who === 'Mark' ? 'Mark (producer)' : who) + ' · ' + items.length + '</div>'
+            + items.map(function(x) {
+                var box = opts.interactive
+                  ? '<input type="checkbox" class="es-cl-box"' + (done[x.id] ? ' checked' : '') + ' onclick="toggleConfirmCheck(' + Number(opts.epNum) + ',\'' + x.id + '\')">'
+                  : '<span class="es-cl-bullet">☐</span>';
+                return '<label class="es-cl-item' + (done[x.id] ? ' done' : '') + '">' + box + '<span class="es-cl-n">#' + x.n + '</span> ' + esc(x.text) + '</label>';
+              }).join('') + '</div>';
+        }).join('')
+      + (opts.interactive ? '' : '<div class="es-cl-hint">Tick these off in 📄 full-screen view — your ticks are saved.</div>')
+      + '</div>';
+  }
   var body = String(text || '').split('\n').map(function(line, i) {
     var tl = line.trim();
     if (!tl) return '';
@@ -6536,15 +6634,18 @@ function renderEditScriptHtml(text, check) {
     if (/^#\s/.test(tl)) return '<div class="es-title">' + esc(tl.replace(/^#\s*/, '')) + '</div>';
     if (/^##\s/.test(tl)) return '<div class="es-seg">' + esc(tl.replace(/^##\s*/, '')) + '</div>';
     if ((m = tl.match(/^(SHAPE|JOB|RUNTIME):\s*(.*)$/i))) return '<div class="es-meta"><b>' + esc(m[1].toUpperCase()) + '</b> ' + esc(m[2]) + '</div>';
-    if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) return '<div class="es-host"><span class="es-who ' + m[1].toLowerCase() + '">' + esc(m[1].toUpperCase()) + '</span>' + esc(m[2]) + '</div>';
-    if ((m = tl.match(/^NOTE:\s*(.*)$/i))) return '<div class="es-note">✎ ' + esc(m[1]) + '</div>';
-    if ((m = tl.match(/^CONFIRM:\s*(.*)$/i))) return '<div class="es-confirm">⚑ CONFIRM — ' + esc(m[1]) + '</div>';
+    if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) return '<div class="es-host ' + m[1].toLowerCase() + '"><span class="es-rec">🎙 RECORD</span><span class="es-who ' + m[1].toLowerCase() + '">' + esc(m[1].toUpperCase()) + '</span><span class="es-line">' + esc(m[2]) + '</span></div>';
+    if ((m = tl.match(/^NOTE:\s*(.*)$/i))) return '<div class="es-note">✎ editor: ' + esc(m[1]) + '</div>';
+    var cf = confirmByLine[i];
+    if (cf) return '<div class="es-flag" title="' + esc(cf.text) + '">⚑ check #' + cf.n + ' · ' + (cf.who === 'Mark' ? 'Mark' : cf.who) + '</div>';
     var clip = byLine[i];
     if (clip) {
       if (clip.malformed) return '<div class="es-clip missing"><div class="es-clip-head">✕ Unreadable clip line</div><div class="es-clip-words">' + esc(clip.raw) + '</div></div>';
-      var badge = clip.status === 'ok' ? '✓ found' : clip.status === 'partial' ? '⚠ check' : '✕ not found';
+      var badge = clip.status === 'ok' ? '✓ found' : clip.status === 'partial' ? '⚠ check' : clip.status === 'pending' ? '⏳ checking' : '✕ not found';
       var why = [];
-      if (clip.status !== 'missing') {
+      if (clip.status === 'pending') {
+        // transcripts not loaded yet — nothing to report
+      } else if (clip.status !== 'missing') {
         if (!clip.fromExact) why.push('opening words only partly match');
         if (!clip.toFound) why.push('closing words not found after the opening');
         else if (!clip.toExact) why.push('closing words only partly match');
@@ -6552,7 +6653,7 @@ function renderEditScriptHtml(text, check) {
       } else why.push('these words are not in any transcript');
       var tc = clip.startTc ? ('≈ ' + clip.startTc + (clip.endTc ? ' → ' + clip.endTc : '')) : '';
       return '<div class="es-clip ' + clip.status + '">'
-        + '<div class="es-clip-head">CLIP · ' + esc(clip.guest) + (tc ? ' <span class="es-tc">' + esc(tc) + '</span>' : '') + ' <span class="es-badge">' + badge + '</span></div>'
+        + '<div class="es-clip-head">▶ FROM INTERVIEW · ' + esc(clip.guest) + (tc ? ' <span class="es-tc">' + esc(tc) + '</span>' : '') + ' <span class="es-badge">' + badge + '</span></div>'
         + '<div class="es-clip-words">“' + esc(clip.from) + '” … “' + esc(clip.to) + '”</div>'
         + (clip.job ? '<div class="es-clip-job">' + esc(clip.job) + '</div>' : '')
         + (why.length ? '<div class="es-clip-why">' + esc(why.join(' · ')) + '</div>' : '')
@@ -6560,9 +6661,42 @@ function renderEditScriptHtml(text, check) {
     }
     return '<div class="es-other">' + esc(tl) + '</div>';   // off-format line — visible, not hidden
   }).join('');
-  return '<div class="es-wrap">' + summary + body + '</div>';
+  var legend = '<div class="es-legend"><span class="es-lg-rec">🎙 RECORD = Kartik/Matt record this</span><span class="es-lg-clip">▶ FROM INTERVIEW = cut from the recordings</span><span class="es-lg-note">✎ = note for the editor</span></div>';
+  return '<div class="es-wrap">' + summary + checklist + legend + body + '</div>';
 }
 
+// Tick a "before recording" check on/off (saved with the script; survives reloads).
+function toggleConfirmCheck(epNum, id) {
+  var es = episodeStore[epNum] && episodeStore[epNum].editScript;
+  if (!es) return;
+  if (!es.checked) es.checked = {};
+  if (es.checked[id]) delete es.checked[id]; else es.checked[id] = true;
+  autoSave('script check ' + id);
+  var bodyEl = document.getElementById('tv-body');
+  var keep = bodyEl ? bodyEl.scrollTop : 0;
+  if (_esViewMode === 'script') viewEditScript(epNum);
+  if (bodyEl) bodyEl.scrollTop = keep;
+}
+
+// The host lines only, in order, each with a cue for what plays just before it — the sheet
+// Kartik and Matt record from. Returns [{segment, who, text, cue}].
+function buildRecordingSheet(text, check) {
+  check = check || verifyEditScript(text);
+  var byLine = {};
+  (check.clips || []).forEach(function(c) { byLine[c.line] = c; });
+  var out = [], seg = '', lastClip = null;
+  String(text || '').split('\n').forEach(function(line, i) {
+    var tl = line.trim(), m;
+    if (/^##\s/.test(tl)) { seg = tl.replace(/^##\s*/, ''); lastClip = null; return; }
+    if (byLine[i] && !byLine[i].malformed) { lastClip = byLine[i]; return; }
+    if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) {
+      out.push({ segment: seg, who: m[1].toUpperCase(), text: m[2],
+        cue: lastClip ? ('after ▶ ' + lastClip.guest + (lastClip.job ? ' — ' + lastClip.job : '')) : '' });
+      lastClip = null;
+    }
+  });
+  return out;
+}
 // Save a freshly written script to the episode. Every version is appended to
 // editScriptVersions (append-only — nothing is ever lost). Replacing an existing
 // CURRENT script is a destructive op → the full dataMutationProtocol (backup, confirm, verify).
@@ -6645,6 +6779,7 @@ async function writeEpisodeScript(epNum) {
     var head = truncated ? '<div class="es-confirm">⚠ The script hit the length limit and stops mid-way — ask me for a tighter version.</div>' : '';
     addMsg('boo', '<div class="es-intro">Here is the S' + sNum + '-E' + epNum + ' edit script. Every clip has been checked against the transcripts — anything marked ⚠ or ✕ needs a look before it goes to the editor.</div>' + head + renderEditScriptHtml(result.text, check),
       [{ label: '📄 Open full-screen', action: _actionCall('viewEditScript', epNum) },
+       { label: '🎙 Recording sheet', action: _actionCall('viewRecordingSheet', epNum) },
        { label: '⤓ Download', action: _actionCall('downloadEditScript', epNum) }],
       'I wrote the full S' + sNum + '-E' + epNum + ' edit script: ' + check.segments + ' segments, ' + check.clips.length + ' clips ('
         + (check.counts.ok || 0) + ' verified, ' + (check.counts.partial || 0) + ' need a look, ' + (check.counts.missing || 0) + ' not found), '
@@ -6661,46 +6796,116 @@ async function writeEpisodeScript(epNum) {
   }
 }
 
-// Full-screen read-only view of the saved script (reuses the transcript viewer overlay).
-function viewEditScript(epNum) {
-  var es = (episodeStore[epNum] || {}).editScript;
+// Full-screen view of the saved script (reuses the transcript viewer overlay). Two modes:
+// the full script (with the tickable checklist) and the recording sheet (host lines only).
+var _esViewMode = 'script';
+function _esToolbar(epNum) {
+  function b(label, fn, active) { return '<button class="action-btn' + (active ? ' teal' : '') + '" style="font-size:11px;padding:4px 10px;" onclick="' + fn + '(' + Number(epNum) + ')">' + label + '</button>'; }
+  return '<div class="es-toolbar">' + b('📄 Full script', 'viewEditScript', _esViewMode === 'script') + b('🎙 Recording sheet', 'viewRecordingSheet', _esViewMode === 'sheet')
+    + b('⤓ Script .txt', 'downloadEditScript', false) + b('⤓ Recording sheet .txt', 'downloadRecordingSheet', false) + '</div>';
+}
+function _openEsViewer(epNum, title, html) {
   var ov = document.getElementById('transcriptViewerOverlay');
   var headEl = document.getElementById('tv-head');
   var bodyEl = document.getElementById('tv-body');
   if (!ov || !headEl || !bodyEl) return;
-  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
-  if (!es || !es.text) {
-    headEl.textContent = 'S' + sNum + '-E' + epNum + ' — no edit script yet';
-    bodyEl.textContent = 'Use ✦ Script on this episode to have Boo write one.';
-  } else {
-    headEl.textContent = 'S' + sNum + '-E' + epNum + ' — edit script · written ' + new Date(es.createdAt).toLocaleString() + ' · read-only';
-    bodyEl.style.whiteSpace = 'normal'; bodyEl.style.fontFamily = 'inherit';
-    bodyEl.innerHTML = renderEditScriptHtml(es.text);   // re-verified against the current transcripts; every value escaped
-  }
+  headEl.textContent = title;
+  bodyEl.style.whiteSpace = 'normal'; bodyEl.style.fontFamily = 'inherit';
+  bodyEl.innerHTML = html;
   ov.style.display = 'flex';
-  bodyEl.scrollTop = 0;
+}
+function viewEditScript(epNum) {
+  _esViewMode = 'script';
+  var es = (episodeStore[epNum] || {}).editScript;
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  if (!es || !es.text) { _openEsViewer(epNum, 'S' + sNum + '-E' + epNum + ' — no edit script yet', 'Use ✦ Script on this episode to have Boo write one.'); return; }
+  _openEsViewer(epNum, 'S' + sNum + '-E' + epNum + ' — edit script · written ' + new Date(es.createdAt).toLocaleString(),
+    _esToolbar(epNum) + renderEditScriptHtml(es.text, null, { epNum: epNum, interactive: true }));   // re-verified; every value escaped
+  if (!transcriptsReady() && typeof hydrateTranscripts === 'function') {
+    hydrateTranscripts().then(function() {
+      var ov = document.getElementById('transcriptViewerOverlay');
+      if (transcriptsReady() && _esViewMode === 'script' && ov && ov.style.display !== 'none') viewEditScript(epNum);
+    });
+  }
+}
+function viewRecordingSheet(epNum) {
+  _esViewMode = 'sheet';
+  var es = (episodeStore[epNum] || {}).editScript;
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  if (!es || !es.text) { _openEsViewer(epNum, 'S' + sNum + '-E' + epNum + ' — no edit script yet', 'Use ✦ Script on this episode to have Boo write one.'); return; }
+  var rows = buildRecordingSheet(es.text), ov = editScriptOverview(es.text), seg = null;
+  var html = _esToolbar(epNum)
+    + '<div class="es-overview"><div class="es-ov-rec">🎙 <b>RECORDING SHEET</b> — ' + rows.length + ' lines · about ' + ov.recordMinutes + ' min'
+    + ' <span class="es-ov-sub">(Kartik ' + ov.hosts.Kartik.lines + ' · Matt ' + ov.hosts.Matt.lines + ')</span></div>'
+    + '<div class="es-ov-sub">Only what Kartik and Matt record, in order. The interview clips are cut in later; the grey cue shows what plays just before a line.</div></div>'
+    + rows.map(function(r) {
+        var head = r.segment !== seg ? '<div class="es-seg">' + esc(r.segment) + '</div>' : '';
+        seg = r.segment;
+        return head + (r.cue ? '<div class="es-cue">' + esc(r.cue) + '</div>' : '')
+          + '<div class="es-host ' + r.who.toLowerCase() + '"><span class="es-who ' + r.who.toLowerCase() + '">' + esc(r.who) + '</span><span class="es-line">' + esc(r.text) + '</span></div>';
+      }).join('');
+  _openEsViewer(epNum, 'S' + sNum + '-E' + epNum + ' — recording sheet', '<div class="es-wrap">' + html + '</div>');
 }
 
-// Download the saved script as plain text, with each clip's verification + ≈timecode inline.
+function _downloadText(filename, text) {
+  var blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+}
+function _esFileBase(epNum) {
+  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
+  return (SHOW_CONFIG.showName || 'show').replace(/[^A-Za-z0-9]+/g, '-') + '-S' + sNum + 'E' + epNum;
+}
+// Plain-text script: overview + the before-recording checklist up top, then the script with
+// each clip's verification + ≈timecode inline and host lines marked for recording.
+function buildEditScriptText(text) {
+  var check = verifyEditScript(text), ov = editScriptOverview(text, check);
+  var byLine = {}, confirmByLine = {};
+  check.clips.forEach(function(c) { byLine[c.line] = c; });
+  ov.confirms.forEach(function(c) { confirmByLine[c.line] = c; });
+  var head = 'TO RECORD: ' + ov.hostLines + ' host lines, about ' + ov.recordMinutes + ' min (Kartik ' + ov.hosts.Kartik.lines + ', Matt ' + ov.hosts.Matt.lines + ')\n'
+    + 'FROM INTERVIEWS: ' + ov.clips + ' clips (' + (ov.counts.ok || 0) + ' verified, ' + (ov.counts.partial || 0) + ' need a look, ' + (ov.counts.missing || 0) + ' not found)\n';
+  if (ov.confirms.length) {
+    head += '\nBEFORE RECORDING — ' + ov.confirms.length + ' checks\n';
+    ['Kartik', 'Matt', 'Mark'].forEach(function(who) {
+      var items = ov.confirms.filter(function(x) { return x.who === who; });
+      if (!items.length) return;
+      head += '\n' + (who === 'Mark' ? 'Mark (producer)' : who) + ':\n' + items.map(function(x) { return '  [ ] #' + x.n + ' ' + x.text; }).join('\n') + '\n';
+    });
+  }
+  var body = text.split('\n').map(function(line, i) {
+    var c = byLine[i], cf = confirmByLine[i], m = line.trim().match(/^(KARTIK|MATT):\s*(.*)$/i);
+    if (m) return '[RECORD] ' + m[1].toUpperCase() + ': ' + m[2];
+    if (cf) return '  (check #' + cf.n + ' — ' + cf.who + ')';
+    if (!c) return line;
+    var mark = c.status === 'ok' ? '[✓ found' : c.status === 'partial' ? '[⚠ CHECK' : c.status === 'pending' ? '[not checked — transcripts still loading' : '[✕ NOT FOUND';
+    return line.replace(/^CLIP:/i, '[FROM INTERVIEW] CLIP:') + '\n    ' + mark + (c.startTc ? ' · ≈' + c.startTc + (c.endTc ? '→' + c.endTc : '') : '') + ']';
+  }).join('\n');
+  return head + '\n' + '='.repeat(60) + '\n\n' + body;
+}
 function downloadEditScript(epNum) {
   var es = (episodeStore[epNum] || {}).editScript;
   if (!es || !es.text) { showToast('No edit script saved for this episode yet.'); return; }
-  var check = verifyEditScript(es.text);
-  var byLine = {};
-  check.clips.forEach(function(c) { byLine[c.line] = c; });
-  var out = es.text.split('\n').map(function(line, i) {
-    var c = byLine[i];
-    if (!c) return line;
-    var mark = c.status === 'ok' ? '[✓ found' : c.status === 'partial' ? '[⚠ CHECK' : '[✕ NOT FOUND';
-    return line + '\n    ' + mark + (c.startTc ? ' · ≈' + c.startTc + (c.endTc ? '→' + c.endTc : '') : '') + ']';
-  }).join('\n');
-  var sNum = (state.currentSeason && state.currentSeason.number) || 1;
-  var blob = new Blob([out], { type: 'text/plain;charset=utf-8' });
-  var a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = (SHOW_CONFIG.showName || 'show').replace(/[^A-Za-z0-9]+/g, '-') + '-S' + sNum + 'E' + epNum + '-edit-script.txt';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(function() { URL.revokeObjectURL(a.href); }, 1000);
+  _downloadText(_esFileBase(epNum) + '-edit-script.txt', buildEditScriptText(es.text));
+}
+function buildRecordingSheetText(text) {
+  var rows = buildRecordingSheet(text), ov = editScriptOverview(text), seg = null, out = [];
+  out.push('RECORDING SHEET — ' + rows.length + ' lines, about ' + ov.recordMinutes + ' min (Kartik ' + ov.hosts.Kartik.lines + ', Matt ' + ov.hosts.Matt.lines + ')');
+  out.push('Only what Kartik and Matt record, in order. Interview clips are cut in later; (after ...) shows what plays just before a line.');
+  rows.forEach(function(r) {
+    if (r.segment !== seg) { out.push('', '== ' + r.segment + ' =='); seg = r.segment; }
+    if (r.cue) out.push('   (' + r.cue + ')');
+    out.push(r.who + ': ' + r.text);
+  });
+  return out.join('\n') + '\n';
+}
+function downloadRecordingSheet(epNum) {
+  var es = (episodeStore[epNum] || {}).editScript;
+  if (!es || !es.text) { showToast('No edit script saved for this episode yet.'); return; }
+  _downloadText(_esFileBase(epNum) + '-recording-sheet.txt', buildRecordingSheetText(es.text));
 }
 
 // The Plan-Season kickoff: container FIRST (finished vs. raw material + bookends),

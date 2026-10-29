@@ -32,6 +32,11 @@
  *      can't drift); SEASON-ARC: becomes a "Use this arc" button; applying it places each episode
  *      on its planned beat (not even slices), adds missing slots, keeps existing titles, and the
  *      curve lands Kartik's season BELOW its opening height; cancel changes nothing.
+ *  13. Readability (Mark: "I can't tell what's from the recording and what needs recording";
+ *      the checks were "cumbersome"): host lines are marked 🎙 RECORD, clips ▶ FROM INTERVIEW;
+ *      an overview counts what to record vs clips; CONFIRMs become ONE numbered checklist grouped
+ *      by who checks, with tick-boxes that save; a recording sheet holds only the host lines with
+ *      cues; the text downloads carry the same; Boo's one question is about intent.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -105,7 +110,8 @@ function buildSandbox(scriptSrc) {
     'verifyEditScript','locateClip','renderEditScriptHtml','buildEditScriptRequestBody','streamScriptCall',
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
-    'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey'];
+    'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -213,13 +219,21 @@ async function main() {
   ok(drift && drift.status === 'partial' && drift.fromExact === false && drift.startTc === '24:56', 'an opening that matches then drifts is flagged ⚠ (partial), still located at ≈24:56');
   const wg = byJob('wrong guest');
   ok(wg && wg.status === 'partial' && wg.wrongGuest && /Jigar/.test(wg.recGuest), "words found only in another guest's transcript are flagged as the wrong guest");
-  ok(chk.clips.some(c => c.malformed), 'an unreadable CLIP line is surfaced, not silently dropped');
+  ok(chk.clips.some(c => c.malformed && c.status === 'unreadable') && chk.counts.unreadable === 1 && chk.counts.missing === 2, 'an unreadable CLIP line is surfaced as unreadable (not counted as "not found")');
   ok(chk.confirms === 1 && chk.segments === 1, 'counts CONFIRM lines and segments');
 
   // ---- 8. Rendering escapes ----
   const html = sb.__renderEditScriptHtml(SCRIPT, chk);
   ok(html.indexOf('<b>That</b>') === -1 && html.indexOf('&lt;b&gt;That&lt;/b&gt;') !== -1, 'script text is escaped — a line cannot inject HTML');
   ok(/✓ 1 clip verified/.test(html) && /not found in any transcript/.test(html), 'summary pills report verified and not-found counts');
+  // Transcripts still loading (one recording has none yet): never a false "not found".
+  state.recordings.push({ id: 'r-late', guest: 'Late Loader', title: '', quotes: [] });
+  const pend = sb.__verifyEditScript(SCRIPT);
+  const pendHtml = sb.__renderEditScriptHtml(SCRIPT, pend);
+  ok(pend.pending === true && pend.counts.missing === 0 && pend.clips.filter(c => !c.malformed).every(c => c.status === 'pending'), 'while transcripts are still loading, clips are "pending", not "not found"');
+  ok(/still loading/.test(pendHtml) && !/not found in any transcript/.test(pendHtml) && !/✕ not found/.test(pendHtml), 'the view says "still loading", never "not found", until transcripts arrive');
+  state.recordings.pop();
+  ok(sb.__verifyEditScript(SCRIPT).counts.ok === chk.counts.ok, 'once every transcript is in, clips verify normally again');
 
   // ---- 4. The script request body ----
   sb.__setActiveTx(['r-dom', 'r-jig']);
@@ -395,6 +409,42 @@ async function main() {
   // to match them) — proves episodes follow the saved arc, not the slicing.
   ok(sb.__applySeasonArc('SEASON-ARC: kartik | E1=height, E2=height, E3=height, E4=floor, E5=floor, E6=floor, E7=floor, E8=climb, E9=climb, E10=climb') === true
      && lbl(3) === 'The Height' && lbl(7) === 'All the Way Down' && lbl(8) === 'Up, Not All the Way', 'placement follows the saved arc even where it differs from even slicing (E3 height, E7 floor)');
+
+  // ---- 13. Readability: record vs interview, one checklist, recording sheet ----
+  ok(sb.__parseConfirm('CONFIRM: Kartik — check your bio').who === 'Kartik' && sb.__parseConfirm('CONFIRM: Kartik — check your bio').text === 'check your bio', 'an explicit owner tag is parsed');
+  ok(sb.__parseConfirm('CONFIRM: Matt only keeps his line if true').who === 'Matt', 'a host as the subject owns the check');
+  ok(sb.__parseConfirm("CONFIRM: Kartik's line says Sabba worked at Apple.").who === 'Mark', "\"Kartik's line says…\" is a fact check for the producer, not Kartik");
+  const RS = ['# S1-E1 · Test', '## 1 · OPEN · ~1', 'KARTIK: Opening line one.', 'CONFIRM: Kartik — his bio as spoken.',
+    'CLIP: Dominick Sanders | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | the gate',
+    'MATT: After the clip, Matt speaks.', 'NOTE: music sting', 'CONFIRM: Dominick says first-ever; check with him.', 'MATT: Closing line.'].join('\n');
+  sb.__episodeStore[7] = { conversationLog: [], editScript: { text: RS, createdAt: '2026-10-29T00:00:00Z' } };
+  const ovw = sb.__editScriptOverview(RS);
+  ok(ovw.hostLines === 3 && ovw.hosts.Kartik.lines === 1 && ovw.hosts.Matt.lines === 2 && ovw.clips === 1, 'overview counts lines to record per host vs interview clips');
+  ok(ovw.confirms.length === 2 && ovw.confirms[0].who === 'Kartik' && ovw.confirms[1].who === 'Mark' && ovw.confirms[0].n === 1, 'checks are numbered and owned');
+  const rh = sb.__renderEditScriptHtml(RS, null, { epNum: 7, interactive: true });
+  ok((rh.match(/<span class="es-rec">🎙 RECORD<\/span>/g) || []).length === 3 && /▶ FROM INTERVIEW · Dominick Sanders/.test(rh), 'every host line (3) is labeled RECORD; clips say FROM INTERVIEW');
+  ok(/TO RECORD<\/b> — 3 host lines/.test(rh) && /FROM INTERVIEWS<\/b> — 1 clip/.test(rh), 'the overview tells what to record vs what comes from interviews');
+  ok(/BEFORE RECORDING — 2 checks/.test(rh) && (rh.match(/⚑ check #\d/g) || []).length === 2 && rh.indexOf('⚑ CONFIRM —') === -1, 'checks are gathered into one checklist; inline they shrink to ⚑ markers');
+  const boxHtml = (rh.match(/<input type="checkbox"[^>]*>/) || [''])[0];
+  const seenChk = [];
+  vm.runInContext('toggleConfirmCheck = function(n, id){ __seenChk.push([n, id]); };', Object.assign(sb, { __seenChk: seenChk }));
+  const onc = (boxHtml.match(/onclick="([^"]*)"/) || [])[1];
+  try { vm.runInContext(onc, sb); } catch (e) {}
+  ok(seenChk.length === 1 && seenChk[0][0] === 7 && /^c[0-9a-z]+$/.test(seenChk[0][1]), 'a tick-box click calls toggleConfirmCheck(episode, check id)');
+  vm.runInContext('toggleConfirmCheck = __toggleConfirmCheck;', sb);
+  sb.__toggleConfirmCheck(7, ovw.confirms[0].id);
+  ok(sb.__episodeStore[7].editScript.checked[ovw.confirms[0].id] === true, 'ticking a check saves it on the script');
+  ok(/BEFORE RECORDING — 2 checks · 1 done/.test(sb.__renderEditScriptHtml(RS, null, { epNum: 7, interactive: true })), 'the checklist shows progress after a reload');
+  sb.__toggleConfirmCheck(7, ovw.confirms[0].id);
+  ok(!sb.__episodeStore[7].editScript.checked[ovw.confirms[0].id], 'ticking again un-ticks');
+  const sheet = sb.__buildRecordingSheet(RS);
+  ok(sheet.length === 3 && sheet.map(r => r.who).join(',') === 'KARTIK,MATT,MATT', 'the recording sheet holds only the host lines, in order');
+  ok(sheet[1].cue === 'after ▶ Dominick Sanders — the gate' && sheet[0].cue === '' && sheet[2].cue === '', 'a line right after a clip carries a cue for what plays before it');
+  const st = sb.__buildEditScriptText(RS), rst = sb.__buildRecordingSheetText(RS);
+  ok(/BEFORE RECORDING — 2 checks/.test(st) && /\[RECORD\] KARTIK: Opening line one\./.test(st) && /\[FROM INTERVIEW\] CLIP:/.test(st), 'the script download carries the checklist and RECORD / FROM INTERVIEW marks');
+  ok(/RECORDING SHEET — 3 lines/.test(rst) && rst.indexOf('CLIP:') === -1 && rst.indexOf('NOTE:') === -1 && /\(after ▶ Dominick Sanders/.test(rst), 'the recording-sheet download is host lines + cues only');
+  ok(/CONFIRM: <Kartik\|Matt\|Mark> —/.test(sb.__buildEditScriptSystemPrompt(2)) && /Keep CONFIRMs few/.test(sb.__buildEditScriptSystemPrompt(2)), 'the writer is told to tag who checks each CONFIRM and keep them few');
+  ok(/ONE question about INTENT/.test(sb.__buildEpisodeScriptKickoff(2)) && /Logistics are NOT the question/.test(sb.__buildEpisodeScriptKickoff(2)), "Boo's one question is about intent, not logistics");
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
