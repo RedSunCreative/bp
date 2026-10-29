@@ -23,7 +23,7 @@ ROW="${1:-98}"
 SB_URL="https://gogudwpuhmidngsbqfjg.supabase.co"
 KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvZ3Vkd3B1aG1pZG5nc2JxZmpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3MTQ2NTMsImV4cCI6MjA5NDI5MDY1M30.O6n_tRQsMU29wFV_RArcN9n6gP8KSDWJQqM4P6cTq3s"
 
-DIR="$(cd "$(dirname "$0")" && pwd)/backups"
+DIR="${BACKUP_DIR:-$(cd "$(dirname "$0")" && pwd)/backups}"   # BACKUP_DIR overrides (auto_backup_bp.sh uses backups/auto)
 mkdir -p "$DIR"
 TS="$(date +%Y-%m-%d_%H%M%S)"
 OUT="$DIR/builder_state-row${ROW}-${TS}.json"
@@ -40,7 +40,8 @@ if [[ "$HTTP" != "200" ]]; then
 fi
 
 # Verify it actually contains data, and report the season-brief size as a sanity check.
-python3 - "$OUT" <<'PY'
+# An empty result (e.g. the row doesn't exist) is deleted, not kept as a 2-byte "backup".
+if ! python3 - "$OUT" <<'PY'
 import json, sys
 p = sys.argv[1]
 rows = json.load(open(p))
@@ -54,8 +55,16 @@ hist = rows[0].get('history') or []
 print(f"  OK: data savedAt={data.get('savedAt')}")
 print(f"  seasonBrief: {len(brief)} chars | history snapshots: {len(hist)}")
 PY
+then
+  rm -f "$OUT"
+  exit 1
+fi
 
-# Keep the last 60 backups; prune older ones.
-ls -1t "$DIR"/builder_state-row${ROW}-*.json 2>/dev/null | tail -n +61 | xargs -I{} rm -f {} 2>/dev/null || true
+# Keep the last 60 PLAIN timestamped backups; prune older ones. Only files named exactly
+# builder_state-row<ROW>-YYYY-MM-DD_HHMMSS.json are ever pruned — hand-named safety backups
+# (PRE-RECOVERY, PRE-PINS, …-backup-…) never match and are never deleted.
+ls -1t "$DIR"/builder_state-row${ROW}-*.json 2>/dev/null \
+  | grep -E "/builder_state-row${ROW}-[0-9]{4}-[0-9]{2}-[0-9]{2}_[0-9]{6}\.json$" \
+  | tail -n +61 | while IFS= read -r f; do rm -f "$f"; done || true
 
 echo "Saved: $OUT"
