@@ -80,7 +80,7 @@ Single file: `bp.html`. No build step.
 
 ## Edit scripts (Season screen → ✦ Script)
 An **edit script** is the assembly plan for a *finished* episode: host lines Kartik and Matt record, interleaved with verbatim guest clips cut from the recorded interviews. It's different from the pre-interview `script` field (live-interview questions). The flow follows the Boo Dialogue Pattern:
-1. **✦ Script** on a season row → `startEpisodeScript(n)` loads every transcript, then Boo gives a 2-sentence hypothesis and ONE question. He writes nothing yet.
+1. **✦ Script** on a season row → `startEpisodeScript(n)`. Boo gives a 2-sentence hypothesis and ONE question from the pinned direction and the recording **cards**; he writes nothing yet. Full transcripts are deliberately NOT loaded into chat, because they ride every turn (~175k tokens). The writer sends its own scoped transcripts.
 2. When Boo has the direction, he emits `WRITE-SCRIPT: E<n>` → `parseReply` turns it into a one-tap **Write the E<n> script** button (`buildReplyActions`).
 3. `writeEpisodeScript(n)` streams a dedicated long-form call (`SCRIPT_MODEL` = `claude-opus-5-5`, adaptive thinking, through the proxy's streaming passthrough) in a strict line format: `KARTIK:` / `MATT:` / `CLIP: Guest | FROM "…" | TO "…" | job` / `NOTE:` / `CONFIRM:`.
 4. `verifyEditScript()` finds every CLIP's FROM/TO in the transcripts and marks it ✓ found / ⚠ check / ✕ not found, flagging wrong-guest attributions. **Boo never supplies timecodes.** The app derives a ≈timecode from the nearest Riverside stamp. These are approximate, because the Riverside transcripts repeat passages and mislabel speakers.

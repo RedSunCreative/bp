@@ -6309,7 +6309,8 @@ function buildEpisodeScriptKickoff(epNum) {
   var title = getEpTitle(epNum);
   var n = recordingsWithTranscripts().length;
   return 'We are building the EDIT SCRIPT for S' + sNum + '-E' + epNum + (title ? ' — "' + title + '"' : '') + '. '
-    + 'All ' + n + ' interview transcripts are loaded (FOCUSED TRANSCRIPTS) and my season direction is in your context (PINNED PLANNING CONTEXT and the season brief). '
+    + 'You have my season direction (PINNED PLANNING CONTEXT and the season brief) and a card for each of the ' + n + ' recordings (summary, arc, tension, pull-quotes with timecodes). '
+    + 'The full transcripts are not loaded in this conversation — the script writer receives the ones you name when it writes — so work from the cards, and do not claim to have read a full transcript. '
     + 'Read what the direction says this episode must do, then check it against what the interviews actually contain.\n\n'
     + 'Before writing anything: in 2 confident sentences, give your hypothesis for this episode — its shape, its job in the season arc, and the specific moment(s) from the interviews it turns on. '
     + 'If the direction asks for something the transcripts do not support, say so plainly. '
@@ -6324,10 +6325,10 @@ function startEpisodeScript(epNum) {
   if (!withTx.length) { showToast('Import the interview transcripts first — Boo scripts from them.'); return; }
   setView('chat');
   switchEpisode(epNum);
-  withTx.forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
-  _txTurns = 0; _txTipShown = true;   // scripting needs every transcript loaded — don't nag to unload
-  renderRecordingsList();
-  renderTranscriptChip();
+  // Stay light: the hypothesis + question work from the pinned direction and the recording cards.
+  // Full transcripts ride every chat turn (~175k tokens each), so they are NOT loaded here — the
+  // script writer pulls the one(s) the episode needs when it writes.
+  if (_activeTranscriptIds.length) { _activeTranscriptIds = []; renderRecordingsList(); renderTranscriptChip(); }
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
   triggerBooDirectly('Script S' + sNum + '-E' + epNum, buildEpisodeScriptKickoff(epNum));
 }
@@ -6765,8 +6766,8 @@ async function writeEpisodeScript(epNum, sources) {
   setView('chat');
   if (!state.currentEpisode || state.currentEpisode.number !== epNum) switchEpisode(epNum);
   var src = resolveScriptSources(sources);
-  src.recs.forEach(function(r) { if (_activeTranscriptIds.indexOf(r.id) === -1) _activeTranscriptIds.push(r.id); });
-  renderTranscriptChip();
+  // The writer sends its own transcripts; it does NOT load them into chat (that would make every
+  // later chat turn carry them).
   var body = buildEditScriptRequestBody(epNum, sources);
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
   var label = 'Write the S' + sNum + '-E' + epNum + ' edit script';

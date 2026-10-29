@@ -48,6 +48,9 @@
  *      title block, numbered segments, SPEAKER in caps once per run of lines, clips as IN/OUT
  *      cues with ≈time, editor notes in [brackets], open questions on a final page grouped by
  *      who checks; no verification badges; everything escaped.
+ *  17. Cost (Mark: "Boo is reading 8 transcripts — am I paying a lot?"): ✦ Script no longer loads
+ *      the 8 full transcripts into chat (~175k tokens every turn); the kickoff works from the cards
+ *      and direction; the writer sends its own scoped transcripts without loading them into chat.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -123,7 +126,7 @@ function buildSandbox(scriptSrc) {
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
     'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
-    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml'];
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -131,6 +134,7 @@ function buildSandbox(scriptSrc) {
     + '  try { globalThis.__setLoaded = function(v){ _supabaseLoaded = v; }; } catch(e){}\n'
     + '  try { globalThis.__setTx = function(id,t){ _transcriptStore[id] = t; }; } catch(e){}\n'
     + '  try { globalThis.__setActiveTx = function(a){ _activeTranscriptIds = a; }; } catch(e){}\n'
+    + '  try { globalThis.__getActiveTx = function(){ return _activeTranscriptIds.slice(); }; } catch(e){}\n'
     + '  try { globalThis.__getPendingLoads = function(){ return _pendingLoadTargets; }; } catch(e){}\n'
     + '})();';
   vm.runInContext(scriptSrc + epilogue, context, { filename:'bp.html#inline', timeout:20000 });
@@ -520,6 +524,22 @@ async function main() {
   ok(share.indexOf('check his title') > share.indexOf('Before recording — open questions') && share.indexOf('Before recording') > share.indexOf('Kartik speaks'), 'open questions are gathered on a final page, not inline');
   ok(!/✓ found|⚠ check|verified/.test(share), 'no verification badges in the shared document');
   ok(sb.__buildShareScriptHtml(999) === '', 'no script, no document');
+
+  // ---- 17. Scripting chat stays light ----
+  sb.__setActiveTx(['r-dom', 'r-jig']);
+  sb.__episodeStore[12] = { conversationLog: [] };
+  cap.body = null;
+  sb.__startEpisodeScript(12);
+  await new Promise(res => setImmediate(res));
+  ok(sb.__getActiveTx().length === 0, '✦ Script unloads full transcripts from chat (they would ride every turn)');
+  const kickSys = (() => { try { const x = JSON.parse(cap.body).system; return Array.isArray(x) ? x.map(b => b.text).join('\n') : String(x); } catch (e) { return ''; } })();
+  ok(cap.body && kickSys.indexOf('syntax or bust almost in certain situations') === -1 && kickSys.indexOf('FOCUSED TRANSCRIPTS (full verbatim') === -1, 'the kickoff request carries no full transcript');
+  ok(/work from the cards/.test(sb.__buildEpisodeScriptKickoff(12)) && /do not claim to have read a full transcript/.test(sb.__buildEpisodeScriptKickoff(12)), 'Boo is told he has the cards, not the transcripts');
+  cap.queue = [FULL.slice()];
+  state.currentEpisode = { number: 12, title: '' };
+  await sb.__writeEpisodeScript(12, 'Dominick Sanders');
+  cap.queue = null;
+  ok(sb.__getActiveTx().length === 0, 'writing a script does not load transcripts into chat');
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');
