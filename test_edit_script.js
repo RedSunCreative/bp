@@ -519,11 +519,12 @@ async function main() {
     '## 2 · INTRO · ~2.5', 'MATT: Line one.', 'CONFIRM: Mark — check his title.', 'MATT: Line two.', 'KARTIK: Kartik speaks.', 'CONFIRM: Kartik — your bio as spoken.'].join('\n');
   sb.__episodeStore[11] = { conversationLog: [], editScript: { text: SH_TXT, createdAt: '2026-10-29T12:00:00Z' } };
   const share = sb.__buildShareScriptHtml(11);
-  ok(/Season 1 · Episode 11/.test(share) && share.indexOf('The &lt;Promise&gt;') !== -1 && share.indexOf('<Promise>') === -1, 'title block present; the title is escaped');
-  ok(/1\. COLD OPEN/.test(share) && /2\. INTRO/.test(share) && /~0\.5 min/.test(share), 'numbered segments with timing');
+  ok(/Season 1 &nbsp;·&nbsp; Episode 11/.test(share) && share.indexOf('The &lt;Promise&gt;') !== -1 && share.indexOf('<Promise>') === -1, 'title block present; the title is escaped');
+  ok(share.indexOf('Courier') === -1 && (share.match(/font-family:/g) || []).every(() => true) && !/font-family:(?!'Helvetica Neue')/.test(share), 'one typeface throughout (no Courier/Arial mix)');
+  ok(/>01<\/span>.*COLD OPEN/.test(share) && />02<\/span>.*INTRO/.test(share) && /~0\.5 min/.test(share), 'numbered segments with timing');
   ok((share.match(/>MATT<\/p>/g) || []).length === 1 && (share.match(/>KARTIK<\/p>/g) || []).length === 1 && /Line one\./.test(share) && /Line two\./.test(share), 'speaker name once per run of lines, in caps, script-style (a hidden check between lines does not repeat the name)');
-  ok(/▶ CLIP 1 — DOMINICK SANDERS \(interview\)/.test(share) && /<b>IN:<\/b> “they have the heart/.test(share) && /<b>OUT:<\/b>/.test(share) && /≈ 24:56/.test(share), 'clips are IN/OUT cue blocks with ≈time');
-  ok(/\[No music under the clip\.\]/.test(share), 'editor notes in [brackets]');
+  ok(/>Clip 1<\/p>/.test(share) && />Dominick Sanders<\/p>/.test(share) && />In<\/span>&nbsp;&nbsp;“they have the heart/.test(share) && />Out<\/span>/.test(share) && /≈ 24:56/.test(share), 'clips are IN/OUT cue panels with guest and ≈time');
+  ok(/font-style:italic[^>]*>No music under the clip\.<\/p>/.test(share), 'editor notes are small italics, out of the way');
   ok(share.indexOf('check his title') > share.indexOf('Before recording — open questions') && share.indexOf('Before recording') > share.indexOf('Kartik speaks'), 'open questions are gathered on a final page, not inline');
   ok(!/✓ found|⚠ check|verified/.test(share), 'no verification badges in the shared document');
   ok(sb.__buildShareScriptHtml(999) === '', 'no script, no document');
@@ -556,8 +557,8 @@ async function main() {
   const body18 = sb.__clipText(chk18.clips[0]);
   ok(/^they have the heart for it/i.test(body18.trim()) && /syntax or bust almost in certain situations\.?$/.test(body18.trim()) && body18.indexOf('entrepreneurs') === -1, "a clip's text runs exactly from its IN words to its OUT words");
   const shareFull = sb.__buildShareScriptHtml(11, { full: true }), shareCue = sb.__buildShareScriptHtml(11);
-  ok(/weren&#39;t great coders|weren't great coders/.test(shareFull) && !/<b>IN:<\/b>/.test(shareFull) && /Read-through version/.test(shareFull) && /audio is the authority/.test(shareFull), 'the read-through shows the full clip text with an honest caveat');
-  ok(/<b>IN:<\/b>/.test(shareCue) && !/weren't great coders/.test(shareCue) && !/Read-through version/.test(shareCue), 'the script version keeps IN/OUT cues only');
+  ok(/weren't great coders/.test(shareFull) && !/>In<\/span>/.test(shareFull) && /Read-through/.test(shareFull) && /audio is the authority/.test(shareFull), 'the read-through shows the full clip text with an honest caveat');
+  ok(/>In<\/span>/.test(shareCue) && !/weren't great coders/.test(shareCue) && !/audio is the authority/.test(shareCue), 'the script version keeps IN/OUT cues only');
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');

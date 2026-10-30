@@ -6940,10 +6940,10 @@ function viewRecordingSheet(epNum) {
   _openEsViewer(epNum, 'S' + sNum + '-E' + epNum + ' — recording sheet', '<div class="es-wrap">' + html + '</div>');
 }
 
-// ── SHARE: a traditional, clean script document for hosts/client ──
-// Radio/podcast script layout: title block, numbered segments, SPEAKER in caps above their lines
-// (Courier), interview clips as IN/OUT cue blocks, editor notes in [brackets], and the open
-// questions on a final page. No verification badges. Inline styles throughout so it survives
+// ── SHARE: a clean, professional script document for hosts/client ──
+// Cover block (show, title, a three-box summary, job, shape), numbered segments, then two-column
+// rows: speaker / clip label on the left, lines or a shaded clip panel on the right; editor notes
+// as small italics; open questions as a checklist page. One typeface; inline styles so it survives
 // "Copy for Google Docs" and prints cleanly to PDF.
 function buildShareScriptHtml(epNum, opts) {
   opts = opts || {};
@@ -6953,68 +6953,112 @@ function buildShareScriptHtml(epNum, opts) {
   var byLine = {};
   (check.clips || []).forEach(function(c) { byLine[c.line] = c; });
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
-  var MONO = "font-family:'Courier New',Courier,monospace;font-size:12pt;";
-  var SANS = "font-family:Arial,Helvetica,sans-serif;";
-  var title = '', meta = {}, out = [], lastWho = null, clipN = 0;
+  // One typeface, hierarchy by size/weight/colour only. Helvetica Neue → Arial keeps the look
+  // identical when pasted into Google Docs. Two-column rows (label | content) are tables so they
+  // stay aligned in Docs and in print.
+  var F = "font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;";
+  var INK = '#1c1c1c', MUTED = '#6f6f6b', RULE = '#e4e3de', SOFT = '#f6f5f1';
+  var HOST = { KARTIK: '#3949ab', MATT: '#2e7d32' }, CLIPC = '#0f6f86';
+  var LABEL = F + 'font-size:8.5pt;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;';
+  var BODY = F + 'font-size:11pt;line-height:1.55;color:' + INK + ';margin:0 0 6pt;';
+  var NOTE = F + 'font-size:9pt;line-height:1.45;font-style:italic;color:' + MUTED + ';margin:0;';
+  function row(left, right, pad) {
+    return '<tr><td style="width:1.15in;vertical-align:top;padding:' + (pad || '7pt') + ' 10pt 7pt 0;">' + left + '</td>'
+      + '<td style="vertical-align:top;padding:' + (pad || '7pt') + ' 0 7pt 0;">' + right + '</td></tr>';
+  }
+  var title = '', meta = {}, segs = [], cur = null, clipN = 0, hostRun = null;
+  function seg(num, name, mins) { cur = { num: num, name: name, mins: mins, rows: [] }; segs.push(cur); hostRun = null; }
   String(text).split('\n').forEach(function(line, i) {
     var tl = line.trim(), m;
     if (!tl) return;
     if (/^#\s/.test(tl)) { title = tl.replace(/^#\s*/, '').replace(/^S\d+-E\d+\s*·\s*/, ''); return; }
     if ((m = tl.match(/^(SHAPE|JOB|RUNTIME):\s*(.*)$/i))) { meta[m[1].toUpperCase()] = m[2]; return; }
     if (/^##\s/.test(tl)) {
-      lastWho = null;
       var h = tl.replace(/^##\s*/, '').split('·').map(function(x) { return x.trim(); });
-      var mins = (h[2] || '').replace(/^~\s*/, '');
-      out.push('<p style="' + SANS + 'font-size:12pt;font-weight:bold;text-transform:uppercase;letter-spacing:0.5px;margin:22pt 0 6pt;border-bottom:1px solid #999;padding-bottom:3pt;">'
-        + esc(h[0]) + '. ' + esc(h[1] || '') + (mins ? ' <span style="font-weight:normal;color:#555;">(~' + esc(mins) + ' min)</span>' : '') + '</p>');
+      seg(h[0], h[1] || '', (h[2] || '').replace(/^~\s*/, ''));
       return;
     }
+    if (!cur) seg('', '', '');
+    if (/^CONFIRM:/i.test(tl)) return;   // gathered on the final page; invisible here, so it doesn't break a speaker's run
     if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) {
       var who = m[1].toUpperCase();
-      if (who !== lastWho) out.push('<p style="' + MONO + 'font-weight:bold;margin:12pt 0 2pt 0;">' + who + '</p>');
-      out.push('<p style="' + MONO + 'margin:0 0 4pt 0.6in;line-height:1.35;">' + esc(m[2]) + '</p>');
-      lastWho = who; return;
-    }
-    if (/^CONFIRM:/i.test(tl)) return;   // gathered on the final page — invisible here, so it doesn't break a speaker's run
-    lastWho = null;
-    if ((m = tl.match(/^NOTE:\s*(.*)$/i))) { out.push('<p style="' + SANS + 'font-size:10pt;font-style:italic;color:#555;margin:6pt 0 6pt 0.6in;">[' + esc(m[1]) + ']</p>'); return; }
-    var c = byLine[i];
-    if (c && !c.malformed) {
-      clipN++;
-      var tc = c.startTc ? ' &nbsp;<span style="font-weight:normal;color:#555;">(≈ ' + esc(c.startTc) + ')</span>' : '';
-      var body = opts.full ? clipText(c) : '';
-      out.push('<p style="' + SANS + 'font-size:11pt;font-weight:bold;margin:12pt 0 2pt 0;">▶ CLIP ' + clipN + ' — ' + esc(String(c.guest).toUpperCase()) + ' (interview)' + tc + '</p>'
-        + (c.job ? '<p style="' + SANS + 'font-size:10pt;font-style:italic;color:#555;margin:0 0 4pt 0.6in;">' + esc(c.job) + '</p>' : '')
-        + (body
-          ? body.split('\n\n').map(function(para) { return '<p style="' + SANS + 'font-size:10.5pt;line-height:1.45;margin:0 0 5pt 0.6in;padding-left:8pt;border-left:2px solid #bbb;">' + esc(para) + '</p>'; }).join('')
-          : '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>IN:</b> “' + esc(c.from) + '”</p>'
-            + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 1pt 0.6in;"><b>OUT:</b> “' + esc(c.to) + '”</p>'));
+      if (hostRun && hostRun.who === who) { hostRun.lines.push(m[2]); return; }
+      hostRun = { kind: 'host', who: who, lines: [m[2]] };
+      cur.rows.push(hostRun);
       return;
     }
-    out.push('<p style="' + SANS + 'font-size:10pt;color:#555;margin:4pt 0;">' + esc(tl) + '</p>');
+    hostRun = null;
+    if ((m = tl.match(/^NOTE:\s*(.*)$/i))) { cur.rows.push({ kind: 'note', text: m[1] }); return; }
+    var c = byLine[i];
+    if (c && !c.malformed) { clipN++; cur.rows.push({ kind: 'clip', n: clipN, clip: c }); return; }
+    cur.rows.push({ kind: 'note', text: tl });
   });
+
   var date = new Date(es.createdAt || Date.now()).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  var head = '<p style="' + SANS + 'font-size:10pt;letter-spacing:1px;text-transform:uppercase;color:#555;margin:0;">' + esc(SHOW_CONFIG.showName || '') + ' · Season ' + sNum + ' · Episode ' + epNum + '</p>'
-    + '<p style="' + SANS + 'font-size:20pt;font-weight:bold;margin:4pt 0 2pt;">' + esc(title || ('Episode ' + epNum)) + '</p>'
-    + '<p style="' + SANS + 'font-size:10pt;color:#555;margin:0 0 10pt;">Draft script · ' + esc(SHOW_CONFIG.producerCompany || '') + ' · ' + esc(date) + '</p>'
-    + '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 2pt;"><b>Runtime target:</b> ' + esc(meta.RUNTIME || '—') + ' min &nbsp;·&nbsp; <b>Hosts record:</b> ' + ov.hostLines + ' lines, about ' + ov.recordMinutes + ' min (Kartik ' + ov.hosts.Kartik.lines + ', Matt ' + ov.hosts.Matt.lines + ') &nbsp;·&nbsp; <b>Interview clips:</b> ' + ov.clips + '</p>'
-    + (meta.JOB ? '<p style="' + SANS + 'font-size:10.5pt;margin:6pt 0 2pt;"><b>This episode’s job:</b> ' + esc(meta.JOB) + '</p>' : '')
-    + (meta.SHAPE ? '<p style="' + SANS + 'font-size:10.5pt;margin:2pt 0 10pt;"><b>Shape:</b> ' + esc(meta.SHAPE) + '</p>' : '')
-    + '<p style="' + SANS + 'font-size:9.5pt;color:#555;margin:0 0 4pt;">KARTIK / MATT = lines the hosts record · ▶ CLIP = cut from the recorded interview'
-    + (opts.full ? ' (full text shown) · [brackets] = notes for the editor</p>'
-        + '<p style="' + SANS + 'font-size:9.5pt;color:#555;margin:0 0 4pt;"><i>Read-through version. Clip text comes from the interview transcript, lightly cleaned of repeats. It may contain small errors, and host questions inside a clip are not labeled. The audio is the authority.</i></p>'
-      : ' (IN/OUT are the first and last words) · [brackets] = notes for the editor</p>');
+  function stat(label, value, sub) {
+    return '<td style="width:33%;vertical-align:top;padding:9pt 12pt;border:1px solid ' + RULE + ';background:' + SOFT + ';">'
+      + '<p style="' + LABEL + 'color:' + MUTED + ';margin:0 0 3pt;">' + label + '</p>'
+      + '<p style="' + F + 'font-size:14pt;font-weight:600;color:' + INK + ';margin:0;">' + value + '</p>'
+      + (sub ? '<p style="' + F + 'font-size:9pt;color:' + MUTED + ';margin:2pt 0 0;">' + sub + '</p>' : '') + '</td>';
+  }
+  var head = '<p style="' + LABEL + 'color:' + MUTED + ';margin:0;">' + esc(SHOW_CONFIG.showName || '') + ' &nbsp;·&nbsp; Season ' + sNum + ' &nbsp;·&nbsp; Episode ' + epNum + '</p>'
+    + '<p style="' + F + 'font-size:24pt;font-weight:600;line-height:1.2;color:' + INK + ';margin:6pt 0 4pt;">' + esc(title || ('Episode ' + epNum)) + '</p>'
+    + '<p style="' + F + 'font-size:10pt;color:' + MUTED + ';margin:0 0 16pt;">' + (opts.full ? 'Read-through' : 'Script') + ' &nbsp;·&nbsp; Draft &nbsp;·&nbsp; ' + esc(SHOW_CONFIG.producerCompany || '') + ' &nbsp;·&nbsp; ' + esc(date) + '</p>'
+    + '<table style="width:100%;border-collapse:collapse;margin:0 0 14pt;"><tr>'
+    + stat('Runtime target', esc(meta.RUNTIME || '—') + ' min', '')
+    + stat('Hosts record', ov.hostLines + ' lines', 'about ' + ov.recordMinutes + ' min · Kartik ' + ov.hosts.Kartik.lines + ', Matt ' + ov.hosts.Matt.lines)
+    + stat('Interview clips', String(ov.clips), opts.full ? 'full text shown' : 'cues: first and last words')
+    + '</tr></table>'
+    + (meta.JOB ? '<p style="' + F + 'font-size:10.5pt;line-height:1.5;color:' + INK + ';margin:0 0 6pt;"><span style="' + LABEL + 'color:' + MUTED + ';">Episode job</span>&nbsp;&nbsp;' + esc(meta.JOB) + '</p>' : '')
+    + (meta.SHAPE ? '<p style="' + F + 'font-size:10.5pt;line-height:1.5;color:' + INK + ';margin:0 0 12pt;"><span style="' + LABEL + 'color:' + MUTED + ';">Shape</span>&nbsp;&nbsp;' + esc(meta.SHAPE) + '</p>' : '')
+    + '<p style="' + F + 'font-size:9pt;color:' + MUTED + ';margin:0 0 4pt;padding-top:8pt;border-top:1px solid ' + RULE + ';">'
+    + '<b style="color:' + HOST.KARTIK + ';">KARTIK</b> / <b style="color:' + HOST.MATT + ';">MATT</b> — the hosts record these lines &nbsp;·&nbsp; <b style="color:' + CLIPC + ';">CLIP</b> — cut from the recorded interview &nbsp;·&nbsp; <i>italic</i> — notes for the editor</p>'
+    + (opts.full ? '<p style="' + F + 'font-size:9pt;font-style:italic;color:' + MUTED + ';margin:0;">Clip text comes from the interview transcript, lightly cleaned of repeats. It may contain small errors, and host questions inside a clip are not labelled. The audio is the authority.</p>' : '');
+
+  var body = segs.map(function(sg) {
+    var header = sg.name
+      ? '<table style="width:100%;border-collapse:collapse;margin:22pt 0 2pt;"><tr>'
+        + '<td style="padding:0 0 5pt;border-bottom:1.5px solid ' + INK + ';"><span style="' + F + 'font-size:10pt;font-weight:600;color:' + MUTED + ';">' + esc(String(sg.num).padStart(2, '0')) + '</span>&nbsp;&nbsp;'
+        + '<span style="' + F + 'font-size:12pt;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:' + INK + ';">' + esc(sg.name) + '</span></td>'
+        + '<td style="padding:0 0 5pt;border-bottom:1.5px solid ' + INK + ';text-align:right;' + F + 'font-size:9.5pt;color:' + MUTED + ';">' + (sg.mins ? '~' + esc(sg.mins) + ' min' : '') + '</td></tr></table>'
+      : '';
+    var rows = sg.rows.map(function(r) {
+      if (r.kind === 'host') {
+        return row('<p style="' + LABEL + 'color:' + HOST[r.who] + ';margin:2pt 0 0;">' + r.who + '</p>',
+          r.lines.map(function(l) { return '<p style="' + BODY + '">' + esc(l) + '</p>'; }).join(''));
+      }
+      if (r.kind === 'note') return row('', '<p style="' + NOTE + '">' + esc(r.text) + '</p>', '3pt');
+      var c = r.clip, full = opts.full ? clipText(c) : '';
+      var inner = full
+        ? full.split('\n\n').map(function(p) { return '<p style="' + F + 'font-size:10.5pt;line-height:1.55;color:' + INK + ';margin:0 0 6pt;">' + esc(p) + '</p>'; }).join('')
+        : '<p style="' + F + 'font-size:10.5pt;line-height:1.5;color:' + INK + ';margin:0 0 3pt;"><span style="' + LABEL + 'color:' + MUTED + ';">In</span>&nbsp;&nbsp;“' + esc(c.from) + '”</p>'
+          + '<p style="' + F + 'font-size:10.5pt;line-height:1.5;color:' + INK + ';margin:0;"><span style="' + LABEL + 'color:' + MUTED + ';">Out</span>&nbsp;&nbsp;“' + esc(c.to) + '”</p>';
+      var left = '<p style="' + LABEL + 'color:' + CLIPC + ';margin:2pt 0 2pt;">Clip ' + r.n + '</p>'
+        + '<p style="' + F + 'font-size:9pt;line-height:1.35;color:' + INK + ';margin:0;">' + esc(c.guest) + '</p>'
+        + (c.startTc ? '<p style="' + F + 'font-size:9pt;color:' + MUTED + ';margin:1pt 0 0;">≈ ' + esc(c.startTc) + '</p>' : '');
+      var right = (c.job ? '<p style="' + F + 'font-size:9.5pt;font-weight:600;color:' + CLIPC + ';margin:0 0 5pt;">' + esc(c.job) + '</p>' : '')
+        + '<table style="width:100%;border-collapse:collapse;"><tr><td style="background:' + SOFT + ';border-left:3px solid ' + CLIPC + ';padding:8pt 11pt;">' + inner + '</td></tr></table>';
+      return row(left, right, '9pt');
+    }).join('');
+    return header + '<table style="width:100%;border-collapse:collapse;">' + rows + '</table>';
+  }).join('');
+
   var qs = '';
   if (ov.confirms.length) {
-    qs = '<p style="' + SANS + 'font-size:12pt;font-weight:bold;text-transform:uppercase;margin:28pt 0 6pt;border-bottom:1px solid #999;padding-bottom:3pt;page-break-before:always;">Before recording — open questions</p>'
+    qs = '<table style="width:100%;border-collapse:collapse;margin:30pt 0 6pt;page-break-before:always;"><tr><td style="padding:0 0 5pt;border-bottom:1.5px solid ' + INK + ';">'
+      + '<span style="' + F + 'font-size:12pt;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:' + INK + ';">Before recording</span>'
+      + '&nbsp;&nbsp;<span style="' + F + 'font-size:9.5pt;color:' + MUTED + ';">' + ov.confirms.length + ' open question' + (ov.confirms.length === 1 ? '' : 's') + '</span></td></tr></table>'
       + ['Kartik', 'Matt', 'Mark'].map(function(who) {
           var items = ov.confirms.filter(function(x) { return x.who === who; });
           if (!items.length) return '';
-          return '<p style="' + SANS + 'font-size:10.5pt;font-weight:bold;margin:10pt 0 3pt;">' + (who === 'Mark' ? 'Mark (producer)' : who) + '</p>'
-            + items.map(function(x) { return '<p style="' + SANS + 'font-size:10.5pt;margin:0 0 4pt 0.3in;">☐ ' + esc(x.text) + '</p>'; }).join('');
+          return '<p style="' + LABEL + 'color:' + (HOST[who.toUpperCase()] || MUTED) + ';margin:14pt 0 4pt;">' + (who === 'Mark' ? 'Mark · producer' : who) + '</p>'
+            + '<table style="width:100%;border-collapse:collapse;">' + items.map(function(x) {
+                return '<tr><td style="width:0.3in;vertical-align:top;padding:4pt 0;' + F + 'font-size:11pt;color:' + MUTED + ';">☐</td>'
+                  + '<td style="vertical-align:top;padding:4pt 0;' + F + 'font-size:10.5pt;line-height:1.5;color:' + INK + ';">' + esc(x.text) + '</td></tr>';
+              }).join('') + '</table>';
         }).join('');
   }
-  return '<div id="doc" style="max-width:7in;margin:0 auto;color:#111;">' + head + out.join('') + qs + '</div>';
+  return '<div id="doc" style="max-width:6.8in;margin:0 auto;">' + head + body + qs + '</div>';
 }
 function openShareReadthrough(epNum) { openShareScript(epNum, true); }
 function openShareScript(epNum, full) {
@@ -7025,9 +7069,10 @@ function openShareScript(epNum, full) {
   var w = window.open('', '_blank');
   if (!w) { showToast('Your browser blocked the new window — allow pop-ups for this site and try again.'); return; }
   w.document.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + esc(docTitle) + '</title>'
-    + '<style>body{background:#fff;margin:0;padding:28px 20px 60px;} .bar{position:sticky;top:0;background:#f4f4f2;border-bottom:1px solid #ddd;padding:10px;margin:-28px -20px 24px;text-align:center;font-family:Arial,sans-serif;font-size:13px;}'
-    + ' .bar button{font-size:13px;padding:7px 14px;margin:0 6px;border:1px solid #888;border-radius:5px;background:#fff;cursor:pointer;} #ok{color:#0a7;margin-left:8px;}'
-    + ' @media print{.bar{display:none;} body{padding:0;} @page{margin:0.8in;}}</style></head><body>'
+    + '<style>body{background:#fafaf8;margin:0;padding:28px 20px 60px;} #doc{background:#fff;padding:0.7in 0.75in;box-shadow:0 1px 3px rgba(0,0,0,0.08),0 8px 24px rgba(0,0,0,0.06);border-radius:4px;}'
+    + ' .bar{position:sticky;top:0;z-index:2;background:rgba(250,250,248,0.94);backdrop-filter:blur(6px);border-bottom:1px solid #e4e3de;padding:10px;margin:-28px -20px 24px;text-align:center;font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;font-size:13px;}'
+    + ' .bar button{font-family:inherit;font-size:13px;font-weight:500;padding:7px 16px;margin:0 5px;border:1px solid #cfcfca;border-radius:6px;background:#fff;color:#1c1c1c;cursor:pointer;} .bar button:hover{border-color:#999;} #ok{color:#2e7d32;margin-left:8px;}'
+    + ' @media print{.bar{display:none;} body{padding:0;background:#fff;} #doc{box-shadow:none;padding:0;border-radius:0;} @page{margin:0.75in;}}</style></head><body>'
     + '<div class="bar"><button onclick="window.print()">⎙ Save as PDF / Print</button><button onclick="copyDoc()">⧉ Copy for Google Docs</button><span id="ok"></span></div>'
     + body
     + '<script>function copyDoc(){var el=document.getElementById("doc");var done=function(){document.getElementById("ok").textContent="Copied — paste into a Google Doc";};'
