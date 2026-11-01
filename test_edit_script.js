@@ -59,6 +59,10 @@
  *      across captions; h:mm:ss stamps); a clip crossing caption boundaries still matches (labels
  *      masked, timecodes exact); Replace archives the old text, swaps the new, records the source;
  *      cancel changes nothing.
+ *  20. Interview format (Mark: most episodes traditional — cold open, recorded intro, the interview
+ *      lightly edited, recorded outro; "please don't get it wrong"): episodes default to Interview;
+ *      the writer gets strict 4-segment rules (no host lines in the middle, CUT lines, 35–45 min);
+ *      the app checks the structure afterwards and warns on any drift; Montage stays available.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -134,7 +138,8 @@ function buildSandbox(scriptSrc) {
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
     'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
-    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript','cleanClipText','clipText','srtToTranscript','otterTxtToTranscript','replaceRecordingTranscript','loadTranscript'];
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript','cleanClipText','clipText','srtToTranscript','otterTxtToTranscript','replaceRecordingTranscript','loadTranscript',
+    'episodeFormat','setEpisodeFormat','checkInterviewStructure','estimateRuntimeMinutes'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -592,6 +597,40 @@ async function main() {
   ok(ok19 === true && /HEART/.test(sb.__loadTranscript('r-otter')), 'confirm swaps in the new transcript');
   ok(pushed.some(b => /^r-otter__archived-\d{4}-\d{2}-\d{2}$/.test(b.recording_id) && b.transcript === before19), 'the old transcript is archived durably before the swap');
   ok(recO.transcriptSource && recO.transcriptSource.kind === 'Otter SRT' && recO.transcriptSource.blocks === 5, 'the card records where its transcript came from');
+  state.recordings.pop();
+
+  // ---- 20. Interview format + guardrails ----
+  sb.__episodeStore[13] = { conversationLog: [] };
+  ok(sb.__episodeFormat(13) === 'interview' && sb.__episodeFormat(999) === 'interview', 'episodes default to Interview format');
+  sb.__setEpisodeFormat(13, 'montage');
+  ok(sb.__episodeFormat(13) === 'montage' && sb.__episodeStore[13].format === 'montage', 'an episode can be set to Montage (saved on the episode)');
+  sb.__setEpisodeFormat(13, 'interview');
+  const sysI = sb.__buildEditScriptSystemPrompt(13);
+  ok(/EPISODE FORMAT: INTERVIEW/.test(sysI) && /## 1 · COLD OPEN/.test(sysI) && /## 3 · THE INTERVIEW/.test(sysI) && /NO KARTIK or MATT lines in this segment/.test(sysI) && /35–45 minutes/.test(sysI) && /guest asks on tape for something to be removed, it is always cut/.test(sysI), 'Interview writer gets the strict 4-segment rules');
+  ok(!/narration, bridges, color commentary/.test(sysI), 'the old "narration, bridges" invitation is gone');
+  sb.__setEpisodeFormat(13, 'montage');
+  ok(/EPISODE FORMAT: MONTAGE/.test(sb.__buildEditScriptSystemPrompt(13)) && /live host question or reaction/.test(sb.__buildEditScriptSystemPrompt(13)), 'Montage writer prefers live reactions over new lines');
+  sb.__setEpisodeFormat(13, 'interview');
+  ok(/This is an INTERVIEW episode/.test(sb.__buildEpisodeScriptKickoff(13)), "Boo's kickoff knows the episode's format");
+  const GOOD = ['# S1-E13 · T', 'RUNTIME: 40', '## 1 · COLD OPEN · ~0.5',
+    'CLIP: Otter Test | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | hook',
+    '## 2 · INTRO · ~2', 'MATT: Welcome.', 'KARTIK: Here is our conversation.', '## 3 · THE INTERVIEW · ~35',
+    'CLIP: Otter Test | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | all of it',
+    'CUT: a retake | ~0.5 | retake', '## 4 · OUTRO · ~2', 'KARTIK: Thanks.', 'MATT: See you next time.'].join('\n');
+  state.recordings.push({ id: 'r-otter', guest: 'Otter Test', title: '', quotes: [] });
+  sb.__setTx('r-otter', conv19.text);
+  const st20 = sb.__checkInterviewStructure(GOOD);
+  ok(st20.warnings.filter(w => !/estimated length/.test(w)).length === 0 && st20.cuts === 1, 'a correct interview script passes the structure check (cuts counted)');
+  ok(st20.minutes != null && st20.minutes < 33 && st20.warnings.some(w => /estimated length/.test(w)), 'runtime is estimated from clip timecodes and flagged when outside 35–45');
+  const BAD = GOOD.replace('CUT: a retake | ~0.5 | retake', 'MATT: A bridge line in the middle.\nCUT: a retake | ~0.5 | retake').replace('## 2 · INTRO', 'CLIP: Otter Test | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | second\n## 2 · INTRO');
+  const stBad = sb.__checkInterviewStructure(BAD);
+  ok(stBad.warnings.some(w => /1 host line inside THE INTERVIEW/.test(w)) && stBad.warnings.some(w => /cold open has 2 clips/.test(w)), 'drift is caught: host lines in the middle, more than one cold-open clip');
+  ok(sb.__checkInterviewStructure(GOOD.replace(/## 4 · OUTRO[\s\S]*$/, '')).warnings.some(w => /missing the OUTRO/.test(w)), 'a missing segment is caught');
+  sb.__episodeStore[14] = { conversationLog: [], format: 'interview', editScript: { text: BAD, createdAt: 'x' } };
+  ok(/Format check: .*host line/.test(sb.__renderEditScriptHtml(BAD, null, { epNum: 14 })) && /✓ Interview format/.test(sb.__renderEditScriptHtml(GOOD.replace('RUNTIME: 40', 'RUNTIME: 40'), null, { format: 'interview' })) === (sb.__checkInterviewStructure(GOOD).warnings.length === 0), 'the working view shows the format check');
+  ok(/✂ cut: a retake · ~0\.5 · retake/.test(sb.__renderEditScriptHtml(GOOD, null, {})), 'CUT lines render as cuts');
+  sb.__episodeStore[15] = { conversationLog: [], editScript: { text: GOOD, createdAt: '2026-11-01T00:00:00Z' } };
+  ok(/Removed: a retake \(~0\.5, retake\)/.test(sb.__buildShareScriptHtml(15)), 'the shared document lists cuts as "Removed" notes');
   state.recordings.pop();
 
   FINISHED = true;

@@ -94,6 +94,11 @@ An **edit script** is the assembly plan for a *finished* episode: host lines Kar
 11. Boo's one kickoff question must be about **intent** (what the listener should feel or understand). Logistics go into placeholders and CONFIRM lines.
 Next milestone: a DaVinci XML export built from the verified clips, timed from DaVinci-generated SRTs of the exact WAVs.
 
+## Episode formats (Interview is the default)
+- Each episode has a **format** (`episodeFormat(n)`; a picker on each Season row). **Interview** (default) is a traditional episode in exactly four segments: COLD OPEN (one clip, 10–30s) → INTRO (hosts record; confirmed facts only) → THE INTERVIEW (long clips in recorded order with live host questions and reactions; **no new host lines**; `CUT:` lines between clips say what's removed and why) → OUTRO (hosts record: thanks, workshop project, show promo, next-episode tease). Target 35–45 min. **Montage** (e.g. E1, E10): hosts narrate between clips, preferring live reactions. Mark chose this on 2026-10-31.
+- After writing, `checkInterviewStructure()` flags drift (missing segments, host lines in the middle, more than one cold-open clip, a cold open over 40s, an estimated length outside 33–47 min), and `estimateRuntimeMinutes()` sums clip spans plus host words.
+- `preview_audio.py` builds a listenable rough cut (real clips from the stereo-mix WAVs, macOS stand-in voices for host lines) to check flow and cut points before recording. Proven on E2: 41:55, 8/8 clips.
+
 ## Story shapes (Season screen arc)
 - `STORY_SHAPES` holds every season shape in Boo's SHAPE LIBRARY: Plot Mountain (= THE MOUNTAIN), Man in Hole, Kartik's Recipe (`kartik`), Descent & Return, The Question, The Braid, The Turn, and Vignettes. Each beat has a `key` and a `fortune` (its height on the curve). A test fails if Boo's prompt names a season shape the screen can't draw.
 - Boo hands an agreed arc to the screen with `SEASON-ARC: <shape id> | E1=<beat key> "Title", …`. The shape ids and beat keys in his prompt are generated from `STORY_SHAPES` by `buildShapeKeysForPrompt()`. The directive becomes a **Use this arc** button. `applySeasonArc()` shows exactly what will change and asks first. It places each episode via `season.episodeBeats`, adds missing slots, and fills only empty titles.

@@ -1677,6 +1677,7 @@
   .season-ep-row.active-ep { border-color:var(--teal); background:rgba(59,184,201,0.06); }
   .season-ep-script { background:transparent; border:1px solid rgba(59,184,201,0.45); color:var(--teal); border-radius:4px; padding:2px 8px; font-family:'DM Mono',monospace; font-size:10px; letter-spacing:0.05em; cursor:pointer; white-space:nowrap; flex-shrink:0; }
   .season-ep-script:hover { background:rgba(59,184,201,0.12); }
+  .season-ep-format { background:transparent; border:1px solid var(--border); color:var(--text-muted); border-radius:4px; padding:2px 4px; font-family:'DM Mono',monospace; font-size:10px; cursor:pointer; flex-shrink:0; }
   .season-ep-script.has { border-color:rgba(255,255,255,0.15); padding:2px 6px; }
   /* Edit script (Boo-written, clip-verified) */
   .es-wrap { font-size:13px; line-height:1.55; }
@@ -1713,6 +1714,7 @@
   .es-legend { display:flex; flex-wrap:wrap; gap:12px; font-size:10.5px; color:var(--text-muted); margin:0 0 6px; }
   .es-lg-rec { color:var(--gold); } .es-lg-clip { color:var(--teal); }
   .es-flag { font-family:'DM Mono',monospace; font-size:10px; color:var(--gold); opacity:0.8; margin:2px 0 2px 2px; cursor:help; }
+  .es-cut { font-size:11.5px; color:var(--text-muted); margin:4px 0 4px 18px; padding:3px 8px; border-left:2px dotted var(--text-muted); }
   .es-cue { font-size:11px; color:var(--text-muted); font-style:italic; margin:8px 0 0 2px; }
   .es-toolbar { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px; }
   .es-who { display:inline-block; min-width:52px; font-family:'DM Mono',monospace; font-size:10px; font-weight:700; letter-spacing:0.08em; margin-right:6px; }
@@ -6393,7 +6395,10 @@ function buildEpisodeScriptKickoff(epNum) {
   return 'We are building the EDIT SCRIPT for S' + sNum + '-E' + epNum + (title ? ' — "' + title + '"' : '') + '. '
     + 'You have my season direction (PINNED PLANNING CONTEXT and the season brief) and a card for each of the ' + n + ' recordings (summary, arc, tension, pull-quotes with timecodes). '
     + 'The full transcripts are not loaded in this conversation — the script writer receives the ones you name when it writes — so work from the cards, and do not claim to have read a full transcript. '
-    + 'Read what the direction says this episode must do, then check it against what the interviews actually contain.\n\n'
+    + 'Read what the direction says this episode must do, then check it against what the interviews actually contain.\n'
+    + (episodeFormat(epNum) === 'interview'
+      ? 'This is an INTERVIEW episode: a cold open from the interview, a recorded host intro, the conversation itself lightly edited in recorded order (live host questions and reactions stay in; no new host lines in the middle), and a recorded host outro with the workshop pitch and show promo. Aim for 35–45 minutes.\n\n'
+      : 'This is a MONTAGE episode: hosts narrate between clips drawn from the recordings; prefer the hosts\' live reactions over new lines wherever they can do the job.\n\n')
     + 'Before writing anything: in 2 confident sentences, give your hypothesis for this episode — its shape, its job in the season arc, and the specific moment(s) from the interviews it turns on. '
     + 'If the direction asks for something the transcripts do not support, say so plainly. '
     + 'Then ask me exactly ONE question about INTENT — what the listener should feel or understand when the episode ends, or which tension to lean on — the answer that would most change the script. '
@@ -6415,12 +6420,43 @@ function startEpisodeScript(epNum) {
   triggerBooDirectly('Script S' + sNum + '-E' + epNum, buildEpisodeScriptKickoff(epNum));
 }
 
+// Episode format: 'interview' (default — a traditional episode: cold open, recorded intro, the
+// conversation lightly edited in recorded order, recorded outro) or 'montage' (hosts narrate
+// between clips drawn from several recordings — e.g. a season opener or finale).
+function episodeFormat(epNum) {
+  var f = episodeStore[epNum] && episodeStore[epNum].format;
+  return f === 'montage' ? 'montage' : 'interview';
+}
+function setEpisodeFormat(epNum, fmt) {
+  if (!episodeStore[epNum]) episodeStore[epNum] = {};
+  episodeStore[epNum].format = fmt === 'montage' ? 'montage' : 'interview';
+  autoSave('episode format E' + epNum + ' → ' + episodeStore[epNum].format);
+  renderSeasonView();
+}
+var INTERVIEW_FORMAT_RULES =
+  'EPISODE FORMAT: INTERVIEW (a traditional episode). The finished episode is the recorded conversation, lightly edited, between a short cold open and recorded bookends. Use exactly these four segments, in this order, with these names:\n'
+  + '## 1 · COLD OPEN · ~0.5\n'
+  + '  Exactly one CLIP, 10–30 seconds: the strongest hook in the interview. Never sensitive or personal material (grief, illness, family loss) and never a line that gives away where the conversation ends up.\n'
+  + '## 2 · INTRO · ~<minutes>\n'
+  + '  KARTIK and MATT lines only, about 150–300 words in total: who the guest is (only facts the guest confirms on tape or the show context states; anything else gets a CONFIRM), why this conversation matters now, and how it fits the season. End by handing to the interview ("Here\'s our conversation with …").\n'
+  + '## 3 · THE INTERVIEW · ~<minutes>\n'
+  + '  The conversation itself, as consecutive CLIPs in the order it was recorded: from the first real question (after any intro the hosts read on tape) to the guest\'s last answer (before goodbyes and name spellings). The hosts\' live questions and reactions stay in — they are inside the clips. Between two CLIPs, a CUT line says what is removed. NO KARTIK or MATT lines in this segment. Reorder only if the conversation truly cannot work in recorded order, and add a NOTE saying why.\n'
+  + '  Keep CLIPs long: a CLIP covers a whole stretch of conversation (often 2–8 minutes), never a single sentence.\n'
+  + '## 4 · OUTRO · ~<minutes>\n'
+  + '  KARTIK and MATT lines only: thank the guest; the episode\'s workshop project from the pinned direction; where to share (the community link is in the show notes); a promo for the show (follow, share); and a one-line tease of the next episode taken only from its card (CONFIRM anything beyond the card).\n'
+  + 'LENGTH: the finished episode lands at 35–45 minutes (set RUNTIME accordingly). Cut to get there: setup and pre-roll, the intro the hosts read on tape, retakes, false starts, long host recaps or monologues, tangents, repetition, logistics, lines that date the episode ("yesterday", "we\'re at ISTE"). Never cut a guest mid-thought. If the guest asks on tape for something to be removed, it is always cut.\n'
+  + 'CUT line format: CUT: <what is removed, a few words> | ~<minutes> | <why: retake, false start, tangent, repetition, host recap, logistics, dated reference, guest asked to remove, sensitive>\n\n';
+var MONTAGE_FORMAT_RULES =
+  'EPISODE FORMAT: MONTAGE (hosts narrate between clips drawn from one or more recordings). Use the segments the episode needs. Wherever a live host question or reaction from the recordings can do the job, use it (as part of a CLIP) instead of writing a new host line; write new host lines only where nothing recorded can.\n\n';
+
 function buildEditScriptSystemPrompt(epNum) {
   var sNum = (state.currentSeason && state.currentSeason.number) || 1;
   var title = getEpTitle(epNum);
   var brief = ((state.seasons[0] || {}).seasonBrief || '').trim();
+  var fmt = episodeFormat(epNum);
   return 'You are Boo, the producer of ' + (SHOW_CONFIG.showName || 'the show') + ', writing the EDIT SCRIPT for S' + sNum + '-E' + epNum + (title ? ' ("' + title + '")' : '') + '.\n'
-    + 'An edit script is the assembly plan for a finished episode: the exact words the hosts will record (intros, narration, bridges, color commentary, outro, workshop project) interleaved with the guest clips the editor will cut from the recorded interviews. The editor builds the timeline directly from it, so it must be exact.\n\n'
+    + 'An edit script is the assembly plan for a finished episode: the exact words the hosts will record, interleaved with the clips the editor cuts from the recorded interviews. The editor builds the timeline directly from it, so it must be exact.\n\n'
+    + (fmt === 'interview' ? INTERVIEW_FORMAT_RULES : MONTAGE_FORMAT_RULES)
     + 'SHOW: K12 Boss — K-12 Computer Science Education in a Post-Coding Era. Hosts: Karttikeya (Kartik) Mangalam — AI researcher, PhD UC Berkeley, formerly Google and Facebook; Matthew (Matt) Callison, PhD — Director of Innovation, South Fayette Township School District. Audience: K-12 CS teachers, district leaders, curriculum directors, administrators. Audio-first.\n\n'
     + 'SOURCES in your context: the FULL TRANSCRIPTS (verbatim interviews); the PINNED PLANNING CONTEXT (Mark\'s direction — authoritative for the season\'s shape and each episode\'s job); the season brief and recording cards below; and our conversation about this episode — the direction Mark just gave you is your most specific instruction.\n\n'
     + 'THE TRANSCRIPTS — read carefully:\n'
@@ -6440,12 +6476,13 @@ function buildEditScriptSystemPrompt(epNum) {
     + 'CLIP: <guest name exactly as in SEASON RECORDINGS> | FROM "<the first 8–15 words of the clip>" | TO "<the last 8–15 words of the clip>" | <its job, under 12 words>\n'
     + 'NOTE: <instruction for the editor — music, pause, sting, pacing>\n'
     + 'CONFIRM: <Kartik|Matt|Mark> — <the one fact to check before recording> (Kartik or Matt for their own lines, bios and stories; Mark, the producer, for guest facts, logistics and production)\n'
+    + 'CUT: <what is removed> | ~<minutes> | <why>   (between CLIPs, to record what the edit removes)\n'
     + 'Blank lines are fine. No other markdown, no bullets, no bold.\n\n'
     + 'CLIP RULES (load-bearing — the app checks every clip against the transcripts and flags failures to Mark):\n'
     + '- FROM and TO are copied character-for-character from ONE transcript passage, including filler words ("like", "you know") and the transcript\'s own spelling. Never clean them up, never stitch different passages together, never paraphrase. If a passage appears more than once, copy from one copy only.\n'
     + '- FROM comes before TO in the same continuous stretch of speech. A clip can run from a few seconds to several minutes; a long stretch of interview is one CLIP.\n'
     + '- Every word a listener hears from a guest comes from a CLIP. Hosts never put words in a guest\'s mouth: when a host line quotes a guest, the quote is verbatim from the transcript; otherwise phrase it as a paraphrase ("Dominick\'s argument is…").\n'
-    + '- Interview episodes are built mostly from the interview itself: choose the strongest stretches, cut dead air and retakes, and keep the guest\'s own arc intact.\n\n'
+    + '- Keep the guest\'s own arc intact; cut dead air and retakes.\n\n'
     + 'HONESTY:\n'
     + '- Never invent facts about a guest, a host, a school, a number, or a story. Anything not in the transcripts, the pinned context, or the show context above gets a CONFIRM line instead of being asserted.\n'
     + '- Where the pinned direction asserts something the transcripts do not support (a quote that is not verbatim, an overstated title, a number nobody said), follow the transcript and add a CONFIRM line saying what you changed and why.\n'
@@ -6793,6 +6830,7 @@ function renderEditScriptHtml(text, check, opts) {
     if ((m = tl.match(/^(SHAPE|JOB|RUNTIME):\s*(.*)$/i))) return '<div class="es-meta"><b>' + esc(m[1].toUpperCase()) + '</b> ' + esc(m[2]) + '</div>';
     if ((m = tl.match(/^(KARTIK|MATT):\s*(.*)$/i))) return '<div class="es-host ' + m[1].toLowerCase() + '"><span class="es-rec">🎙 RECORD</span><span class="es-who ' + m[1].toLowerCase() + '">' + esc(m[1].toUpperCase()) + '</span><span class="es-line">' + esc(m[2]) + '</span></div>';
     if ((m = tl.match(/^NOTE:\s*(.*)$/i))) return '<div class="es-note">✎ editor: ' + esc(m[1]) + '</div>';
+    if ((m = tl.match(/^CUT:\s*(.*)$/i))) { var cp = m[1].split('|').map(function(x) { return x.trim(); }); return '<div class="es-cut">✂ cut: ' + esc(cp[0]) + (cp[1] ? ' · ' + esc(cp[1]) : '') + (cp[2] ? ' · ' + esc(cp[2]) : '') + '</div>'; }
     var cf = confirmByLine[i];
     if (cf) return '<div class="es-flag" title="' + esc(cf.text) + '">⚑ check #' + cf.n + ' · ' + (cf.who === 'Mark' ? 'Mark' : cf.who) + '</div>';
     var clip = byLine[i];
@@ -6818,8 +6856,54 @@ function renderEditScriptHtml(text, check, opts) {
     }
     return '<div class="es-other">' + esc(tl) + '</div>';   // off-format line — visible, not hidden
   }).join('');
+  var est = estimateRuntimeMinutes(text, check);
+  var structure = (opts.format || (opts.epNum != null ? episodeFormat(opts.epNum) : null)) === 'interview' ? checkInterviewStructure(text, check) : null;
+  var health = '<div class="es-ov-sub" style="margin:-6px 0 10px;">' + (est != null ? 'Estimated finished length: about <b>' + est + ' min</b>' : 'Estimated length: available once every clip is located')
+    + (structure ? ' · ' + structure.cuts + ' cut' + (structure.cuts === 1 ? '' : 's') : '') + '</div>'
+    + (structure && structure.warnings.length ? '<div class="es-confirm" style="margin:-4px 0 10px;">⚠ Format check: ' + esc(structure.warnings.join('; ')) + '</div>'
+      : (structure ? '<div class="es-ov-sub" style="margin:-4px 0 10px;color:var(--teal);">✓ Interview format: cold open · recorded intro · the conversation in order · recorded outro</div>' : ''));
+  summary += health;
   var legend = '<div class="es-legend"><span class="es-lg-rec">🎙 RECORD = Kartik/Matt record this</span><span class="es-lg-clip">▶ FROM INTERVIEW = cut from the recordings</span><span class="es-lg-note">✎ = note for the editor</span></div>';
   return '<div class="es-wrap">' + summary + checklist + legend + body + '</div>';
+}
+
+function _tcSecs(tc) {
+  var p = String(tc || '').split(':').map(Number);
+  if (p.some(isNaN) || !p.length) return null;
+  return p.length === 3 ? p[0] * 3600 + p[1] * 60 + p[2] : p[0] * 60 + (p[1] || 0);
+}
+// Rough finished length: clip spans (from their located timecodes) + host words at ~150 wpm.
+// null when any clip can't be timed (pending transcripts / not found).
+function estimateRuntimeMinutes(text, check) {
+  check = check || verifyEditScript(text);
+  var secs = 0, ok = true;
+  (check.clips || []).forEach(function(c) {
+    var a = _tcSecs(c.startTc), b = _tcSecs(c.endTc);
+    if (a == null || b == null || b < a) ok = false; else secs += (b - a) + 1;
+  });
+  var words = 0;
+  String(text || '').split('\n').forEach(function(l) { var m = l.trim().match(/^(KARTIK|MATT):\s*(.*)$/i); if (m) words += m[2].split(/\s+/).length; });
+  return ok ? Math.round((secs + words / 150 * 60) / 60) : null;
+}
+// Interview-format guardrails: the structure Mark asked for, checked after Boo writes it.
+function checkInterviewStructure(text, check) {
+  check = check || verifyEditScript(text);
+  var warnings = [], seg = '', segs = [], hostInInterview = 0, coldClips = 0, cuts = 0, coldLine = -1;
+  String(text || '').split('\n').forEach(function(l, i) {
+    var t = l.trim();
+    if (/^##\s/.test(t)) { seg = t.toUpperCase(); segs.push(seg); return; }
+    if (/^CUT:/i.test(t)) cuts++;
+    if (/INTERVIEW/.test(seg) && /^(KARTIK|MATT):/i.test(t)) hostInInterview++;
+    if (/COLD OPEN/.test(seg) && /^CLIP:/i.test(t)) { coldClips++; if (coldLine < 0) coldLine = i; }
+  });
+  ['COLD OPEN', 'INTRO', 'INTERVIEW', 'OUTRO'].forEach(function(n) { if (!segs.some(function(x) { return x.indexOf(n) !== -1; })) warnings.push('missing the ' + n + ' segment'); });
+  if (hostInInterview) warnings.push(hostInInterview + ' host line' + (hostInInterview === 1 ? '' : 's') + ' inside THE INTERVIEW (should be live audio only)');
+  if (coldClips !== 1) warnings.push('the cold open has ' + coldClips + ' clips (should be exactly one)');
+  var cold = (check.clips || []).find(function(c) { return c.line === coldLine; });
+  if (cold) { var a = _tcSecs(cold.startTc), b = _tcSecs(cold.endTc); if (a != null && b != null && b - a > 40) warnings.push('the cold open runs about ' + (b - a) + 's (aim for 10–30s)'); }
+  var mins = estimateRuntimeMinutes(text, check);
+  if (mins != null && (mins < 33 || mins > 47)) warnings.push('estimated length ' + mins + ' min (target 35–45)');
+  return { warnings: warnings, cuts: cuts, minutes: mins };
 }
 
 // Tick a "before recording" check on/off (saved with the script; survives reloads).
@@ -6951,14 +7035,18 @@ async function writeEpisodeScript(epNum, sources) {
     trackUsage({ usage: result.usage }, 0, result.text, _SCRIPT_PRICE);
     var truncated = result.stopReason === 'max_tokens';
     var head = truncated ? '<div class="es-confirm">⚠ The script hit the length limit and stops mid-way — ask me for a tighter version.</div>' : '';
-    addMsg('boo', '<div class="es-intro">Here is the S' + sNum + '-E' + epNum + ' edit script. Every clip has been checked against the transcripts — anything marked ⚠ or ✕ needs a look before it goes to the editor.</div>' + head + renderEditScriptHtml(result.text, check),
+    var fmtNow = episodeFormat(epNum);
+    var structNow = fmtNow === 'interview' ? checkInterviewStructure(result.text, check) : null;
+    addMsg('boo', '<div class="es-intro">Here is the S' + sNum + '-E' + epNum + ' edit script (' + fmtNow + ' format). Every clip has been checked against the transcripts — anything marked ⚠ or ✕ needs a look before it goes to the editor.</div>' + head + renderEditScriptHtml(result.text, check, { format: fmtNow }),
       [{ label: '📄 Open full-screen', action: _actionCall('viewEditScript', epNum) },
        { label: '🎙 Recording sheet', action: _actionCall('viewRecordingSheet', epNum) },
        { label: '📤 Share', action: _actionCall('openShareScript', epNum) },
        { label: '⤓ Download', action: _actionCall('downloadEditScript', epNum) }],
       'I wrote the full S' + sNum + '-E' + epNum + ' edit script: ' + check.segments + ' segments, ' + check.clips.length + ' clips ('
         + (check.counts.ok || 0) + ' verified, ' + (check.counts.partial || 0) + ' need a look, ' + (check.counts.missing || 0) + ' not found), '
-        + check.confirms + ' items to confirm' + (truncated ? ' — it hit the length limit and is incomplete' : '') + '. The saved version is in your context as CURRENT EDIT SCRIPT.');
+        + check.confirms + ' items to confirm' + (truncated ? ' — it hit the length limit and is incomplete' : '')
+        + (structNow && structNow.warnings.length ? '. FORMAT CHECK FAILED: ' + structNow.warnings.join('; ') + ' — offer to fix it' : '')
+        + '. The saved version is in your context as CURRENT EDIT SCRIPT.');
     await saveEditScript(epNum, result.text, check);
     renderSeasonView();
   } catch (err) {
@@ -7075,6 +7163,7 @@ function buildShareScriptHtml(epNum, opts) {
     }
     hostRun = null;
     if ((m = tl.match(/^NOTE:\s*(.*)$/i))) { cur.rows.push({ kind: 'note', text: m[1] }); return; }
+    if ((m = tl.match(/^CUT:\s*(.*)$/i))) { var cp = m[1].split('|').map(function(x) { return x.trim(); }); cur.rows.push({ kind: 'note', text: 'Removed: ' + cp[0] + (cp[1] ? ' (' + cp[1] + (cp[2] ? ', ' + cp[2] : '') + ')' : '') }); return; }
     var c = byLine[i];
     if (c && !c.malformed) { clipN++; cur.rows.push({ kind: 'clip', n: clipN, clip: c }); return; }
     cur.rows.push({ kind: 'note', text: tl });
@@ -7385,6 +7474,9 @@ function renderSeasonView() {
       + ((episodeStore[e] && episodeStore[e].editScript && episodeStore[e].editScript.text)
           ? '<button class="season-ep-script has" onclick="event.stopPropagation();viewEditScript(' + e + ')" title="Read the saved edit script — full-screen, no tokens">📄</button>'
           : '')
+      + '<select class="season-ep-format" onclick="event.stopPropagation()" onchange="event.stopPropagation();setEpisodeFormat(' + e + ',this.value)" title="Interview: cold open, recorded intro, the conversation lightly edited, recorded outro. Montage: hosts narrate between clips from several recordings.">'
+        + '<option value="interview"' + (episodeFormat(e) === 'interview' ? ' selected' : '') + '>Interview</option>'
+        + '<option value="montage"' + (episodeFormat(e) === 'montage' ? ' selected' : '') + '>Montage</option></select>'
       + '<button class="season-ep-script" onclick="event.stopPropagation();startEpisodeScript(' + e + ')" title="Have Boo script this episode from the recorded interviews">✦ Script</button>'
       + '<div class="season-ep-chevron" onclick="event.stopPropagation();goToEpisodeFromSeason(' + e + ')">›</div>'
       + '<div class="season-ep-delete" onclick="event.stopPropagation();deleteEpisodeFromSeason(' + e + ')" title="Delete episode">×</div>'
