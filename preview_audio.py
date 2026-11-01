@@ -35,6 +35,8 @@ def parse_srt(path):
     """→ list of (norm_word, t_start, t_end): word times estimated evenly within each caption."""
     raw = open(path, encoding='utf-8').read().replace('\r', '')
     words = []
+    caps = parse_srt.caps = []
+    speaker = ''
     for block in raw.split('\n\n'):
         lines = [l.strip() for l in block.split('\n') if l.strip()]
         ti = next((i for i, l in enumerate(lines) if '-->' in l), None)
@@ -46,7 +48,10 @@ def parse_srt(path):
             return int(h) * 3600 + int(m) * 60 + int(s) + int(ms) / 1000
         t0, t1 = secs(a), secs(b)
         text = ' '.join(lines[ti + 1:])
-        text = re.sub(r"^[A-Z][A-Za-z.' -]{1,40}:\s+", '', text)     # drop "Speaker: "
+        sp = re.match(r"^([A-Z][A-Za-z.' -]{1,40}):\s+(.*)$", text)
+        if sp:
+            speaker, text = sp.group(1), sp.group(2)                # "Speaker: " starts a turn
+        caps.append({'t0': t0, 't1': t1, 'who': speaker, 'text': text})
         ws = norm_words(text)
         for i, w in enumerate(ws):
             ws_t0 = t0 + (t1 - t0) * i / len(ws)
@@ -141,6 +146,89 @@ def mmss(sec):
     return '%d:%02d' % (int(sec) // 60, int(sec) % 60)
 
 
+def hms(sec):
+    sec = max(0, sec)
+    h, m, s = int(sec // 3600), int(sec % 3600 // 60), sec % 60
+    return (f'{h}:{m:02d}:{s:04.1f}' if h else f'{m}:{s:04.1f}')
+
+
+def write_edit_list(path, script_name, rows, captions, total):
+    """A readable edit decision list: every piece in episode order, where each clip comes from in
+    the recording, and — between clips — exactly what is removed, who is speaking, and why."""
+    import html
+    E = html.escape
+    def removed(guest_key, a, b):
+        caps = [c for c in captions[guest_key] if c['t0'] >= a - 0.05 and c['t0'] < b - 0.05]
+        who = []
+        for c in caps:
+            if c['who'] and c['who'] not in who:
+                who.append(c['who'])
+        text = ' '.join(c['text'] for c in caps).split()
+        snippet = ' '.join(text[:16]) + (' … ' + ' '.join(text[-8:]) if len(text) > 24 else (' ' + ' '.join(text[16:]) if len(text) > 16 else ''))
+        return who, snippet.strip()
+    out_rows, kept, cut_total, host_total = [], 0.0, 0.0, 0.0
+    clips = [r for r in rows if r['kind'] == 'clip']
+    order = sorted(clips, key=lambda r: r['src0'])
+    main_clips = [c for c in clips if c['seg'] and 'COLD OPEN' not in c['seg'].upper()] or clips
+    first_main = min(main_clips, key=lambda r: r['src0']) if main_clips else None
+    prev_clip = None
+    for r in rows:
+        if r['kind'] == 'seg':
+            out_rows.append(f'<tr class="seg"><td colspan="5">{E(r["name"])}</td></tr>')
+        elif r['kind'] == 'host':
+            host_total += r['dur']
+            out_rows.append(f'<tr class="host"><td>{mmss(r["pos"])}</td><td><span class="tag rec">🎙 Hosts record</span></td><td>—</td><td>{mmss(r["dur"])}</td>'
+                            f'<td>{r["lines"]} line{"s" if r["lines"] != 1 else ""} ({", ".join(sorted(r["who"]))}) — starts “{E(" ".join(r["first"].split()[:12]))}…”</td></tr>')
+        else:
+            if r is first_main and r['src0'] > 1:
+                who, snip = removed(r['sk'], 0, r['src0'])
+                cut_total += r['src0']
+                out_rows.append(f'<tr class="cut"><td></td><td><span class="tag cut">✂ Removed</span></td><td>0:00.0 – {hms(r["src0"])}</td><td>{mmss(r["src0"])}</td>'
+                                f'<td>Everything before the interview: setup and any intro read on tape ({E(", ".join(who))})<br><span class="snip">“{E(snip)}”</span></td></tr>')
+            elif prev_clip and prev_clip['sk'] == r['sk'] and r['src0'] > prev_clip['src1'] + 0.5 and 'COLD OPEN' not in (prev_clip['seg'] or '').upper():
+                a, b = prev_clip['src1'], r['src0']
+                who, snip = removed(r['sk'], a, b)
+                cut_total += b - a
+                why = ''
+                if r['cut']:
+                    why = E(r['cut'][0]) + (f' — <b>{E(r["cut"][2])}</b>' if len(r['cut']) > 2 else '')
+                out_rows.append(f'<tr class="cut"><td></td><td><span class="tag cut">✂ Removed</span></td><td>{hms(a)} – {hms(b)}</td><td>{mmss(b - a)}</td>'
+                                f'<td>{why or "Gap between clips"} <span class="who">({E(", ".join(who))})</span><br><span class="snip">“{E(snip)}”</span></td></tr>')
+            kept += r['src1'] - r['src0']
+            out_rows.append(f'<tr class="clip"><td>{mmss(r["pos"])}</td><td><span class="tag clip">▶ Clip {r["n"]}</span><br><span class="who">{E(r["guest"])}</span></td>'
+                            f'<td>{hms(r["src0"])} – {hms(r["src1"])}</td><td>{mmss(r["src1"] - r["src0"])}</td>'
+                            f'<td><b>{E(r["job"])}</b><br><span class="snip">IN “{E(r["from"])}” … OUT “{E(r["to"])}”</span></td></tr>')
+            prev_clip = r
+    last = max(clips, key=lambda r: r['src1']) if clips else None
+    if last:
+        end = captions[last['sk']][-1]['t1'] if captions[last['sk']] else last['src1']
+        if end > last['src1'] + 1:
+            who, snip = removed(last['sk'], last['src1'], end + 1)
+            cut_total += end - last['src1']
+            out_rows.append(f'<tr class="cut"><td></td><td><span class="tag cut">✂ Removed</span></td><td>{hms(last["src1"])} – {hms(end)}</td><td>{mmss(end - last["src1"])}</td>'
+                            f'<td>Everything after the last answer: goodbyes and wrap ({E(", ".join(who))})<br><span class="snip">“{E(snip)}”</span></td></tr>')
+    css = ("body{font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1c1c1c;background:#fafaf8;margin:0;padding:32px}"
+           ".wrap{max-width:1100px;margin:0 auto;background:#fff;padding:36px 40px;border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.08),0 8px 24px rgba(0,0,0,.06)}"
+           "h1{font-size:22px;margin:0 0 4px}.sub{color:#6f6f6b;font-size:13px;margin:0 0 18px}"
+           ".stats{display:flex;gap:12px;margin:0 0 22px}.stat{flex:1;border:1px solid #e4e3de;background:#f6f5f1;padding:10px 14px}"
+           ".stat b{display:block;font-size:20px;margin-top:2px}.stat span{font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6f6f6b}"
+           "table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;font-size:10px;letter-spacing:1px;text-transform:uppercase;color:#6f6f6b;border-bottom:1.5px solid #1c1c1c;padding:6px 8px}"
+           "td{vertical-align:top;padding:8px;border-bottom:1px solid #eeede8}td:nth-child(1),td:nth-child(3),td:nth-child(4){white-space:nowrap;font-variant-numeric:tabular-nums}"
+           "tr.seg td{font-weight:700;letter-spacing:.8px;text-transform:uppercase;font-size:12px;padding-top:18px;border-bottom:1.5px solid #1c1c1c}"
+           "tr.cut td{color:#8a8a85;background:#fbfaf7}tr.cut .snip{text-decoration:line-through;text-decoration-color:#c9c7bf}"
+           ".tag{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase}.tag.clip{color:#0f6f86}.tag.rec{color:#a07a00}.tag.cut{color:#b3412d}"
+           ".who{color:#6f6f6b;font-size:12px}.snip{color:#555;font-size:12px}")
+    stats = (f'<div class="stats"><div class="stat"><span>Episode length</span><b>{mmss(total)}</b></div>'
+             f'<div class="stat"><span>Kept from the interview</span><b>{mmss(kept)}</b></div>'
+             f'<div class="stat"><span>Removed</span><b>{mmss(cut_total)}</b></div>'
+             f'<div class="stat"><span>Hosts record</span><b>{mmss(host_total)}</b></div></div>')
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(f'<!DOCTYPE html><html><head><meta charset="utf-8"><title>Edit list — {E(script_name)}</title><style>{css}</style></head><body><div class="wrap">'
+                f'<h1>Edit list</h1><p class="sub">{E(script_name)} · times are from the stereo-mix recording (≈ within a few tenths of a second; each clip has a small cushion at both ends). '
+                f'Episode time = where it lands in the preview.</p>{stats}'
+                f'<table><tr><th>Episode time</th><th>What</th><th>From the recording</th><th>Length</th><th>Details</th></tr>{"".join(out_rows)}</table></div></body></html>')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('script')
@@ -158,8 +246,13 @@ def main():
                 return k
         return None
 
-    timed = {k: parse_srt(v) for k, v in srts.items()}
+    timed, captions = {}, {}
+    for k, v in srts.items():
+        timed[k] = parse_srt(v); captions[k] = parse_srt.caps
     out = bytearray(); cues = []; problems = []; clip_n = 0
+    rows = []; pending_cut = None; seg_name = ''
+    def here():
+        return len(out) / (RATE * CH * WIDTH)
     with tempfile.TemporaryDirectory() as tmp:
         for raw in open(a.script, encoding='utf-8').read().split('\n'):
             line = raw.strip()
@@ -167,11 +260,23 @@ def main():
             if line.startswith('## '):
                 if out:
                     out += silence(SEG_GAP)
-                cues.append(f'{mmss(len(out) / (RATE * CH * WIDTH))}  ── {line[3:]}')
+                seg_name = line[3:]
+                cues.append(f'{mmss(here())}  ── {seg_name}')
+                rows.append({'kind': 'seg', 'name': seg_name, 'pos': here()})
+                continue
+            m = re.match(r'^CUT:\s*(.*)$', line, re.I)
+            if m:
+                pending_cut = [x.strip() for x in m.group(1).split('|')]
                 continue
             m = re.match(r'^(KARTIK|MATT):\s*(.*)$', line, re.I)
             if m:
+                start = here()
                 out += level(tts(m.group(2), VOICE[m.group(1).upper()], tmp)) + silence(GAP)
+                if rows and rows[-1]['kind'] == 'host':
+                    rows[-1]['lines'] += 1; rows[-1]['words'] += len(m.group(2).split()); rows[-1]['dur'] = here() - rows[-1]['pos']
+                    rows[-1]['who'].add(m.group(1).capitalize())
+                else:
+                    rows.append({'kind': 'host', 'pos': start, 'lines': 1, 'words': len(m.group(2).split()), 'dur': here() - start, 'who': {m.group(1).capitalize()}, 'first': m.group(2)})
                 continue
             m = re.match(r'^CLIP:\s*(.+?)\s*\|\s*FROM\s*["“](.+?)["”]\s*\|\s*TO\s*["“](.+?)["”]\s*(?:\|\s*(.*))?$', line, re.I)
             if m:
@@ -190,6 +295,8 @@ def main():
                 t0, t1 = words[i][1] - PRE, words[j][2] + POST
                 cues.append(f'{mmss(pos)}     ▶ clip {clip_n} · {guest} · source {mmss(t0)}–{mmss(t1)} ({t1 - t0:.0f}s) · {job}')
                 out += fade(level(pcm16_stereo_from_wav(wavs[wk], t0, t1))) + silence(GAP)
+                rows.append({'kind': 'clip', 'n': clip_n, 'guest': guest, 'sk': sk, 'src0': t0, 'src1': t1, 'pos': pos, 'from': frm, 'to': to, 'job': job, 'cut': pending_cut, 'seg': seg_name})
+                pending_cut = None
         wav_tmp = os.path.join(tmp, 'preview.wav')
         with wave.open(wav_tmp, 'wb') as w:
             w.setnchannels(CH); w.setsampwidth(WIDTH); w.setframerate(RATE); w.writeframes(bytes(out))
@@ -202,6 +309,9 @@ def main():
         f.write('\n'.join(cues) + '\n')
         if problems:
             f.write('\nNOT INCLUDED:\n' + '\n'.join(problems) + '\n')
+    edl = os.path.splitext(a.out)[0] + ' — edit list.html'
+    write_edit_list(edl, os.path.basename(a.script), rows, captions, total)
+    print(f'edit list: {edl}')
     import math
     print(f'level: speech ~{TARGET_DB:.0f} dBFS average, peaks held under {CEIL_DB} dBFS')
     print(f'preview: {a.out}\ncue sheet: {sheet}\ntotal: {mmss(total)} · clips included: {clip_n - len(problems)}/{clip_n}')
