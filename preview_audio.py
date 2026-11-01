@@ -24,6 +24,7 @@ RATE, WIDTH, CH = 48000, 2, 2           # preview format: 48 kHz, 16-bit, stereo
 VOICE = {'KARTIK': 'Eddy (English (US))', 'MATT': 'Reed (English (US))'}
 PRE, POST, FADE = 0.25, 0.35, 0.02      # cushion before/after a clip, fade length (s)
 GAP, SEG_GAP = 0.35, 1.0                # pauses between items / segments (s)
+TARGET_DB, CEIL_DB = -20.0, -1.5        # leveled speech average / peak ceiling (dBFS)
 
 
 def norm_words(s):
@@ -97,6 +98,33 @@ def fade(data):
     return bytes(head) + data[n:-n] + bytes(tail)
 
 
+def level(data):
+    """Bring a piece to normal speech level and keep peaks under the ceiling (no distortion).
+    The stereo mixes were recorded very low (speech around -43 dBFS), so the preview was hard
+    to hear. Gain is set from the RMS of the active (non-silent) 10 ms chunks; a chunk-level
+    limiter (instant attack, ~80 ms release) holds every peak under CEIL_DB."""
+    import math
+    step = int(0.01 * RATE) * CH * WIDTH
+    chunks = [data[i:i + step] for i in range(0, len(data), step)]
+    active = [audioop.rms(c, WIDTH) for c in chunks if c and audioop.rms(c, WIDTH) > 32768 * 10 ** (-60 / 20)]
+    if not active:
+        return data
+    rms = math.sqrt(sum(r * r for r in active) / len(active))
+    gain = 10 ** ((TARGET_DB - 20 * math.log10(rms / 32768)) / 20)
+    ceil = 32767 * 10 ** (CEIL_DB / 20)
+    release = 10 ** (6 / 20 / 8)          # recover ~6 dB per 80 ms
+    g, out = gain, []
+    for c in chunks:
+        if not c:
+            continue
+        pk = audioop.max(c, WIDTH) or 1
+        g = min(g * release, gain)
+        if pk * g > ceil:
+            g = ceil / pk
+        out.append(audioop.mul(c, WIDTH, g))
+    return b''.join(out)
+
+
 def silence(sec):
     return b'\x00' * (int(sec * RATE) * CH * WIDTH)
 
@@ -143,7 +171,7 @@ def main():
                 continue
             m = re.match(r'^(KARTIK|MATT):\s*(.*)$', line, re.I)
             if m:
-                out += tts(m.group(2), VOICE[m.group(1).upper()], tmp) + silence(GAP)
+                out += level(tts(m.group(2), VOICE[m.group(1).upper()], tmp)) + silence(GAP)
                 continue
             m = re.match(r'^CLIP:\s*(.+?)\s*\|\s*FROM\s*["“](.+?)["”]\s*\|\s*TO\s*["“](.+?)["”]\s*(?:\|\s*(.*))?$', line, re.I)
             if m:
@@ -161,7 +189,7 @@ def main():
                     continue
                 t0, t1 = words[i][1] - PRE, words[j][2] + POST
                 cues.append(f'{mmss(pos)}     ▶ clip {clip_n} · {guest} · source {mmss(t0)}–{mmss(t1)} ({t1 - t0:.0f}s) · {job}')
-                out += fade(pcm16_stereo_from_wav(wavs[wk], t0, t1)) + silence(GAP)
+                out += fade(level(pcm16_stereo_from_wav(wavs[wk], t0, t1))) + silence(GAP)
         wav_tmp = os.path.join(tmp, 'preview.wav')
         with wave.open(wav_tmp, 'wb') as w:
             w.setnchannels(CH); w.setsampwidth(WIDTH); w.setframerate(RATE); w.writeframes(bytes(out))
@@ -174,6 +202,8 @@ def main():
         f.write('\n'.join(cues) + '\n')
         if problems:
             f.write('\nNOT INCLUDED:\n' + '\n'.join(problems) + '\n')
+    import math
+    print(f'level: speech ~{TARGET_DB:.0f} dBFS average, peaks held under {CEIL_DB} dBFS')
     print(f'preview: {a.out}\ncue sheet: {sheet}\ntotal: {mmss(total)} · clips included: {clip_n - len(problems)}/{clip_n}')
     for p in problems:
         print('  !', p)
