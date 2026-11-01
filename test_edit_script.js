@@ -54,6 +54,11 @@
  *  18. Full read-through (Mark: "why not put all of the transcript in there?"): a clip's actual
  *      words from IN to OUT, with label lines removed and merged-track repeats collapsed; the
  *      Share document offers a read-through version (full text + an honest caveat) beside cues.
+ *  19. Clean transcripts (Mark: Riverside "got all of the speakers wrong"; Otter on the stereo mix is
+ *      clean, labelled, same clock): Otter SRT/TXT convert to BP's transcript shape (speaker carries
+ *      across captions; h:mm:ss stamps); a clip crossing caption boundaries still matches (labels
+ *      masked, timecodes exact); Replace archives the old text, swaps the new, records the source;
+ *      cancel changes nothing.
  *  10. The pre-interview script detector no longer hijacks prose: a reply that DISCUSSES an
  *      episode's opening and outro stays a chat reply and leaves the script field untouched;
  *      a real STEP-3 script with OPENING / OUTRO headings still routes to the teleprompter.
@@ -129,7 +134,7 @@ function buildSandbox(scriptSrc) {
     'saveEditScript','buildEpisodeScriptKickoff','buildCurrentEditScriptContext','activeEp','dataMutationProtocol','buildTranscriptLoadActions',
     'addEpisodeToSeason','epCountOf','seasonEpisodeCount','isScriptHeading','addMsg','getConversationHistory','writeEpisodeScript',
     'STORY_SHAPES','parseSeasonArc','applySeasonArc','getEpArcBeat','renderShapeStrip','activeStoryShape','activeStoryShapeId','beatKey',
-    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript','cleanClipText','clipText'];
+    'parseConfirm','editScriptOverview','buildRecordingSheet','buildEditScriptText','buildRecordingSheetText','toggleConfirmCheck','buildEditScriptSystemPrompt','resolveScriptSources','buildShareScriptHtml','startEpisodeScript','cleanClipText','clipText','srtToTranscript','otterTxtToTranscript','replaceRecordingTranscript','loadTranscript'];
   const epilogue = '\n;(function(){\n'
     + expose.map(n => '  try { globalThis.__' + n + ' = ' + n + '; } catch(e){ globalThis.__err_' + n + ' = String(e); }').join('\n')
     + '\n  try { globalThis.__setShow = function(v){ currentShowCode = v; }; } catch(e){}\n'
@@ -559,6 +564,35 @@ async function main() {
   const shareFull = sb.__buildShareScriptHtml(11, { full: true }), shareCue = sb.__buildShareScriptHtml(11);
   ok(/weren't great coders/.test(shareFull) && !/>In<\/span>/.test(shareFull) && /Read-through/.test(shareFull) && /audio is the authority/.test(shareFull), 'the read-through shows the full clip text with an honest caveat');
   ok(/>In<\/span>/.test(shareCue) && !/weren't great coders/.test(shareCue) && !/audio is the authority/.test(shareCue), 'the script version keeps IN/OUT cues only');
+
+  // ---- 19. Otter transcripts + Replace ----
+  const SRT = ['1', '00:24:56,100 --> 00:25:00,000', 'Dominic Sanders: they have the heart for it,', '', '2', '00:25:00,200 --> 00:25:04,000', 'they have the mind for it, but they just', '', '3', '00:25:04,100 --> 00:25:08,000', "weren't great coders. And it was like syntax", '', '4', '00:25:08,500 --> 00:25:10,000', 'or bust almost in certain situations.', '', '5', '01:02:03,250 --> 01:02:05,000', 'Kartik: Syntax or bust, no longer.'].join('\n');
+  const conv19 = sb.__srtToTranscript(SRT);
+  ok(conv19.blocks === 5 && conv19.speakers['Dominic Sanders'] === 4 && conv19.speakers['Kartik'] === 1, 'SRT: speaker named on a turn carries across its captions');
+  ok(/^Dominic Sanders \(24:56\.100\)\nthey have the heart for it,/.test(conv19.text) && /Kartik \(1:02:03\.250\)\nSyntax or bust, no longer\./.test(conv19.text), 'SRT: blocks become "Speaker (m:ss.mmm)", hours as h:mm:ss');
+  const txt19 = sb.__otterTxtToTranscript('Matt  00:02\n321. So\n\nDominic Sanders  25:20\nand it was like syntax or bust\n\nKartik  1:02:03\nno longer.\n\n\nTranscribed by https://otter.ai');
+  ok(txt19.blocks === 3 && /Dominic Sanders \(25:20\.000\)/.test(txt19.text) && /Kartik \(1:02:03\.000\)/.test(txt19.text) && txt19.text.indexOf('otter.ai') === -1, 'Otter TXT: per-turn blocks, hours handled, footer dropped');
+  state.recordings.push({ id: 'r-otter', guest: 'Otter Test', title: '', quotes: [] });
+  sb.__setTx('r-otter', conv19.text);
+  const loc19 = sb.__verifyEditScript('CLIP: Otter Test | FROM "they have the heart for it, they have the mind for it" | TO "it was like syntax or bust almost in certain situations." | x').clips[0];
+  ok(loc19.status === 'ok' && loc19.startTc === '24:56', 'a clip crossing several caption boundaries still matches exactly (labels are masked)');
+  ok(/^they have the heart for it, they have the mind for it, but they just weren't great coders\. And it was like syntax or bust almost in certain situations\.?$/.test(sb.__clipText(loc19).trim()), 'clip text from a clean transcript reads as one clean passage');
+  // Replace: cancel → nothing; confirm → archive + swap + source recorded
+  const before19 = sb.__loadTranscript('r-otter');
+  sb.confirm = () => false;
+  ok(await sb.__replaceRecordingTranscript('r-otter', SRT.replace('heart', 'HEART'), 'x.srt') === false && sb.__loadTranscript('r-otter') === before19, 'cancel leaves the transcript untouched');
+  sb.confirm = () => true;
+  sb.__setLoaded(true);
+  const pushed = [];
+  const realFetch = fetchImpl;
+  fetchImpl = function(url, opts) { if (/builder_transcripts/.test(String(url)) && opts && opts.method === 'POST') pushed.push(JSON.parse(opts.body)); return realFetch(url, opts); };
+  const ok19 = await sb.__replaceRecordingTranscript('r-otter', SRT.replace('heart', 'HEART'), 'Dominick.srt');
+  fetchImpl = realFetch; sb.__setLoaded(false);
+  const recO = state.recordings.find(r => r.id === 'r-otter');
+  ok(ok19 === true && /HEART/.test(sb.__loadTranscript('r-otter')), 'confirm swaps in the new transcript');
+  ok(pushed.some(b => /^r-otter__archived-\d{4}-\d{2}-\d{2}$/.test(b.recording_id) && b.transcript === before19), 'the old transcript is archived durably before the swap');
+  ok(recO.transcriptSource && recO.transcriptSource.kind === 'Otter SRT' && recO.transcriptSource.blocks === 5, 'the card records where its transcript came from');
+  state.recordings.pop();
 
   FINISHED = true;
   console.log('\n' + PASS + ' passed, ' + FAIL + ' failed');

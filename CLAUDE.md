@@ -69,6 +69,7 @@ Single file: `bp.html`. No build step.
 
 ## Recordings, transcripts & pins (Season screen)
 - Recordings are cards on the Season screen; transcripts are stored durably in Supabase (`hydrateTranscripts()`) so they travel across devices.
+- **Transcript quality:** the original Riverside transcripts were made from merged tracks, so passages repeat and speakers are often wrong. The clean source is **Otter on the stereo mix** with speakers identified by Mark. Files are on the RAID at `/Volumes/RS RAID 1/K12-Boss/` (`ISTE 2026 Stereo Recordings/*.wav`, `Transcripts/*.srt|.txt`); its clock matches the original recordings (verified on Dominick). **⟳ Replace transcript** on a card (`replaceRecordingTranscript`) converts an Otter SRT (`srtToTranscript`: caption-level times about 3.6s apart, speaker carried across captions) or TXT into BP's `Speaker (m:ss.mmm)` blocks. It archives the old text as `<id>__archived-<date>` in builder_transcripts, records `transcriptSource` on the card, and should be followed by re-running that recording's scripts. `_normTranscript` masks label lines so clips can cross caption boundaries.
 - Each card has three verbs, left to right:
   - **📄 Read** — `viewRecordingTranscript(id)`: full-screen read-only viewer for the human. Zero API calls, zero tokens.
   - **✦ Have Boo read this** — `booReadRecording(id)` / `loadTranscript(id)`: loads the transcript into Boo's context (prompt-cached; unload chip shown).

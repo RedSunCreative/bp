@@ -5754,6 +5754,85 @@ async function handleTranscriptFiles(files) {
   var input = document.getElementById('rec-file-input');
   if (input) input.value = '';
 }
+// ── REPLACE A TRANSCRIPT with a cleaner one (Otter) ──
+// Riverside's transcripts were made from merged tracks: repeated passages, wrong speakers. Otter
+// (stereo mix, speakers identified by Mark) is clean, correctly labelled, and on the same clock.
+// These convert Otter's SRT (caption-level times, ~3.6s apart) or its TXT (per-turn times) into
+// BP's transcript shape — "Speaker (m:ss.mmm)" blocks — so clip checking, timecodes and the
+// read-through all work unchanged. The old transcript is archived in builder_transcripts first.
+function _fmtStamp(sec) {
+  var h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  var ss = (s < 10 ? '0' : '') + s.toFixed(3);
+  return h ? (h + ':' + (m < 10 ? '0' : '') + m + ':' + ss) : (m + ':' + ss);
+}
+function srtToTranscript(srt) {
+  var blocks = String(srt || '').replace(/\r/g, '').split(/\n\s*\n/), speaker = 'Unknown speaker', out = [], speakers = {}, last = 0;
+  blocks.forEach(function(b) {
+    var lines = b.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+    var ti = lines.findIndex(function(l) { return /-->/.test(l); });
+    if (ti === -1) return;
+    var m = lines[ti].match(/(\d+):(\d{2}):(\d{2})[,.](\d{1,3})/);
+    if (!m) return;
+    var sec = (+m[1]) * 3600 + (+m[2]) * 60 + (+m[3]) + (+m[4]) / 1000;
+    var text = lines.slice(ti + 1).join(' ');
+    var sp = text.match(/^([A-Z][A-Za-z.' -]{1,40}):\s+(.*)$/);
+    if (sp) { speaker = sp[1].trim(); text = sp[2]; }
+    if (!text) return;
+    speakers[speaker] = (speakers[speaker] || 0) + 1; last = sec;
+    out.push(speaker + ' (' + _fmtStamp(sec) + ')\n' + text);
+  });
+  return { text: out.join('\n\n'), blocks: out.length, speakers: speakers, durationSec: last };
+}
+function otterTxtToTranscript(txt) {
+  var lines = String(txt || '').replace(/\r/g, '').split('\n'), out = [], cur = null, speakers = {}, last = 0;
+  lines.forEach(function(l) {
+    var m = l.match(/^([A-Za-z][A-Za-z.' -]{0,40}?)\s{2,}(\d+):(\d{2})(?::(\d{2}))?\s*$/);
+    if (m) {
+      var sec = m[4] != null ? (+m[2]) * 3600 + (+m[3]) * 60 + (+m[4]) : (+m[2]) * 60 + (+m[3]);
+      cur = { who: m[1].trim(), sec: sec, text: [] }; out.push(cur); speakers[cur.who] = (speakers[cur.who] || 0) + 1; last = sec; return;
+    }
+    if (cur && l.trim() && !/^Transcribed by https?:\/\/otter\.ai/i.test(l.trim())) cur.text.push(l.trim());
+  });
+  var blocks = out.filter(function(b) { return b.text.length; });
+  return { text: blocks.map(function(b) { return b.who + ' (' + _fmtStamp(b.sec) + ')\n' + b.text.join(' '); }).join('\n\n'), blocks: blocks.length, speakers: speakers, durationSec: last };
+}
+function convertCleanTranscript(fileText) {
+  return /-->/.test(fileText) ? Object.assign({ format: 'srt' }, srtToTranscript(fileText)) : Object.assign({ format: 'otter-txt' }, otterTxtToTranscript(fileText));
+}
+var _replaceTxTarget = null;
+function pickReplacementTranscript(id) {
+  _replaceTxTarget = id;
+  var input = document.getElementById('rec-replace-input');
+  if (input) { input.value = ''; input.click(); }
+}
+async function handleReplacementFile(files) {
+  var f = files && files[0], id = _replaceTxTarget;
+  _replaceTxTarget = null;
+  if (!f || !id) return;
+  return replaceRecordingTranscript(id, await f.text(), f.name);
+}
+async function replaceRecordingTranscript(id, fileText, fileName) {
+  var rec = (state.recordings || []).find(function(r) { return r.id === id; });
+  if (!rec) return false;
+  var conv = convertCleanTranscript(fileText);
+  if (!conv.blocks) { showToast('Couldn’t read that file — export the transcript from Otter as SRT (or TXT with speaker names and timestamps).'); return false; }
+  var old = loadTranscript(id) || '';
+  var mins = Math.round(conv.durationSec / 60);
+  var who = Object.keys(conv.speakers).map(function(k) { return k + ' ' + conv.speakers[k]; }).join(', ');
+  if (!confirm('Replace ' + (rec.guest || rec.label) + '’s transcript with ' + (fileName || 'this file') + '?\n\n'
+    + conv.blocks + ' timed blocks · about ' + mins + ' min · speakers: ' + who + '\n\n'
+    + 'The current transcript is archived first (nothing is lost). The recording card, summary and quotes stay. '
+    + 'Scripts written from the old transcript should be re-run so their clips match the new text.')) return false;
+  if (old) pushTranscript(id + '__archived-' + new Date().toISOString().slice(0, 10), old);   // durable copy of the old text
+  saveTranscript(id, conv.text);
+  rec.transcriptSource = { kind: conv.format === 'srt' ? 'Otter SRT' : 'Otter TXT', file: fileName || '', replacedAt: new Date().toISOString(), blocks: conv.blocks };
+  delete _normTxCache[id];
+  autoSave('transcript replaced: ' + (rec.guest || id), true);
+  renderRecordingsList();
+  showToast('✓ ' + (rec.guest || 'Transcript') + ' now uses the clean transcript (' + conv.blocks + ' blocks). Re-run scripts that use it.');
+  return true;
+}
+
 function deleteRecording(id) {
   var card = (state.recordings || []).find(function(r) { return r.id === id; });
   if (!card) return;
@@ -6038,6 +6117,7 @@ function renderRecordingsList() {
   var controls = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px;">'
     + '<label class="action-btn" style="cursor:pointer;">＋ Add transcript files'
     + '<input id="rec-file-input" type="file" accept=".txt,.md,.vtt,.srt" multiple style="display:none;" onchange="handleTranscriptFiles(this.files)"></label>'
+    + '<input id="rec-replace-input" type="file" accept=".srt,.txt" style="display:none;" onchange="handleReplacementFile(this.files)">'
     + '<button class="action-btn" onclick="toggleRecordingPaste()">or paste one</button>'
     + '<span id="rec-progress" style="font-family:\'DM Mono\',monospace;font-size:11px;color:var(--teal);"></span>'
     + '</div>'
@@ -6060,6 +6140,8 @@ function renderRecordingsList() {
           + (r.tension ? '<div class="guest-why" style="margin-top:8px;">' + esc(r.tension) + '</div>' : '')
           + '<div class="guest-unverified-note">' + quotes + ' pull-quote' + (quotes === 1 ? '' : 's') + ' captured · transcript stored</div>'
           + '<button class="action-btn" style="margin-top:6px;font-size:11px;padding:4px 10px;" onclick="viewRecordingTranscript(\'' + r.id + '\')" title="Read the full transcript yourself — full-screen, read-only, no tokens">📄 Read</button>'
+          + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;" onclick="pickReplacementTranscript(\'' + r.id + '\')" title="Swap in a cleaner transcript (Otter SRT or TXT). The old one is archived; the card stays.">⟳ Replace transcript</button>'
+          + (r.transcriptSource ? '<div class="guest-unverified-note" style="color:var(--teal);">✓ ' + esc(r.transcriptSource.kind) + ' · ' + esc(String(r.transcriptSource.replacedAt || '').slice(0, 10)) + '</div>' : '')
           + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;" onclick="booReadRecording(\'' + r.id + '\')" title="Load this transcript for the current session (cleared on refresh, costs tokens only while loaded)">'
           + (_activeTranscriptIds.indexOf(r.id) !== -1 ? '✓ Boo is reading this' : '✦ Have Boo read this') + '</button>'
           + '<button class="action-btn" style="margin-top:6px;margin-left:6px;font-size:11px;padding:4px 10px;' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'border-color:var(--teal);color:var(--teal);' : '') + '" onclick="pinRecordingTranscript(\'' + r.id + '\')" title="' + (seasonPins().some(function(p){ return p.recId === r.id; }) ? 'Pinned — Boo keeps this full transcript on every turn. Click to unpin.' : 'Pin the FULL transcript so Boo keeps it on every turn (durable, rides every turn)') + '">'
@@ -6490,7 +6572,11 @@ function _normTranscript(recId) {
   var raw = loadTranscript(recId) || '';
   var c = _normTxCache[recId];
   if (c && c.len === raw.length) return c;
-  var n = _normWithMap(raw);
+  // Blank out "Speaker (m:ss.mmm)" label lines (same length, so every index — and so every
+  // timecode — stays put) before matching: a clip that crosses a caption/turn boundary must not
+  // have the label's words in the middle of it.
+  var masked = raw.replace(/^[^\n]{1,80}\(\d{1,2}:\d{2}(?::\d{2})?(?:\.\d+)?\)[ \t]*$/gm, function(l) { return l.replace(/[^\n]/g, ' '); });
+  var n = _normWithMap(masked);
   var stamps = [], re = /\((\d{1,2}:\d{2}(?::\d{2})?)(?:\.\d+)?\)/g, m;
   while ((m = re.exec(raw)) !== null) stamps.push({ pos: m.index, tc: m[1] });
   c = { len: raw.length, s: n.s, map: n.map, stamps: stamps };
