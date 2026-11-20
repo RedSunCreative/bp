@@ -21,8 +21,15 @@ import preview_audio as pa
 
 
 def wav_info(path):
-    with wave.open(path, 'rb') as w:
-        return w.getnframes() / w.getframerate(), w.getnchannels(), w.getframerate()
+    """(duration s, channels, sample rate) for any audio/video file macOS can read (16/24-bit WAV, MP4…)."""
+    try:
+        with wave.open(path, 'rb') as w:
+            return w.getnframes() / w.getframerate(), w.getnchannels(), w.getframerate()
+    except wave.Error:
+        info = subprocess.run(['afinfo', path], capture_output=True, text=True, check=True).stdout
+        ch, rate = re.search(r'Data format:\s+(\d+) ch,\s+(\d+) Hz', info).groups()
+        dur = float(re.search(r'estimated duration: ([\d.]+)', info).group(1))
+        return dur, int(ch), int(rate)
 
 
 def frames(sec, fps):
@@ -39,11 +46,28 @@ def file_url(path):
     return 'file://' + urllib.parse.quote(os.path.abspath(path))
 
 
+def role_of(label):
+    """'Matt (Host)' → 'Matt Host': FCPXML sub-role that Resolve shows as the track name."""
+    return re.sub(r'[()]', '', label).strip()
+
+
 def esc(s):
     return (str(s).replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;'))
 
 
-def build(script, srts, wavs, outdir, fps=30, max_items=None):
+def build(script, srts, wavs, outdir, fps=30, max_items=None, host_wav=None, host_segments=None, tracks=None):
+    """host_segments: {SECTION: [ {src0, src1, who, note} ]} from host_takes.resolve — real host takes
+    from host_wav replace the stand-in voice for that section's host block."""
+    host_segments = {k.upper(): v for k, v in (host_segments or {}).items()}
+    # tracks: {mix path: [[label, per-person file, offset s], ...]} — each cut is placed on every
+    # per-person track of its source, same span (+offset), one lane per label, so each voice gets
+    # its own fader. Sources without an entry stay on their mix.
+    tracks = tracks or {}
+    labels = []
+    for lst in tracks.values():
+        for lab, _, _ in lst:
+            if lab not in labels:
+                labels.append(lab)
     os.makedirs(outdir, exist_ok=True)
     timed = {k: pa.parse_srt(v) for k, v in srts.items()}
 
@@ -55,6 +79,14 @@ def build(script, srts, wavs, outdir, fps=30, max_items=None):
 
     def flush_host():
         if not host_block:
+            return
+        real = host_segments.get(seg.strip().upper())
+        if real is not None and host_wav:
+            for k, r in enumerate(real, 1):
+                items.append({'kind': 'host', 'name': f'{seg} · {r["who"]} {k}/{len(real)}', 'path': host_wav,
+                              'src0': r['src0'], 'src1': r['src1'],
+                              'note': f'{r["who"]} @ {r["turn"]} (Riverside)' + (f' · {r["note"]}' if r['note'] else '')})
+            host_block.clear()
             return
         n = sum(1 for i in items if i['kind'] == 'host') + 1
         name = f'HOSTS RECORD {n:02d} — {seg or "host lines"}'
@@ -108,10 +140,13 @@ def build(script, srts, wavs, outdir, fps=30, max_items=None):
 
     # resources: one asset per distinct media file
     assets = {}
+    def add_asset(path):
+        if path not in assets:
+            dur, ch, rate = wav_info(path)
+            assets[path] = {'id': f'r{len(assets) + 2}', 'name': os.path.splitext(os.path.basename(path))[0].strip(), 'dur': dur, 'ch': ch, 'rate': rate}
     for it in items:
-        if it['path'] not in assets:
-            dur, ch, rate = wav_info(it['path'])
-            assets[it['path']] = {'id': f'r{len(assets) + 2}', 'name': os.path.splitext(os.path.basename(it['path']))[0].strip(), 'dur': dur, 'ch': ch, 'rate': rate}
+        for _, path, _ in tracks.get(it['path'], [(None, it['path'], 0.0)]):
+            add_asset(path)
 
     def doc(version):
         res = [f'<format id="r1" name="FFVideoFormat1080p{fps}" frameDuration="{t(1, fps)}" width="1920" height="1080"/>']
@@ -123,6 +158,16 @@ def build(script, srts, wavs, outdir, fps=30, max_items=None):
                 res.append(f'<asset {common} src="{esc(file_url(path))}"/>')
         spine, offset = [], 0
         for it in items:
+            if it['path'] in tracks:
+                d = max(1, frames(it['src1'], fps) - frames(it['src0'], fps))
+                kids = []
+                for k, (lab, path, off) in enumerate(tracks[it['path']]):
+                    a, s0 = assets[path], max(0, frames(it['src0'] + off, fps))
+                    mk = f'<marker start="{t(s0, fps)}" duration="{t(1, fps)}" value="{esc(it["note"][:200])}"/>' if k == 0 else ''
+                    kids.append(f'<asset-clip ref="{a["id"]}" lane="{labels.index(lab) + 1}" name="{esc(lab)} · {esc(it["name"])}" offset="0s" start="{t(s0, fps)}" duration="{t(d, fps)}" srcEnable="audio" audioRole="dialogue.{esc(role_of(lab))}">{mk}</asset-clip>')
+                spine.append(f'<gap name="{esc(it["name"])}" offset="{t(offset, fps)}" start="0s" duration="{t(d, fps)}">' + ''.join(kids) + '</gap>')
+                offset += d
+                continue
             a = assets[it['path']]
             s0, s1 = frames(it['src0'], fps), frames(it['src1'], fps)
             d = max(1, s1 - s0)
@@ -150,10 +195,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('script'); ap.add_argument('--srt', action='append', default=[]); ap.add_argument('--wav', action='append', default=[])
     ap.add_argument('--outdir', required=True); ap.add_argument('--fps', type=int, default=30); ap.add_argument('--max-items', type=int)
+    ap.add_argument('--host-wav', help='host session audio (Riverside clock)'); ap.add_argument('--host-transcript', help='Riverside transcript .txt of that session')
+    ap.add_argument('--host-plan', help='JSON: {SECTION: [{turn, to_before?, from_at?, note?}]}')
+    ap.add_argument('--tracks', help='JSON: {mix path: [[label, per-person file, offset s], ...]} — one track per person')
     a = ap.parse_args()
-    items, problems, written, total = build(a.script, dict(x.split('=', 1) for x in a.srt), dict(x.split('=', 1) for x in a.wav), a.outdir, a.fps, a.max_items)
+    import json
+    host_segments, hp = None, []
+    if a.host_plan:
+        import json, host_takes as ht
+        db, dur = ht.envelope(a.host_wav)
+        host_segments, hp = ht.resolve(json.load(open(a.host_plan)), ht.parse_riverside(a.host_transcript), db, dur)
+    items, problems, written, total = build(a.script, dict(x.split('=', 1) for x in a.srt), dict(x.split('=', 1) for x in a.wav), a.outdir, a.fps, a.max_items, a.host_wav, host_segments,
+                                            json.load(open(a.tracks)) if a.tracks else None)
+    problems = hp + problems
     for it in items:
-        print(f'{it["kind"]:5} {pa.mmss(it["src0"])}–{pa.mmss(it["src1"])}  {it["name"]}')
+        print(f'{it["kind"]:5} {pa.mmss(it["src0"])}–{pa.mmss(it["src1"])}  {it["name"]}' + ('   ⚠ ' + it['note'] if 'listen to it' in it.get('note', '') else ''))
     for p in problems:
         print('  !', p)
     print('timeline length', pa.mmss(total))
